@@ -246,6 +246,10 @@
             font-size: 2rem;
             font-weight: bold;
             color: var(--accent-teal);
+            background: var(--gradient-teal);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-label {
@@ -1069,16 +1073,16 @@
                 </div>
                 <div class="hero-stats">
                     <div class="stat-item">
-                        <div class="stat-value">10K+</div>
-                        <div class="stat-label">Active Influencers</div>
+                        <div class="stat-value">✓</div>
+                        <div class="stat-label">No Agency Fees</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">500+</div>
-                        <div class="stat-label">Brand Partners</div>
+                        <div class="stat-value">✓</div>
+                        <div class="stat-label">Direct Partnerships</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">$2M+</div>
-                        <div class="stat-label">Deals Closed</div>
+                        <div class="stat-value">✓</div>
+                        <div class="stat-label">Real-time Analytics</div>
                     </div>
                 </div>
             </div>
@@ -1486,7 +1490,7 @@
             console.log('Signing up...');
             alert('Account created successfully! Redirecting to dashboard...');
             // Redirect to dashboard
-            window.location.href = 'dashboard.html';
+            window.location.href = 'index.html';
         }
 
         function handleLogin(event) {
@@ -1494,7 +1498,7 @@
             console.log('Logging in...');
             alert('Login successful! Redirecting to dashboard...');
             // Redirect to dashboard
-            window.location.href = 'dashboard.html';
+            window.location.href = 'index.html';
         }
 
         // Click outside modal to close
