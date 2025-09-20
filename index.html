@@ -1478,20 +1478,22 @@
 
         // Form handlers
         function handleSignup(event) {
-            event.preventDefault();
-            // Get selected user type
-            const selectedType = document.querySelector('.user-type-card.selected');
-            if (!selectedType) {
-                alert('Please select your account type');
-                return;
-            }
-            
-            // Here you would normally send data to your backend
-            console.log('Signing up...');
-            alert('Account created successfully! Redirecting to dashboard...');
-            // Redirect to dashboard
-            window.location.href = 'index.html';
-        }
+    event.preventDefault();
+    
+    // Get selected user type
+    const selectedType = document.querySelector('.user-type-card.selected');
+    if (!selectedType) {
+        alert('Please select your account type');
+        return;
+    }
+    
+    // Store user type for onboarding
+    const userType = selectedType.innerText.toLowerCase();
+    localStorage.setItem('userType', userType);
+    
+    // Redirect to onboarding instead of dashboard
+    window.location.href = 'onboarding.html';
+}
 
         function handleLogin(event) {
             event.preventDefault();
