@@ -1067,7 +1067,7 @@
                 </p>
                 <div class="hero-cta">
                     <button class="btn btn-primary btn-large" onclick="openModal('signup')">
-                        Start Free Trial →
+                        Get Started →
                     </button>
                     <button class="btn btn-ghost btn-large">
                         Watch Demo ▶
@@ -1259,7 +1259,7 @@
             <h2 class="cta-title">Ready to Transform Your Business?</h2>
             <p class="cta-subtitle">Join thousands of influencers, brands, and freelancers already growing with Formative</p>
             <button class="btn btn-primary btn-large" onclick="openModal('signup')">
-                Start Your Free Trial
+                Get Started Now
             </button>
         </div>
     </section>
@@ -1455,8 +1455,12 @@
         // Modal functions
         function openModal(type) {
             const modal = document.getElementById(type + 'Modal');
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } else {
+                console.error('Modal not found:', type + 'Modal');
+            }
         }
 
         function closeModal(type) {
