@@ -6,7 +6,7 @@ const path = require('path');
 const url = require('url');
 
 const PORT = process.env.PORT || 3000;
-const HOST = 'localhost';
+const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : 'localhost';
 
 // MIME types for different file extensions
 const mimeTypes = {

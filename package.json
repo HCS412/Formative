@@ -9,7 +9,9 @@
     "serve": "npx serve .",
     "live": "npx live-server .",
     "build": "echo 'Build process would go here'",
-    "test": "echo 'Tests would go here'"
+    "test": "echo 'Tests would go here'",
+    "railway:deploy": "railway up",
+    "railway:logs": "railway logs"
   },
   "keywords": [
     "influencer-marketing",
