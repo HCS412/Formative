@@ -1,0 +1,398 @@
+/* Mobile-specific styles for Formative Platform */
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0.75rem 1rem;
+    }
+    
+    .nav-links {
+        display: none;
+    }
+    
+    .nav-tabs {
+        display: none;
+    }
+    
+    .mobile-menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    
+    .mobile-menu {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 80%;
+        height: 100vh;
+        background: var(--bg-secondary);
+        z-index: 1000;
+        transition: left 0.3s ease;
+        padding: 2rem;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .mobile-menu.active {
+        left: 0;
+    }
+    
+    .mobile-menu-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    
+    .mobile-nav-links {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .mobile-nav-link {
+        color: var(--text-primary);
+        text-decoration: none;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        transition: background 0.3s ease;
+    }
+    
+    .mobile-nav-link:hover {
+        background: var(--bg-card);
+    }
+}
+
+/* Mobile Hero Section */
+@media (max-width: 768px) {
+    .hero {
+        padding: 4rem 1rem 2rem;
+        min-height: 80vh;
+    }
+    
+    .hero-content {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 2rem;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+        line-height: 1.1;
+    }
+    
+    .hero-visual {
+        display: none;
+    }
+    
+    .hero-stats {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .hero-cta {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .btn-large {
+        width: 100%;
+    }
+}
+
+/* Mobile Features Section */
+@media (max-width: 768px) {
+    .features {
+        padding: 3rem 1rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .feature-card {
+        padding: 1.5rem;
+    }
+}
+
+/* Mobile Dashboard */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .kpi-container {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .deal-flow {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .social-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .demographics-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Mobile Profile */
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+    }
+    
+    .profile-actions {
+        flex-direction: column;
+        width: 100%;
+        margin-left: 0;
+    }
+    
+    .profile-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Mobile Opportunities */
+@media (max-width: 768px) {
+    .opportunity-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .filter-sidebar {
+        position: static;
+        margin-bottom: 2rem;
+    }
+    
+    .opportunity-cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .opportunity-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Mobile Onboarding */
+@media (max-width: 768px) {
+    .onboarding-container {
+        margin: 0.5rem;
+        border-radius: 1rem;
+    }
+    
+    .progress-steps {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .step-number {
+        width: 30px;
+        height: 30px;
+        font-size: 0.9rem;
+    }
+    
+    .platform-grid,
+    .service-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .category-pills {
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .category-pill {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .onboarding-footer {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .onboarding-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Mobile Modals */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .user-type-selector {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .social-signup {
+        flex-direction: column;
+    }
+}
+
+/* Mobile Forms */
+@media (max-width: 768px) {
+    .form-input,
+    .form-textarea,
+    .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .range-container {
+        padding: 1rem;
+    }
+    
+    .notification-group {
+        padding: 0.75rem;
+    }
+}
+
+/* Mobile Utilities */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .text-mobile-center {
+        text-align: center;
+    }
+    
+    .hide-mobile {
+        display: none;
+    }
+    
+    .show-mobile {
+        display: block;
+    }
+}
+
+/* Mobile Typography */
+@media (max-width: 768px) {
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.25rem; }
+    h4 { font-size: 1.125rem; }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+}
+
+/* Mobile Animations */
+@media (max-width: 768px) {
+    .float-card {
+        animation: none;
+        position: static;
+        margin-bottom: 1rem;
+    }
+    
+    .floating-cards {
+        height: auto;
+    }
+}
+
+/* Mobile Touch Interactions */
+@media (max-width: 768px) {
+    .btn,
+    .card,
+    .opportunity-card,
+    .task-card {
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .btn:active {
+        transform: scale(0.98);
+    }
+    
+    .card:active {
+        transform: scale(0.99);
+    }
+}
+
+/* Mobile Landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+    .hero {
+        min-height: 60vh;
+        padding: 2rem 1rem;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .onboarding-container {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* Very Small Screens */
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.75rem;
+    }
+    
+    .btn {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.85rem;
+    }
+    
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .social-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .platform-grid,
+    .service-grid {
+        grid-template-columns: 1fr;
+    }
+}
