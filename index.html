@@ -1045,8 +1045,8 @@
                 <a href="#pricing" class="nav-link">Pricing</a>
             </div>
             <div class="nav-buttons">
-                <button class="btn btn-ghost" onclick="openModal('login')">Sign In</button>
-                <button class="btn btn-primary" onclick="openModal('signup')">Get Started</button>
+                <button class="btn btn-ghost" onclick="document.getElementById('loginModal').style.display='flex'; document.body.style.overflow='hidden';">Sign In</button>
+                <button class="btn btn-primary" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';">Get Started</button>
             </div>
         </div>
     </nav>
@@ -1066,7 +1066,7 @@
                     Streamline your workflow, amplify your reach, and unlock unprecedented growth.
                 </p>
                 <div class="hero-cta">
-                    <button class="btn btn-primary btn-large" onclick="openModal('signup')" id="get-started-btn">
+                    <button class="btn btn-primary btn-large" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';" id="get-started-btn">
                         Get Started →
                     </button>
                     <button class="btn btn-ghost btn-large">
@@ -1258,7 +1258,7 @@
         <div class="cta-content">
             <h2 class="cta-title">Ready to Transform Your Business?</h2>
             <p class="cta-subtitle">Join thousands of influencers, brands, and freelancers already growing with Formative</p>
-            <button class="btn btn-primary btn-large" onclick="openModal('signup')" id="cta-get-started-btn">
+            <button class="btn btn-primary btn-large" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';" id="cta-get-started-btn">
                 Get Started Now
             </button>
         </div>
@@ -1341,7 +1341,7 @@
             <div class="modal-header">
                 <h2 class="modal-title">Create Your Account</h2>
                 <p class="modal-subtitle">Join the future of influencer marketing</p>
-                <div class="close-modal" onclick="closeModal('signup')">✕</div>
+                <div class="close-modal" onclick="document.getElementById('signupModal').style.display='none'; document.body.style.overflow='auto';">✕</div>
             </div>
             <div class="modal-body">
                 <form onsubmit="handleSignup(event)">
@@ -1389,7 +1389,7 @@
                 </div>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
                     Already have an account? 
-                    <a href="#" onclick="switchModal('signup', 'login')" style="color: var(--accent-teal); text-decoration: none;">Sign In</a>
+                    <a href="#" onclick="document.getElementById('signupModal').style.display='none'; document.getElementById('loginModal').style.display='flex';" style="color: var(--accent-teal); text-decoration: none;">Sign In</a>
                 </p>
             </div>
         </div>
@@ -1401,7 +1401,7 @@
             <div class="modal-header">
                 <h2 class="modal-title">Welcome Back</h2>
                 <p class="modal-subtitle">Sign in to your account</p>
-                <div class="close-modal" onclick="closeModal('login')">✕</div>
+                <div class="close-modal" onclick="document.getElementById('loginModal').style.display='none'; document.body.style.overflow='auto';">✕</div>
             </div>
             <div class="modal-body">
                 <form onsubmit="handleLogin(event)">
@@ -1435,7 +1435,7 @@
                 </div>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
                     Don't have an account? 
-                    <a href="#" onclick="switchModal('login', 'signup')" style="color: var(--accent-teal); text-decoration: none;">Sign Up</a>
+                    <a href="#" onclick="document.getElementById('loginModal').style.display='none'; document.getElementById('signupModal').style.display='flex';" style="color: var(--accent-teal); text-decoration: none;">Sign Up</a>
                 </p>
             </div>
         </div>
