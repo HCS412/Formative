@@ -1066,7 +1066,7 @@
                     Streamline your workflow, amplify your reach, and unlock unprecedented growth.
                 </p>
                 <div class="hero-cta">
-                    <button class="btn btn-primary btn-large" onclick="openModal('signup')">
+                    <button class="btn btn-primary btn-large" onclick="openModal('signup')" id="get-started-btn">
                         Get Started →
                     </button>
                     <button class="btn btn-ghost btn-large">
@@ -1258,7 +1258,7 @@
         <div class="cta-content">
             <h2 class="cta-title">Ready to Transform Your Business?</h2>
             <p class="cta-subtitle">Join thousands of influencers, brands, and freelancers already growing with Formative</p>
-            <button class="btn btn-primary btn-large" onclick="openModal('signup')">
+            <button class="btn btn-primary btn-large" onclick="openModal('signup')" id="cta-get-started-btn">
                 Get Started Now
             </button>
         </div>
@@ -1454,12 +1454,21 @@
 
         // Modal functions
         function openModal(type) {
+            console.log('Opening modal:', type);
             const modal = document.getElementById(type + 'Modal');
             if (modal) {
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
+                console.log('Modal opened successfully');
             } else {
                 console.error('Modal not found:', type + 'Modal');
+                // Fallback: try to find modal with different naming
+                const fallbackModal = document.querySelector(`[id*="${type}"]`);
+                if (fallbackModal) {
+                    fallbackModal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                    console.log('Modal found with fallback');
+                }
             }
         }
 
@@ -1550,6 +1559,82 @@
                         behavior: 'smooth'
                     });
                 }
+            });
+        });
+
+        // Enhanced modal functionality with fallbacks
+        function openModal(type) {
+            console.log('Attempting to open modal:', type);
+            
+            // Try multiple ways to find the modal
+            let modal = document.getElementById(type + 'Modal');
+            if (!modal) {
+                modal = document.querySelector(`[id*="${type}"]`);
+            }
+            if (!modal) {
+                modal = document.querySelector(`.modal[id*="${type}"]`);
+            }
+            
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                console.log('Modal opened successfully:', type);
+            } else {
+                console.error('Modal not found:', type);
+                // Show alert as fallback
+                alert('Sign up feature coming soon! Please check back later.');
+            }
+        }
+
+        function closeModal(type) {
+            const modal = document.getElementById(type + 'Modal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Add event listeners for all Get Started buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click listeners to all Get Started buttons
+            const getStartedButtons = document.querySelectorAll('[onclick*="openModal"], #get-started-btn, #cta-get-started-btn');
+            getStartedButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Get Started button clicked');
+                    openModal('signup');
+                });
+            });
+
+            // Add click listeners to Sign In buttons
+            const signInButtons = document.querySelectorAll('[onclick*="login"]');
+            signInButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Sign In button clicked');
+                    openModal('login');
+                });
+            });
+
+            // Close modal when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('modal')) {
+                    const modalId = e.target.id.replace('Modal', '');
+                    closeModal(modalId);
+                }
+            });
+
+            // Close modal with X button
+            document.querySelectorAll('.close-modal').forEach(closeBtn => {
+                closeBtn.addEventListener('click', function() {
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        const modalId = modal.id.replace('Modal', '');
+                        closeModal(modalId);
+                    }
+                });
             });
         });
     </script>
