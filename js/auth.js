@@ -187,57 +187,52 @@ const AuthSystem = {
         }
     },
     
-    // Simulate API calls (replace with real API calls)
+    // Real API calls to backend
     simulateLogin: async (email, password) => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // Mock validation
-                if (email === 'demo@formative.com' && password === 'demo123') {
-                    resolve({
-                        success: true,
-                        user: {
-                            id: 1,
-                            name: 'Jordan Lee',
-                            email: email,
-                            userType: 'influencer',
-                            avatar: null
-                        },
-                        token: 'mock-jwt-token-' + Date.now()
-                    });
-                } else {
-                    resolve({
-                        success: false,
-                        message: 'Invalid email or password'
-                    });
-                }
-            }, 1000);
-        });
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Login API error:', error);
+            return {
+                success: false,
+                message: 'Network error. Please try again.'
+            };
+        }
     },
     
     simulateRegister: async (userData) => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // Mock validation
-                if (userData.email && userData.password && userData.name) {
-                    resolve({
-                        success: true,
-                        user: {
-                            id: Date.now(),
-                            name: userData.name,
-                            email: userData.email,
-                            userType: userData.userType || 'influencer',
-                            avatar: null
-                        },
-                        token: 'mock-jwt-token-' + Date.now()
-                    });
-                } else {
-                    resolve({
-                        success: false,
-                        message: 'Please fill in all required fields'
-                    });
-                }
-            }, 1000);
-        });
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: userData.name,
+                    email: userData.email,
+                    password: userData.password,
+                    userType: userData.userType
+                })
+            });
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Register API error:', error);
+            return {
+                success: false,
+                message: 'Network error. Please try again.'
+            };
+        }
     },
     
     // Password validation

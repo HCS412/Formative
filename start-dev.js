@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const url = require('url');
+// Check if we should run the backend API server
+if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_STATIC_URL) {
+  // Run the backend API server
+  require('./backend/server.js');
+} else {
+  // Run the development static server
+  const http = require('http');
+  const fs = require('fs');
+  const path = require('path');
+  const url = require('url');
 
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : 'localhost';
+  const PORT = process.env.PORT || 3000;
+  const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : 'localhost';
 
 // MIME types for different file extensions
 const mimeTypes = {
@@ -122,6 +128,7 @@ process.on('SIGINT', () => {
     console.log('\n🛑 Shutting down development server...');
     server.close(() => {
         console.log('✅ Server stopped successfully');
-        process.exit(0);
-    });
+    process.exit(0);
+  });
 });
+}
