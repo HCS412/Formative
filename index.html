@@ -1491,24 +1491,156 @@
             element.classList.add('selected');
         }
 
-        // Form handlers
-        function handleSignup(event) {
-    event.preventDefault();
-    
-    // Get selected user type
-    const selectedType = document.querySelector('.user-type-card.selected');
-    if (!selectedType) {
-        alert('Please select your account type');
-        return;
-    }
-    
-    // Store user type for onboarding
-    const userType = selectedType.innerText.toLowerCase();
-    localStorage.setItem('userType', userType);
-    
-    // Redirect to onboarding instead of dashboard
-    window.location.href = 'onboarding.html';
-}
+        // Enhanced signup handler with real API integration
+        async function handleSignup(event) {
+            event.preventDefault();
+            
+            // Get form data
+            const formData = new FormData(event.target);
+            const userData = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                userType: document.querySelector('.user-type-card.selected')?.textContent.toLowerCase()
+            };
+            
+            // Validation
+            if (!userData.userType) {
+                showNotification('Please select your account type', 'error');
+                return;
+            }
+            
+            if (!userData.name || !userData.email || !userData.password) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Creating Account...';
+            submitBtn.disabled = true;
+            
+            try {
+                // Call real API
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Store user data and token
+                    localStorage.setItem('userData', JSON.stringify(result.user));
+                    localStorage.setItem('authToken', result.token);
+                    localStorage.setItem('userType', userData.userType);
+                    
+                    showNotification('Account created successfully!', 'success');
+                    
+                    // Close modal and redirect to onboarding
+                    setTimeout(() => {
+                        document.getElementById('signupModal').style.display = 'none';
+                        document.body.style.overflow = 'auto';
+                        window.location.href = 'onboarding.html';
+                    }, 1500);
+                } else {
+                    showNotification(result.error || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showNotification('Registration failed. Please try again.', 'error');
+            } finally {
+                // Reset button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // Enhanced login handler
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const loginData = {
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+            
+            // Show loading state
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Signing In...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Store user data and token
+                    localStorage.setItem('userData', JSON.stringify(result.user));
+                    localStorage.setItem('authToken', result.token);
+                    localStorage.setItem('userType', result.user.userType);
+                    
+                    showNotification('Welcome back!', 'success');
+                    
+                    // Close modal and redirect to dashboard
+                    setTimeout(() => {
+                        document.getElementById('loginModal').style.display = 'none';
+                        document.body.style.overflow = 'auto';
+                        window.location.href = 'dashboard.html';
+                    }, 1500);
+                } else {
+                    showNotification(result.error || 'Login failed', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('Login failed. Please try again.', 'error');
+            } finally {
+                // Reset button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // Notification system
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
 
         function handleLogin(event) {
             event.preventDefault();

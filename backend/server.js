@@ -243,6 +243,77 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Save onboarding data
+app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const onboardingData = req.body;
+    
+    // Update user with onboarding data
+    const result = await pool.query(
+      `UPDATE users SET 
+        profile_data = $1,
+        updated_at = NOW()
+      WHERE id = $2 
+      RETURNING id, name, email, user_type`,
+      [
+        JSON.stringify(onboardingData),
+        userId
+      ]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Onboarding data saved successfully',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Onboarding save error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user stats (for dashboard)
+app.get('/api/user/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userType = req.user.userType;
+    
+    // Return demo stats based on user type
+    let stats = {};
+    
+    if (userType === 'influencer') {
+      stats = {
+        totalFollowers: '12.5K',
+        engagementRate: 8.7,
+        activeCampaigns: 3,
+        monthlyEarnings: 2500
+      };
+    } else if (userType === 'brand') {
+      stats = {
+        campaignsLaunched: 5,
+        influencersConnected: 12,
+        averageROI: 234
+      };
+    } else if (userType === 'freelancer') {
+      stats = {
+        projectsCompleted: 8,
+        averageRating: 4.9,
+        monthlyEarnings: 3200
+      };
+    }
+    
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Stats fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get opportunities
 app.get('/api/opportunities', async (req, res) => {
   try {

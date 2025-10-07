@@ -1139,7 +1139,28 @@
         document.addEventListener('DOMContentLoaded', () => {
             updateProgress();
             setupDynamicContent();
+            loadUserData();
         });
+        
+        // Load user data from localStorage
+        function loadUserData() {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                const user = JSON.parse(userData);
+                
+                // Pre-fill form with user data
+                if (user.name) {
+                    const nameInput = document.getElementById('location');
+                    if (nameInput) nameInput.value = user.name;
+                }
+                
+                // Update email verification step
+                const emailElement = document.querySelector('#content-1 .step-subtitle');
+                if (emailElement && user.email) {
+                    emailElement.textContent = `We've sent a verification link to ${user.email}`;
+                }
+            }
+        }
 
         // Navigation
         function nextStep() {
@@ -1296,8 +1317,126 @@
             document.getElementById('rate-value').textContent = '$' + value;
         }
 
-        function goToDashboard() {
+        async function goToDashboard() {
+            // Save onboarding data to backend
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const userData = localStorage.getItem('userData');
+                
+                if (authToken && userData) {
+                    const user = JSON.parse(userData);
+                    
+                    // Collect onboarding data
+                    const onboardingData = collectOnboardingData();
+                    
+                    // Send to backend
+                    const response = await fetch('/api/user/onboarding', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            userId: user.id,
+                            ...onboardingData
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('Profile completed successfully!', 'success');
+                    } else {
+                        console.error('Failed to save onboarding data');
+                    }
+                }
+            } catch (error) {
+                console.error('Error saving onboarding data:', error);
+            }
+            
+            // Redirect to dashboard
             window.location.href = 'dashboard.html';
+        }
+        
+        // Collect all onboarding data
+        function collectOnboardingData() {
+            const data = {
+                // Basic info
+                location: document.getElementById('location')?.value || '',
+                phone: document.getElementById('phone')?.value || '',
+                bio: document.getElementById('bio')?.value || '',
+                website: document.getElementById('website')?.value || '',
+                
+                // User type specific data
+                userType: userType,
+                onboardingCompleted: true,
+                completedAt: new Date().toISOString()
+            };
+            
+            // Add user type specific data
+            if (userType === 'influencer') {
+                data.platforms = getSelectedPlatforms();
+                data.categories = getSelectedCategories();
+                data.audienceSize = document.getElementById('audience-size')?.value || '';
+            } else if (userType === 'brand') {
+                data.companyName = document.getElementById('company-name')?.value || '';
+                data.industry = document.getElementById('industry')?.value || '';
+                data.marketingGoals = getSelectedCategories();
+                data.budget = document.getElementById('budget-slider')?.value || 5000;
+            } else if (userType === 'freelancer') {
+                data.services = getSelectedServices();
+                data.experience = document.getElementById('experience')?.value || '';
+                data.hourlyRate = document.getElementById('rate-slider')?.value || 50;
+                data.portfolio = document.getElementById('portfolio')?.value || '';
+            }
+            
+            return data;
+        }
+        
+        // Get selected platforms
+        function getSelectedPlatforms() {
+            const selected = document.querySelectorAll('.platform-card.selected');
+            return Array.from(selected).map(card => 
+                card.querySelector('.platform-name').textContent
+            );
+        }
+        
+        // Get selected categories
+        function getSelectedCategories() {
+            const selected = document.querySelectorAll('.category-pill.selected');
+            return Array.from(selected).map(pill => pill.textContent);
+        }
+        
+        // Get selected services
+        function getSelectedServices() {
+            const selected = document.querySelectorAll('.service-card.selected');
+            return Array.from(selected).map(card => 
+                card.querySelector('.service-title').textContent
+            );
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
 
         function startTutorial() {

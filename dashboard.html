@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formative - Influencer Marketing Platform</title>
+    <title>Formative - Dashboard</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/mobile.css">
     <style>
@@ -144,6 +144,7 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            cursor: pointer;
         }
 
         /* Main Content */
@@ -200,154 +201,163 @@
             font-weight: 600;
         }
 
-        /* Task Cards */
-        .task-card {
-            padding: 1rem;
-            border-radius: 0.75rem;
-            margin-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-
-        .task-card:hover {
-            transform: translateX(5px);
-        }
-
-        .task-card.yellow {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: #000;
-        }
-
-        .task-card.red {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-
-        .task-card.gray {
-            background: var(--bg-secondary);
-        }
-
-        .task-card.green {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        .task-info {
-            flex: 1;
-        }
-
-        .task-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-
-        .task-meta {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.85rem;
-            opacity: 0.8;
-        }
-
-        /* KPI Charts */
-        .kpi-container {
-            display: flex;
-            justify-content: space-around;
-            gap: 2rem;
-        }
-
-        .kpi-item {
+        /* Welcome Section */
+        .welcome-section {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-orange) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
             text-align: center;
         }
 
-        .kpi-chart {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: conic-gradient(var(--accent-teal) 0deg, var(--accent-teal) 270deg, var(--bg-secondary) 270deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            position: relative;
-        }
-
-        .kpi-chart::before {
-            content: '';
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            background: var(--bg-card);
-            border-radius: 50%;
-        }
-
-        .kpi-value {
-            position: relative;
-            font-size: 1.5rem;
+        .welcome-title {
+            font-size: 2rem;
             font-weight: bold;
+            margin-bottom: 0.5rem;
         }
 
-        .kpi-label {
+        .welcome-subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        /* Dynamic Content Based on User Type */
+        .user-type-content {
+            display: none;
+        }
+
+        .user-type-content.active {
+            display: block;
+        }
+
+        /* Influencer Dashboard */
+        .influencer-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
             color: var(--text-secondary);
             font-size: 0.9rem;
         }
 
-        /* Deal Flow */
-        .deal-flow {
-            display: flex;
-            justify-content: space-between;
-            gap: 2rem;
-            margin-top: 2rem;
+        /* Brand Dashboard */
+        .brand-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
 
-        .deal-column {
-            flex: 1;
-        }
-
-        .deal-header {
-            font-weight: 600;
-            margin-bottom: 1rem;
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border-radius: 0.5rem;
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
             text-align: center;
         }
 
-        .deal-pipeline {
-            display: flex;
-            flex-direction: column;
+        /* Freelancer Dashboard */
+        .freelancer-portfolio {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
+            margin-bottom: 2rem;
         }
 
-        .deal-step {
-            padding: 1rem;
-            background: var(--bg-secondary);
-            border-radius: 0.5rem;
-            border-left: 3px solid var(--accent-teal);
+        .portfolio-item {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Opportunities */
+        .opportunities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .opportunity-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .deal-step:hover {
-            background: var(--bg-primary);
-            transform: translateX(5px);
+        .opportunity-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-teal);
         }
 
-        .deal-step.active {
-            border-left-color: var(--accent-orange);
+        .opportunity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
 
-        .deal-step.completed {
-            border-left-color: var(--accent-green);
+        .opportunity-type {
+            background: var(--accent-teal);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .opportunity-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .opportunity-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .opportunity-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
         }
 
         /* Messages */
+        .messages-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
         .message-item {
             display: flex;
             align-items: center;
             gap: 1rem;
-            padding: 0.75rem;
+            padding: 1rem;
             border-radius: 0.5rem;
             transition: all 0.3s ease;
             cursor: pointer;
+            margin-bottom: 0.5rem;
         }
 
         .message-item:hover {
@@ -355,14 +365,14 @@
         }
 
         .message-avatar {
-            width: 35px;
-            height: 35px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
+            font-weight: bold;
             flex-shrink: 0;
         }
 
@@ -371,366 +381,63 @@
             min-width: 0;
         }
 
+        .message-sender {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
         .message-text {
+            color: var(--text-secondary);
             font-size: 0.9rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        /* Opportunities */
-        .opportunity-grid {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 2rem;
-        }
-
-        .filter-sidebar {
-            background: var(--bg-card);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            height: fit-content;
-            position: sticky;
-            top: 100px;
-        }
-
-        .filter-section {
-            margin-bottom: 2rem;
-        }
-
-        .filter-title {
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: var(--text-secondary);
-        }
-
-        .filter-option {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            border-radius: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .filter-option:hover {
-            background: var(--bg-secondary);
-        }
-
-        .opportunity-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .opportunity-card {
-            background: var(--bg-card);
-            border-radius: 1rem;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .opportunity-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .opportunity-image {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .opportunity-badge {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: var(--accent-yellow);
-            color: #000;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
+        .message-time {
             font-size: 0.8rem;
-            font-weight: 600;
+            color: var(--text-secondary);
         }
 
-        .company-logo {
-            width: 80%;
-            max-width: 150px;
-            height: 80px;
-            background: white;
-            border-radius: 0.5rem;
+        /* Loading States */
+        .loading {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            color: #000;
-        }
-
-        .opportunity-details {
-            padding: 1.5rem;
-        }
-
-        .opportunity-type {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .opportunity-title {
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        .opportunity-user {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        /* Media Kit / Profile */
-        .profile-header {
-            background: var(--bg-card);
-            border-radius: 1rem;
             padding: 2rem;
-            margin-bottom: 2rem;
-            display: flex;
-            align-items: center;
-            gap: 3rem;
+            color: var(--text-secondary);
         }
 
-        .profile-avatar {
-            width: 150px;
-            height: 150px;
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-teal);
             border-radius: 50%;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23667eea"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="80" font-family="Arial">JL</text></svg>');
-            background-size: cover;
-            border: 3px solid var(--accent-teal);
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
         }
 
-        .profile-info {
-            flex: 1;
-        }
-
-        .profile-name {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .profile-meta {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-        }
-
-        .profile-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .profile-bio {
-            line-height: 1.6;
-            margin-top: 1rem;
-        }
-
-        .profile-actions {
-            display: flex;
-            gap: 1rem;
-            margin-left: auto;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            font-size: 1rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-teal) 0%, #0891b2 100%);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Social Stats */
-        .social-stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .social-stat {
-            background: var(--bg-card);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            text-align: center;
-            border: 1px solid var(--border-color);
-            transition: all 0.3s ease;
-        }
-
-        .social-stat:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-teal);
-        }
-
-        .social-icon {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 1rem;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-
-        .social-icon.tiktok {
-            background: linear-gradient(135deg, #000 0%, #333 100%);
-        }
-
-        .social-icon.x {
-            background: linear-gradient(135deg, #1DA1F2 0%, #0e7490 100%);
-        }
-
-        .social-icon.youtube {
-            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
-        }
-
-        .social-icon.instagram {
-            background: linear-gradient(135deg, #E4405F 0%, #C13584 100%);
-        }
-
-        .social-count {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .social-label {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* Demographics */
-        .demographics-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-        }
-
-        .demo-card {
-            background: var(--bg-card);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .demo-title {
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: var(--text-secondary);
-        }
-
-        .demo-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .demo-item:last-child {
-            border-bottom: none;
-        }
-
-        .demo-bar {
-            width: 100%;
-            height: 8px;
-            background: var(--bg-secondary);
-            border-radius: 4px;
-            margin-top: 0.5rem;
-            overflow: hidden;
-        }
-
-        .demo-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-teal) 0%, var(--accent-orange) 100%);
-            border-radius: 4px;
-            transition: width 1s ease;
-        }
-
-        /* Search Bar */
-        .search-bar {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            padding: 1rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .search-bar input {
-            flex: 1;
-            background: none;
-            border: none;
-            color: var(--text-primary);
-            font-size: 1rem;
-            outline: none;
-        }
-
-        .search-bar input::placeholder {
-            color: var(--text-secondary);
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* Responsive */
         @media (max-width: 1200px) {
             .dashboard-grid {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr;
             }
         }
 
         @media (max-width: 768px) {
-            .dashboard-grid,
-            .opportunity-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .social-stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .profile-header {
-                flex-direction: column;
-                text-align: center;
-            }
-
             .nav-tabs {
                 display: none;
+            }
+            
+            .influencer-stats,
+            .brand-metrics {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -740,25 +447,25 @@
     <nav class="navbar">
         <div class="logo">
             <div class="logo-icon"></div>
-            <span id="logo-text">Influencer HQ</span>
+            <span id="logo-text">Formative</span>
         </div>
         <div class="nav-section">
             <div class="nav-tabs">
                 <a class="nav-tab active" onclick="showPage('dashboard')">Dashboard</a>
-                <a class="nav-tab" onclick="showPage('profile')">Media Kit</a>
                 <a class="nav-tab" onclick="showPage('opportunities')">Opportunities</a>
-                <a class="nav-tab" onclick="showPage('analytics')">Analytics</a>
+                <a class="nav-tab" onclick="showPage('messages')">Messages</a>
+                <a class="nav-tab" onclick="showPage('profile')">Profile</a>
             </div>
         </div>
         <div class="user-section">
-            <span class="greeting">Good morning, Jordan</span>
-            <div class="icon-btn">
+            <span class="greeting" id="user-greeting">Welcome back!</span>
+            <div class="icon-btn" onclick="showNotifications()">
                 <span>🔔</span>
             </div>
-            <div class="icon-btn">
+            <div class="icon-btn" onclick="showMessages()">
                 <span>💬</span>
             </div>
-            <div class="avatar">JL</div>
+            <div class="avatar" id="user-avatar" onclick="showUserMenu()">U</div>
         </div>
     </nav>
 
@@ -766,579 +473,481 @@
     <div class="container">
         <!-- Dashboard Page -->
         <div id="dashboard" class="page active">
-            <div class="dashboard-grid">
-                <!-- Left Column - Tasks -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Upcoming Tasks - Overview</h3>
-                        <span>⋯</span>
-                    </div>
-                    <div class="task-list">
-                        <div class="task-card yellow">
-                            <div class="task-info">
-                                <div class="task-title">Submit Reel for Review</div>
-                                <div class="task-meta">
-                                    <span>Instagram</span>
-                                    <span>Home Depot</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/20/24</div>
-                        </div>
-                        <div class="task-card yellow">
-                            <div class="task-info">
-                                <div class="task-title">Provide Clips to Editor</div>
-                                <div class="task-meta">
-                                    <span>Tik Tok</span>
-                                    <span>Home Depot</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/20/24</div>
-                        </div>
-                        <div class="task-card red">
-                            <div class="task-info">
-                                <div class="task-title">Submit Thumbnail for Review</div>
-                                <div class="task-meta">
-                                    <span>YouTube</span>
-                                    <span>Yeti</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/25/24</div>
-                        </div>
-                        <div class="task-card red">
-                            <div class="task-info">
-                                <div class="task-title">Schedule VOD to go live</div>
-                                <div class="task-meta">
-                                    <span>YouTube</span>
-                                    <span>Yeti</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/20/24</div>
-                        </div>
-                        <div class="task-card gray">
-                            <div class="task-info">
-                                <div class="task-title">Content Creation</div>
-                                <div class="task-meta">
-                                    <span>Instagram</span>
-                                    <span>Patagonia</span>
-                                </div>
-                            </div>
-                            <div>Due: 9/10/24</div>
-                        </div>
-                        <div class="task-card gray">
-                            <div class="task-info">
-                                <div class="task-title">Content Creation</div>
-                                <div class="task-meta">
-                                    <span>Instagram</span>
-                                    <span>Walmart</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/30/24</div>
-                        </div>
-                        <div class="task-card gray">
-                            <div class="task-info">
-                                <div class="task-title">Submit Caption for Review</div>
-                                <div class="task-meta">
-                                    <span>Tik Tok</span>
-                                    <span>Home Depot</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/20/24</div>
-                        </div>
-                        <div class="task-card green">
-                            <div class="task-info">
-                                <div class="task-title">Content Creation</div>
-                                <div class="task-meta">
-                                    <span>Tik Tok</span>
-                                    <span>Home Depot</span>
-                                </div>
-                            </div>
-                            <div>Due: 8/20/24</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Middle Column -->
-                <div>
-                    <!-- KPIs -->
-                    <div class="card">
-                        <h3 class="card-title">Key Performance Indicators</h3>
-                        <div class="kpi-container">
-                            <div class="kpi-item">
-                                <div class="kpi-chart">
-                                    <div class="kpi-value">87%</div>
-                                </div>
-                                <div class="kpi-label">Monthly Followers</div>
-                            </div>
-                            <div class="kpi-item">
-                                <div class="kpi-chart" style="background: conic-gradient(var(--accent-green) 0deg, var(--accent-green) 230deg, var(--bg-secondary) 230deg);">
-                                    <div class="kpi-value">64%</div>
-                                </div>
-                                <div class="kpi-label">Total Video Views</div>
-                            </div>
-                            <div class="kpi-item">
-                                <div class="kpi-chart" style="background: conic-gradient(var(--accent-orange) 0deg, var(--accent-orange) 290deg, var(--bg-secondary) 290deg);">
-                                    <div class="kpi-value">81%</div>
-                                </div>
-                                <div class="kpi-label">Engagement</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Suggested Actions -->
-                    <div class="card" style="margin-top: 2rem;">
-                        <h3 class="card-title">Suggested Actions</h3>
-                        <div style="display: flex; flex-direction: column; gap: 1rem;">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="width: 10px; height: 10px; background: var(--accent-red); border-radius: 50%;"></div>
-                                <span>Contact Graphic Designer regarding Yeti Thumbnail</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="width: 10px; height: 10px; background: var(--accent-red); border-radius: 50%;"></div>
-                                <span>Contact Editor regarding Home Depot Instagram Reel & Tik Tok Video</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="width: 10px; height: 10px; background: var(--accent-red); border-radius: 50%;"></div>
-                                <span>Look for a Social Media Manager in Team Builder</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Deal Flow -->
-                    <div class="card" style="margin-top: 2rem;">
-                        <h3 class="card-title">Deal Flow Management</h3>
-                        <div class="deal-flow">
-                            <div class="deal-column">
-                                <div class="deal-header">Home Depot</div>
-                                <div class="deal-pipeline">
-                                    <div class="deal-step completed">✅ Campaign Brief Received</div>
-                                    <div class="deal-step completed">✅ Deliverables Sent to Client for Review</div>
-                                    <div class="deal-step active">⚪ Feedback Received from Client</div>
-                                    <div class="deal-step">⚪ Deliverables Posted</div>
-                                </div>
-                            </div>
-                            <div class="deal-column">
-                                <div class="deal-header">Yeti</div>
-                                <div class="deal-pipeline">
-                                    <div class="deal-step completed">✅ Campaign Brief Received</div>
-                                    <div class="deal-step active">🟡 Deliverables Sent to Client for Review</div>
-                                    <div class="deal-step">⚪ Feedback Received from Client</div>
-                                    <div class="deal-step">⚪ Deliverables Posted</div>
-                                </div>
-                            </div>
-                            <div class="deal-column">
-                                <div class="deal-header">Walmart</div>
-                                <div class="deal-pipeline">
-                                    <div class="deal-step completed">✅ Message from Client</div>
-                                    <div class="deal-step completed">✅ Contract Reviewed and Signed</div>
-                                    <div class="deal-step active">🟡 Campaign Brief Received</div>
-                                    <div class="deal-step">⚪ Deliverables Sent to Client for Review</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column -->
-                <div>
-                    <!-- Messages -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Messages</h3>
-                            <span>4</span>
-                        </div>
-                        <div class="messages-list">
-                            <div class="message-item">
-                                <div class="message-avatar">A</div>
-                                <div class="message-content">
-                                    <div class="message-text">Ally: How are the drafts coming?</div>
-                                </div>
-                            </div>
-                            <div class="message-item">
-                                <div class="message-avatar">J</div>
-                                <div class="message-content">
-                                    <div class="message-text">Jad: Thank you!</div>
-                                </div>
-                            </div>
-                            <div class="message-item">
-                                <div class="message-avatar">M</div>
-                                <div class="message-content">
-                                    <div class="message-text">Matt: I can't take this anymore...</div>
-                                </div>
-                            </div>
-                            <div class="message-item">
-                                <div class="message-avatar">K</div>
-                                <div class="message-content">
-                                    <div class="message-text">Kim: Wanna grab lunch tomorrow?</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Opportunities - Recommended -->
-                    <div class="card" style="margin-top: 2rem;">
-                        <div class="card-header">
-                            <h3 class="card-title">Opportunities - Recommended</h3>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 1rem;">
-                            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 2rem; border-radius: 0.75rem; text-align: center;">
-                                <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">DICK'S</div>
-                                <div style="font-size: 0.9rem;">Seeking Influencers</div>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
-                                    <div class="message-avatar" style="width: 25px; height: 25px; font-size: 0.7rem;">DS</div>
-                                    <span style="font-size: 0.85rem;">Dick's Sporting Goods</span>
-                                </div>
-                            </div>
-                            <div style="background: linear-gradient(135deg, var(--accent-orange) 0%, #ea580c 100%); padding: 2rem; border-radius: 0.75rem; text-align: center;">
-                                <div style="font-size: 1.8rem; font-weight: bold; margin-bottom: 0.5rem;">THE HOME DEPOT</div>
-                                <div style="font-size: 0.9rem;">Seeking Influencers</div>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
-                                    <div class="message-avatar" style="width: 25px; height: 25px; font-size: 0.7rem;">HD</div>
-                                    <span style="font-size: 0.85rem;">Home Depot</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Profile/Media Kit Page -->
-        <div id="profile" class="page">
-            <div class="profile-header">
-                <div class="profile-avatar"></div>
-                <div class="profile-info">
-                    <h1 class="profile-name">Jordan Lee</h1>
-                    <div class="profile-meta">
-                        <div class="profile-meta-item">
-                            📍 Pittsburgh, PA
-                        </div>
-                        <div class="profile-meta-item">
-                            🏷️ Lifestyle
-                        </div>
-                        <div class="profile-meta-item">
-                            ⭐ 4.9/5.0
-                        </div>
-                    </div>
-                    <div class="profile-bio">
-                        Hi, I'm Jordan Lee, a 22-year-old living in Pittsburgh PA, which gives me great access to events and collaborations. With some college education in digital marketing, graphic design, or media studies, I work as a micro-influencer and freelance content creator. I'm primarily active on Instagram and TikTok, and I'm growing my YouTube channel. My content focuses on lifestyle, sustainable living, fashion, and DIY projects. I monetize through partnerships with small to medium-sized brands, affiliate marketing, and sponsored content.
-                    </div>
-                </div>
-                <div class="profile-actions">
-                    <button class="btn btn-primary">Rate Sheet</button>
-                    <button class="btn btn-secondary">Showcase</button>
-                    <button class="btn btn-secondary">Analytics</button>
-                </div>
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <h1 class="welcome-title" id="welcome-title">Welcome to Formative!</h1>
+                <p class="welcome-subtitle" id="welcome-subtitle">Let's start building your success story</p>
             </div>
 
-            <!-- Social Stats -->
-            <div class="social-stats">
-                <div class="social-stat">
-                    <div class="social-icon tiktok">♪</div>
-                    <div class="social-count">22,200</div>
-                    <div class="social-label">TikTok Followers</div>
-                </div>
-                <div class="social-stat">
-                    <div class="social-icon x">𝕏</div>
-                    <div class="social-count">5,900</div>
-                    <div class="social-label">X Followers</div>
-                </div>
-                <div class="social-stat">
-                    <div class="social-icon youtube">▶</div>
-                    <div class="social-count">12,000</div>
-                    <div class="social-label">YouTube Subscribers</div>
-                </div>
-                <div class="social-stat">
-                    <div class="social-icon instagram">📷</div>
-                    <div class="social-count">34,500</div>
-                    <div class="social-label">Instagram Followers</div>
-                </div>
-            </div>
-
-            <!-- Demographics -->
-            <div class="demographics-grid">
-                <div class="demo-card">
-                    <div class="demo-title">Country</div>
-                    <div class="demo-item">
-                        <span>USA</span>
-                        <span>40%</span>
+            <!-- Dynamic Content Based on User Type -->
+            <div id="influencer-content" class="user-type-content">
+                <div class="influencer-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-followers">0</div>
+                        <div class="stat-label">Total Followers</div>
                     </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 40%;"></div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="engagement-rate">0%</div>
+                        <div class="stat-label">Engagement Rate</div>
                     </div>
-                    <div class="demo-item">
-                        <span>UK</span>
-                        <span>20%</span>
+                    <div class="stat-card">
+                        <div class="stat-value" id="active-campaigns">0</div>
+                        <div class="stat-label">Active Campaigns</div>
                     </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 20%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>Germany</span>
-                        <span>20%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 20%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>Australia</span>
-                        <span>20%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 20%;"></div>
-                    </div>
-                </div>
-
-                <div class="demo-card">
-                    <div class="demo-title">Gender</div>
-                    <div class="demo-item">
-                        <span>Male</span>
-                        <span>20%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 20%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>Female</span>
-                        <span>60%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 60%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>Unspecified</span>
-                        <span>20%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 20%;"></div>
-                    </div>
-                </div>
-
-                <div class="demo-card">
-                    <div class="demo-title">Age</div>
-                    <div class="demo-item">
-                        <span>13-17</span>
-                        <span>15%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 15%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>18-25</span>
-                        <span>35%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 35%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>26-35</span>
-                        <span>30%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 30%;"></div>
-                    </div>
-                    <div class="demo-item">
-                        <span>36-45</span>
-                        <span>20%</span>
-                    </div>
-                    <div class="demo-bar">
-                        <div class="demo-fill" style="width: 20%;"></div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="monthly-earnings">$0</div>
+                        <div class="stat-label">Monthly Earnings</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Testimonials Section -->
+            <div id="brand-content" class="user-type-content">
+                <div class="brand-metrics">
+                    <div class="metric-card">
+                        <div class="stat-value" id="campaigns-launched">0</div>
+                        <div class="stat-label">Campaigns Launched</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="stat-value" id="influencers-connected">0</div>
+                        <div class="stat-label">Influencers Connected</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="stat-value" id="roi-percentage">0%</div>
+                        <div class="stat-label">Average ROI</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="freelancer-content" class="user-type-content">
+                <div class="freelancer-portfolio">
+                    <div class="portfolio-item">
+                        <h3>Skills & Services</h3>
+                        <p>Showcase your expertise and attract the right clients</p>
+                    </div>
+                    <div class="portfolio-item">
+                        <h3>Active Projects</h3>
+                        <p>Manage your current work and deadlines</p>
+                    </div>
+                    <div class="portfolio-item">
+                        <h3>Client Reviews</h3>
+                        <p>Build trust with verified testimonials</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Opportunities -->
             <div class="card" style="margin-top: 2rem;">
-                <h3 class="card-title">Testimonials</h3>
-                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem; margin-bottom: 1rem;">
-                    <p style="font-style: italic; margin-bottom: 0.5rem;">"Jordan's content consistently exceeds our expectations. The engagement rates are fantastic!"</p>
-                    <p style="text-align: right; color: var(--text-secondary);">- Marketing Director, Home Depot</p>
+                <div class="card-header">
+                    <h3 class="card-title">Recommended Opportunities</h3>
+                    <span>✨</span>
                 </div>
-                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
-                    <p style="font-style: italic; margin-bottom: 0.5rem;">"Professional, creative, and always delivers on time. A pleasure to work with!"</p>
-                    <p style="text-align: right; color: var(--text-secondary);">- Brand Manager, Yeti</p>
+                <div class="opportunities-grid" id="opportunities-grid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading opportunities...
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Opportunities Page -->
         <div id="opportunities" class="page">
-            <div class="search-bar">
-                <span>🔍</span>
-                <input type="text" placeholder="Search influencers, freelancers, brands...">
-            </div>
-
-            <div class="opportunity-grid">
-                <!-- Filter Sidebar -->
-                <div class="filter-sidebar">
-                    <h3 style="margin-bottom: 1.5rem;">Filter Opportunities</h3>
-                    
-                    <div class="filter-section">
-                        <div class="filter-title">Type</div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Influencer
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Freelancer
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Brand
-                        </div>
-                    </div>
-
-                    <div class="filter-section">
-                        <div class="filter-title">Industry</div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Lifestyle
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Fashion
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Sports
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> Tech
-                        </div>
-                    </div>
-
-                    <div class="filter-section">
-                        <div class="filter-title">Price Range</div>
-                        <div class="filter-option">
-                            <input type="checkbox"> $0 - $500
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> $500 - $2000
-                        </div>
-                        <div class="filter-option">
-                            <input type="checkbox"> $2000+
-                        </div>
-                    </div>
-
-                    <div class="filter-section">
-                        <div class="filter-title">⭐ Starred</div>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">All Opportunities</h3>
+                    <div style="display: flex; gap: 1rem;">
+                        <select style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; color: var(--text-primary);">
+                            <option>All Types</option>
+                            <option>Influencer</option>
+                            <option>Brand</option>
+                            <option>Freelancer</option>
+                        </select>
+                        <button style="background: var(--accent-teal); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
+                            Filter
+                        </button>
                     </div>
                 </div>
-
-                <!-- Opportunity Cards -->
-                <div class="opportunity-cards">
-                    <!-- Influencer Card -->
-                    <div class="opportunity-card">
-                        <div class="opportunity-image">
-                            <div style="width: 120px; height: 120px; border-radius: 50%; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23ec4899"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="60" font-family="Arial">JL</text></svg>'); background-size: cover;"></div>
-                        </div>
-                        <div class="opportunity-details">
-                            <div class="opportunity-type">Influencer</div>
-                            <div class="opportunity-title">Lifestyle Content Creator</div>
-                            <div class="opportunity-user">
-                                <div class="message-avatar" style="width: 20px; height: 20px; font-size: 0.6rem;">JL</div>
-                                Jordan Lee
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Videographer Card -->
-                    <div class="opportunity-card">
-                        <div class="opportunity-image" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);">
-                            <div class="opportunity-badge">$$$<br>Start 6/1/24</div>
-                            <div style="color: white; text-align: center;">
-                                <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">Additional Skills:</div>
-                                <div>1. 3D Modeling</div>
-                                <div>2. Animation</div>
-                                <div>3. Audio Engineering</div>
-                            </div>
-                        </div>
-                        <div class="opportunity-details">
-                            <div class="opportunity-type">Videographer</div>
-                            <div class="opportunity-title">Professional Video Editor</div>
-                            <div class="opportunity-user">
-                                <div class="message-avatar" style="width: 20px; height: 20px; font-size: 0.6rem;">JR</div>
-                                Jason Robinson
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Designer Card -->
-                    <div class="opportunity-card">
-                        <div class="opportunity-image">
-                            <div style="width: 150px; height: 100px; background: white; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #333;">
-                                <span style="font-size: 1.2rem;">🎨 Portfolio</span>
-                            </div>
-                        </div>
-                        <div class="opportunity-details">
-                            <div class="opportunity-type">Designer</div>
-                            <div class="opportunity-title">Graphic Designer</div>
-                            <div class="opportunity-user">
-                                <div class="message-avatar" style="width: 20px; height: 20px; font-size: 0.6rem;">TH</div>
-                                Tim Hatchet
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Home Depot Card -->
-                    <div class="opportunity-card">
-                        <div class="opportunity-image" style="background: linear-gradient(135deg, var(--accent-orange) 0%, #ea580c 100%);">
-                            <div class="company-logo">
-                                THE HOME<br>DEPOT
-                            </div>
-                        </div>
-                        <div class="opportunity-details">
-                            <div class="opportunity-type">Seeking Designer</div>
-                            <div class="opportunity-title">Brand Campaign Design</div>
-                            <div class="opportunity-user">
-                                <div class="message-avatar" style="width: 20px; height: 20px; font-size: 0.6rem;">HD</div>
-                                Home Depot
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Dick's Card -->
-                    <div class="opportunity-card">
-                        <div class="opportunity-image" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                            <div class="company-logo">
-                                DICK'S<br>SPORTING GOODS
-                            </div>
-                        </div>
-                        <div class="opportunity-details">
-                            <div class="opportunity-type">Seeking Videographer</div>
-                            <div class="opportunity-title">Sports Content Production</div>
-                            <div class="opportunity-user">
-                                <div class="message-avatar" style="width: 20px; height: 20px; font-size: 0.6rem;">DS</div>
-                                Dick's Sporting Goods
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Another Home Depot Card -->
-                    <div class="opportunity-card">
-                        <div class="opportunity-image" style="background: linear-gradient(135deg, var(--accent-orange) 0%, #ea580c 100%);">
-                            <div class="company-logo">
-                                THE HOME<br>DEPOT
-                            </div>
-                        </div>
-                        <div class="opportunity-details">
-                            <div class="opportunity-type">Seeking Influencers</div>
-                            <div class="opportunity-title">DIY Content Partnership</div>
-                            <div class="opportunity-user">
-                                <div class="message-avatar" style="width: 20px; height: 20px; font-size: 0.6rem;">HD</div>
-                                Home Depot
-                            </div>
-                        </div>
+                <div class="opportunities-grid" id="all-opportunities">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading all opportunities...
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Analytics Page (Placeholder) -->
-        <div id="analytics" class="page">
+        <!-- Messages Page -->
+        <div id="messages" class="page">
             <div class="card">
-                <h2>Analytics Dashboard</h2>
-                <p style="color: var(--text-secondary); margin-top: 1rem;">Analytics features coming soon...</p>
+                <div class="card-header">
+                    <h3 class="card-title">Messages</h3>
+                    <span id="message-count">0</span>
+                </div>
+                <div class="messages-list" id="messages-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading messages...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profile" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Your Profile</h3>
+                    <button style="background: var(--accent-teal); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
+                        Edit Profile
+                    </button>
+                </div>
+                <div id="profile-content">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading profile...
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Page Navigation
+        // Global variables
+        let currentUser = null;
+        let userType = null;
+        let authToken = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeDashboard();
+        });
+
+        // Initialize dashboard with real user data
+        async function initializeDashboard() {
+            try {
+                // Get user data from localStorage
+                const userData = localStorage.getItem('userData');
+                const token = localStorage.getItem('authToken');
+                const type = localStorage.getItem('userType');
+
+                if (!userData || !token || !type) {
+                    // Redirect to login if no auth data
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = JSON.parse(userData);
+                userType = type;
+                authToken = token;
+
+                // Update UI with user data
+                updateUserInterface();
+                
+                // Load dashboard content based on user type
+                await loadDashboardContent();
+                
+                // Load opportunities
+                await loadOpportunities();
+                
+                // Load messages
+                await loadMessages();
+
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+                showNotification('Failed to load dashboard', 'error');
+            }
+        }
+
+        // Update UI with user data
+        function updateUserInterface() {
+            // Update greeting
+            const greeting = document.getElementById('user-greeting');
+            const timeOfDay = getTimeOfDay();
+            greeting.textContent = `${timeOfDay}, ${currentUser.name}!`;
+
+            // Update welcome section
+            const welcomeTitle = document.getElementById('welcome-title');
+            const welcomeSubtitle = document.getElementById('welcome-subtitle');
+            
+            welcomeTitle.textContent = `Welcome to Formative, ${currentUser.name}!`;
+            
+            if (userType === 'influencer') {
+                welcomeSubtitle.textContent = 'Ready to grow your influence and connect with amazing brands?';
+            } else if (userType === 'brand') {
+                welcomeSubtitle.textContent = 'Let\'s find the perfect influencers for your next campaign.';
+            } else if (userType === 'freelancer') {
+                welcomeSubtitle.textContent = 'Showcase your skills and land your next project.';
+            }
+
+            // Update avatar
+            const avatar = document.getElementById('user-avatar');
+            avatar.textContent = currentUser.name.charAt(0).toUpperCase();
+
+            // Show appropriate content based on user type
+            document.querySelectorAll('.user-type-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${userType}-content`).classList.add('active');
+        }
+
+        // Get time of day for greeting
+        function getTimeOfDay() {
+            const hour = new Date().getHours();
+            if (hour < 12) return 'Good morning';
+            if (hour < 17) return 'Good afternoon';
+            return 'Good evening';
+        }
+
+        // Load dashboard content based on user type
+        async function loadDashboardContent() {
+            try {
+                if (userType === 'influencer') {
+                    await loadInfluencerStats();
+                } else if (userType === 'brand') {
+                    await loadBrandMetrics();
+                } else if (userType === 'freelancer') {
+                    await loadFreelancerData();
+                }
+            } catch (error) {
+                console.error('Error loading dashboard content:', error);
+            }
+        }
+
+        // Load influencer statistics
+        async function loadInfluencerStats() {
+            try {
+                const response = await fetch('/api/user/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const stats = await response.json();
+                    
+                    // Update stats with real data or realistic demo data
+                    document.getElementById('total-followers').textContent = stats.totalFollowers || '12.5K';
+                    document.getElementById('engagement-rate').textContent = (stats.engagementRate || 8.7) + '%';
+                    document.getElementById('active-campaigns').textContent = stats.activeCampaigns || 3;
+                    document.getElementById('monthly-earnings').textContent = '$' + (stats.monthlyEarnings || 2500);
+                } else {
+                    // Use demo data if API fails
+                    document.getElementById('total-followers').textContent = '12.5K';
+                    document.getElementById('engagement-rate').textContent = '8.7%';
+                    document.getElementById('active-campaigns').textContent = '3';
+                    document.getElementById('monthly-earnings').textContent = '$2,500';
+                }
+            } catch (error) {
+                console.error('Error loading influencer stats:', error);
+                // Use demo data
+                document.getElementById('total-followers').textContent = '12.5K';
+                document.getElementById('engagement-rate').textContent = '8.7%';
+                document.getElementById('active-campaigns').textContent = '3';
+                document.getElementById('monthly-earnings').textContent = '$2,500';
+            }
+        }
+
+        // Load brand metrics
+        async function loadBrandMetrics() {
+            try {
+                const response = await fetch('/api/brand/metrics', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const metrics = await response.json();
+                    
+                    document.getElementById('campaigns-launched').textContent = metrics.campaignsLaunched || 5;
+                    document.getElementById('influencers-connected').textContent = metrics.influencersConnected || 12;
+                    document.getElementById('roi-percentage').textContent = (metrics.averageROI || 234) + '%';
+                } else {
+                    // Use demo data
+                    document.getElementById('campaigns-launched').textContent = '5';
+                    document.getElementById('influencers-connected').textContent = '12';
+                    document.getElementById('roi-percentage').textContent = '234%';
+                }
+            } catch (error) {
+                console.error('Error loading brand metrics:', error);
+                // Use demo data
+                document.getElementById('campaigns-launched').textContent = '5';
+                document.getElementById('influencers-connected').textContent = '12';
+                document.getElementById('roi-percentage').textContent = '234%';
+            }
+        }
+
+        // Load freelancer data
+        async function loadFreelancerData() {
+            // Freelancer-specific data loading
+            console.log('Loading freelancer data...');
+        }
+
+        // Load opportunities
+        async function loadOpportunities() {
+            try {
+                const response = await fetch('/api/opportunities', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const opportunities = await response.json();
+                    displayOpportunities(opportunities, 'opportunities-grid');
+                } else {
+                    // Use demo opportunities
+                    displayDemoOpportunities();
+                }
+            } catch (error) {
+                console.error('Error loading opportunities:', error);
+                displayDemoOpportunities();
+            }
+        }
+
+        // Display demo opportunities
+        function displayDemoOpportunities() {
+            const opportunities = [
+                {
+                    id: 1,
+                    type: 'Brand Campaign',
+                    title: 'Lifestyle Content Partnership',
+                    description: 'Create authentic lifestyle content featuring our sustainable products',
+                    company: 'EcoLife',
+                    budget: '$2,000 - $5,000',
+                    deadline: '2 weeks'
+                },
+                {
+                    id: 2,
+                    type: 'Influencer Collab',
+                    title: 'Fashion Week Coverage',
+                    description: 'Cover fashion week events and showcase our latest collection',
+                    company: 'StyleCo',
+                    budget: '$1,500 - $3,000',
+                    deadline: '1 week'
+                },
+                {
+                    id: 3,
+                    type: 'Freelance Project',
+                    title: 'Video Editing Project',
+                    description: 'Edit and produce promotional videos for our brand',
+                    company: 'TechStart',
+                    budget: '$500 - $1,200',
+                    deadline: '3 days'
+                }
+            ];
+
+            displayOpportunities(opportunities, 'opportunities-grid');
+        }
+
+        // Display opportunities in grid
+        function displayOpportunities(opportunities, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            opportunities.forEach(opportunity => {
+                const card = document.createElement('div');
+                card.className = 'opportunity-card';
+                card.innerHTML = `
+                    <div class="opportunity-header">
+                        <span class="opportunity-type">${opportunity.type}</span>
+                        <span style="color: var(--text-secondary); font-size: 0.8rem;">${opportunity.deadline}</span>
+                    </div>
+                    <div class="opportunity-title">${opportunity.title}</div>
+                    <div class="opportunity-description">${opportunity.description}</div>
+                    <div class="opportunity-meta">
+                        <span>${opportunity.company}</span>
+                        <span style="color: var(--accent-green); font-weight: 600;">${opportunity.budget}</span>
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => {
+                    showOpportunityDetails(opportunity);
+                });
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Load messages
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/messages', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const messages = await response.json();
+                    displayMessages(messages);
+                } else {
+                    displayDemoMessages();
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                displayDemoMessages();
+            }
+        }
+
+        // Display demo messages
+        function displayDemoMessages() {
+            const messages = [
+                {
+                    id: 1,
+                    sender: 'Sarah Chen',
+                    text: 'Hi! I\'d love to collaborate on your next campaign',
+                    time: '2 hours ago',
+                    avatar: 'SC'
+                },
+                {
+                    id: 2,
+                    sender: 'Mike Johnson',
+                    text: 'The project deliverables look great!',
+                    time: '4 hours ago',
+                    avatar: 'MJ'
+                },
+                {
+                    id: 3,
+                    sender: 'Emma Wilson',
+                    text: 'Can we schedule a call for tomorrow?',
+                    time: '1 day ago',
+                    avatar: 'EW'
+                }
+            ];
+
+            displayMessages(messages);
+        }
+
+        // Display messages
+        function displayMessages(messages) {
+            const container = document.getElementById('messages-list');
+            const countElement = document.getElementById('message-count');
+            
+            container.innerHTML = '';
+            countElement.textContent = messages.length;
+
+            messages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message-item';
+                messageElement.innerHTML = `
+                    <div class="message-avatar">${message.avatar}</div>
+                    <div class="message-content">
+                        <div class="message-sender">${message.sender}</div>
+                        <div class="message-text">${message.text}</div>
+                    </div>
+                    <div class="message-time">${message.time}</div>
+                `;
+                
+                messageElement.addEventListener('click', () => {
+                    showMessageDetails(message);
+                });
+                
+                container.appendChild(messageElement);
+            });
+        }
+
+        // Page navigation
         function showPage(pageId) {
             // Hide all pages
             document.querySelectorAll('.page').forEach(page => {
@@ -1358,81 +967,71 @@
 
             // Update logo text based on page
             const logoText = document.getElementById('logo-text');
-            if (pageId === 'profile') {
-                logoText.textContent = 'Media Kit';
-            } else if (pageId === 'opportunities') {
+            if (pageId === 'opportunities') {
                 logoText.textContent = 'Opportunities';
-            } else if (pageId === 'analytics') {
-                logoText.textContent = 'Analytics';
+            } else if (pageId === 'messages') {
+                logoText.textContent = 'Messages';
+            } else if (pageId === 'profile') {
+                logoText.textContent = 'Profile';
             } else {
-                logoText.textContent = 'Influencer HQ';
+                logoText.textContent = 'Formative';
             }
         }
 
-        // Animate KPI charts on load
-        window.addEventListener('load', () => {
-            const kpiCharts = document.querySelectorAll('.kpi-chart');
-            kpiCharts.forEach(chart => {
-                chart.style.animation = 'rotate 1s ease-in-out';
-            });
-        });
-
-        // Add some interactivity to opportunity cards
-        document.querySelectorAll('.opportunity-card').forEach(card => {
-            card.addEventListener('click', () => {
-                card.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    card.style.transform = '';
-                }, 200);
-            });
-        });
-
-        // Animate demo bars on profile page view
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const fills = entry.target.querySelectorAll('.demo-fill');
-                    fills.forEach(fill => {
-                        const width = fill.style.width;
-                        fill.style.width = '0';
-                        setTimeout(() => {
-                            fill.style.width = width;
-                        }, 100);
-                    });
-                }
-            });
-        });
-
-        // Observe demographics section
-        const demoSection = document.querySelector('.demographics-grid');
-        if (demoSection) {
-            observer.observe(demoSection);
+        // Show opportunity details
+        function showOpportunityDetails(opportunity) {
+            alert(`Opportunity: ${opportunity.title}\nCompany: ${opportunity.company}\nBudget: ${opportunity.budget}\nDeadline: ${opportunity.deadline}`);
         }
 
-        // Add smooth scrolling
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
+        // Show message details
+        function showMessageDetails(message) {
+            alert(`From: ${message.sender}\nMessage: ${message.text}\nTime: ${message.time}`);
+        }
 
-        // Message notification animation
-        setInterval(() => {
-            const bell = document.querySelector('.icon-btn span');
-            if (bell && bell.textContent === '🔔') {
-                bell.style.transform = 'rotate(15deg)';
-                setTimeout(() => {
-                    bell.style.transform = 'rotate(-15deg)';
-                }, 200);
-                setTimeout(() => {
-                    bell.style.transform = 'rotate(0)';
-                }, 400);
+        // Show notifications
+        function showNotifications() {
+            alert('You have 3 new notifications');
+        }
+
+        // Show messages
+        function showMessages() {
+            showPage('messages');
+        }
+
+        // Show user menu
+        function showUserMenu() {
+            const action = confirm('Would you like to logout?');
+            if (action) {
+                localStorage.clear();
+                window.location.href = 'index.html';
             }
-        }, 10000);
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
     </script>
     <script src="js/main.js"></script>
     <script src="js/mobile.js"></script>
