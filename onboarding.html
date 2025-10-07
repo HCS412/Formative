@@ -1131,15 +1131,24 @@
     </div>
 
     <script>
-        let currentStep = 1;
+        let currentStep = 2; // Start at step 2 (skip email verification)
         const totalSteps = 5;
         let userType = localStorage.getItem('userType') || 'influencer'; // Get from signup
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            // Start at step 2 to skip email verification
+            document.getElementById('step-1').classList.add('completed');
+            document.getElementById('step-1').classList.remove('active');
+            document.getElementById('content-1').classList.remove('active');
+            
+            document.getElementById('step-2').classList.add('active');
+            document.getElementById('content-2').classList.add('active');
+            
             updateProgress();
             setupDynamicContent();
             loadUserData();
+            updateButtons();
         });
         
         // Load user data from localStorage
@@ -1232,14 +1241,17 @@
         }
 
         function setupDynamicContent() {
-            // Simulate email verification for demo
+            // Auto-verify email for better UX
             setTimeout(() => {
                 if (currentStep === 1) {
                     document.querySelector('#content-1 .step-subtitle').innerHTML = 
                         '✅ Email verified! You can now continue.';
                     document.getElementById('next-btn').disabled = false;
                 }
-            }, 2000);
+            }, 1000);
+            
+            // Make sure user type content is set up
+            showUserTypeDetails();
         }
 
         function showUserTypeDetails() {

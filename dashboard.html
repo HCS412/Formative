@@ -630,15 +630,29 @@
                 const token = localStorage.getItem('authToken');
                 const type = localStorage.getItem('userType');
 
-                if (!userData || !token || !type) {
-                    // Redirect to login if no auth data
-                    window.location.href = 'index.html';
+                if (!userData && !type) {
+                    // Only redirect if completely no data
+                    console.log('No user data found, redirecting to home...');
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
                     return;
                 }
 
-                currentUser = JSON.parse(userData);
-                userType = type;
-                authToken = token;
+                // Parse user data or create demo user
+                if (userData) {
+                    currentUser = JSON.parse(userData);
+                } else {
+                    // Create demo user if no data
+                    currentUser = {
+                        name: 'Demo User',
+                        email: 'demo@formative.com',
+                        userType: type || 'influencer'
+                    };
+                }
+                
+                userType = type || currentUser.userType || 'influencer';
+                authToken = token || 'demo-token';
 
                 // Update UI with user data
                 updateUserInterface();
