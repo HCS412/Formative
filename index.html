@@ -1464,6 +1464,29 @@
     </div>
 
     <script>
+        // Check if user is already logged in on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const userData = localStorage.getItem('userData');
+            const authToken = localStorage.getItem('authToken');
+            
+            if (userData && authToken) {
+                // User is already logged in, show them a message
+                const user = JSON.parse(userData);
+                console.log('User already logged in:', user.name);
+                
+                // Update nav buttons to show "Go to Dashboard" instead
+                const navButtons = document.querySelector('.nav-buttons');
+                if (navButtons) {
+                    navButtons.innerHTML = `
+                        <span style="color: var(--text-secondary); margin-right: 1rem;">
+                            Welcome back, ${user.name}!
+                        </span>
+                        <a href="dashboard.html" class="btn btn-primary">Go to Dashboard →</a>
+                    `;
+                }
+            }
+        });
+    
         // Navbar scroll effect
         window.addEventListener('scroll', () => {
             const navbar = document.getElementById('navbar');
