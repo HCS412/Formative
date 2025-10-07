@@ -674,34 +674,51 @@
 
         // Update UI with user data
         function updateUserInterface() {
+            // Get user name safely
+            const userName = currentUser?.name || 'there';
+            const userEmail = currentUser?.email || '';
+            
             // Update greeting
             const greeting = document.getElementById('user-greeting');
             const timeOfDay = getTimeOfDay();
-            greeting.textContent = `${timeOfDay}, ${currentUser.name}!`;
+            greeting.textContent = `${timeOfDay}, ${userName}!`;
 
             // Update welcome section
             const welcomeTitle = document.getElementById('welcome-title');
             const welcomeSubtitle = document.getElementById('welcome-subtitle');
             
-            welcomeTitle.textContent = `Welcome to Formative, ${currentUser.name}!`;
+            welcomeTitle.textContent = `Welcome back, ${userName}! 🎉`;
             
             if (userType === 'influencer') {
-                welcomeSubtitle.textContent = 'Ready to grow your influence and connect with amazing brands?';
+                welcomeSubtitle.textContent = 'Your influence journey starts here. Connect with top brands and grow your reach.';
             } else if (userType === 'brand') {
-                welcomeSubtitle.textContent = 'Let\'s find the perfect influencers for your next campaign.';
+                welcomeSubtitle.textContent = 'Find perfect influencers, launch campaigns, and track your ROI in real-time.';
             } else if (userType === 'freelancer') {
-                welcomeSubtitle.textContent = 'Showcase your skills and land your next project.';
+                welcomeSubtitle.textContent = 'Your next big project awaits. Showcase your talent and connect with clients.';
+            } else {
+                welcomeSubtitle.textContent = 'Let\'s start building your success story together.';
             }
 
             // Update avatar
             const avatar = document.getElementById('user-avatar');
-            avatar.textContent = currentUser.name.charAt(0).toUpperCase();
+            if (userName && userName !== 'there') {
+                avatar.textContent = userName.charAt(0).toUpperCase();
+            } else {
+                avatar.textContent = '👤';
+            }
 
             // Show appropriate content based on user type
             document.querySelectorAll('.user-type-content').forEach(content => {
                 content.classList.remove('active');
             });
-            document.getElementById(`${userType}-content`).classList.add('active');
+            
+            const userTypeContent = document.getElementById(`${userType}-content`);
+            if (userTypeContent) {
+                userTypeContent.classList.add('active');
+            } else {
+                // Default to influencer if type not found
+                document.getElementById('influencer-content').classList.add('active');
+            }
         }
 
         // Get time of day for greeting
@@ -727,8 +744,19 @@
             }
         }
 
-        // Load influencer statistics
+        // Load influencer statistics with animation
         async function loadInfluencerStats() {
+            // Set demo data immediately for instant display
+            animateValue('total-followers', 0, 12500, 1500, (val) => {
+                if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+                return val.toString();
+            });
+            
+            animateValue('engagement-rate', 0, 8.7, 1200, (val) => val.toFixed(1) + '%');
+            animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
+            animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
+            
+            // Try to fetch real data in background
             try {
                 const response = await fetch('/api/user/stats', {
                     headers: {
@@ -738,31 +766,51 @@
 
                 if (response.ok) {
                     const stats = await response.json();
-                    
-                    // Update stats with real data or realistic demo data
-                    document.getElementById('total-followers').textContent = stats.totalFollowers || '12.5K';
-                    document.getElementById('engagement-rate').textContent = (stats.engagementRate || 8.7) + '%';
-                    document.getElementById('active-campaigns').textContent = stats.activeCampaigns || 3;
-                    document.getElementById('monthly-earnings').textContent = '$' + (stats.monthlyEarnings || 2500);
-                } else {
-                    // Use demo data if API fails
-                    document.getElementById('total-followers').textContent = '12.5K';
-                    document.getElementById('engagement-rate').textContent = '8.7%';
-                    document.getElementById('active-campaigns').textContent = '3';
-                    document.getElementById('monthly-earnings').textContent = '$2,500';
+                    if (stats.stats) {
+                        // Update with real data if available
+                        document.getElementById('total-followers').textContent = stats.stats.totalFollowers || '12.5K';
+                        document.getElementById('engagement-rate').textContent = (stats.stats.engagementRate || 8.7) + '%';
+                        document.getElementById('active-campaigns').textContent = stats.stats.activeCampaigns || 3;
+                        document.getElementById('monthly-earnings').textContent = '$' + (stats.stats.monthlyEarnings || 2500);
+                    }
                 }
             } catch (error) {
-                console.error('Error loading influencer stats:', error);
-                // Use demo data
-                document.getElementById('total-followers').textContent = '12.5K';
-                document.getElementById('engagement-rate').textContent = '8.7%';
-                document.getElementById('active-campaigns').textContent = '3';
-                document.getElementById('monthly-earnings').textContent = '$2,500';
+                console.log('Using demo stats (API not available)');
             }
         }
+        
+        // Animate number values
+        function animateValue(elementId, start, end, duration, formatter) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const startTime = Date.now();
+            const endTime = startTime + duration;
+            
+            function update() {
+                const now = Date.now();
+                const progress = Math.min((now - startTime) / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+                const current = start + (end - start) * easeProgress;
+                
+                element.textContent = formatter(current);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            update();
+        }
 
-        // Load brand metrics
+        // Load brand metrics with animation
         async function loadBrandMetrics() {
+            // Set demo data immediately with animation
+            animateValue('campaigns-launched', 0, 5, 1000, (val) => Math.round(val).toString());
+            animateValue('influencers-connected', 0, 12, 1200, (val) => Math.round(val).toString());
+            animateValue('roi-percentage', 0, 234, 1500, (val) => Math.round(val) + '%');
+            
+            // Try to fetch real data in background
             try {
                 const response = await fetch('/api/brand/metrics', {
                     headers: {
@@ -772,22 +820,14 @@
 
                 if (response.ok) {
                     const metrics = await response.json();
-                    
-                    document.getElementById('campaigns-launched').textContent = metrics.campaignsLaunched || 5;
-                    document.getElementById('influencers-connected').textContent = metrics.influencersConnected || 12;
-                    document.getElementById('roi-percentage').textContent = (metrics.averageROI || 234) + '%';
-                } else {
-                    // Use demo data
-                    document.getElementById('campaigns-launched').textContent = '5';
-                    document.getElementById('influencers-connected').textContent = '12';
-                    document.getElementById('roi-percentage').textContent = '234%';
+                    if (metrics.stats) {
+                        document.getElementById('campaigns-launched').textContent = metrics.stats.campaignsLaunched || 5;
+                        document.getElementById('influencers-connected').textContent = metrics.stats.influencersConnected || 12;
+                        document.getElementById('roi-percentage').textContent = (metrics.stats.averageROI || 234) + '%';
+                    }
                 }
             } catch (error) {
-                console.error('Error loading brand metrics:', error);
-                // Use demo data
-                document.getElementById('campaigns-launched').textContent = '5';
-                document.getElementById('influencers-connected').textContent = '12';
-                document.getElementById('roi-percentage').textContent = '234%';
+                console.log('Using demo metrics (API not available)');
             }
         }
 
@@ -819,37 +859,161 @@
             }
         }
 
-        // Display demo opportunities
+        // Display demo opportunities based on user type
         function displayDemoOpportunities() {
-            const opportunities = [
-                {
-                    id: 1,
-                    type: 'Brand Campaign',
-                    title: 'Lifestyle Content Partnership',
-                    description: 'Create authentic lifestyle content featuring our sustainable products',
-                    company: 'EcoLife',
-                    budget: '$2,000 - $5,000',
-                    deadline: '2 weeks'
-                },
-                {
-                    id: 2,
-                    type: 'Influencer Collab',
-                    title: 'Fashion Week Coverage',
-                    description: 'Cover fashion week events and showcase our latest collection',
-                    company: 'StyleCo',
-                    budget: '$1,500 - $3,000',
-                    deadline: '1 week'
-                },
-                {
-                    id: 3,
-                    type: 'Freelance Project',
-                    title: 'Video Editing Project',
-                    description: 'Edit and produce promotional videos for our brand',
-                    company: 'TechStart',
-                    budget: '$500 - $1,200',
-                    deadline: '3 days'
-                }
-            ];
+            let opportunities = [];
+            
+            if (userType === 'influencer') {
+                opportunities = [
+                    {
+                        id: 1,
+                        type: 'Brand Campaign',
+                        title: 'Sustainable Fashion Partnership',
+                        description: 'Partner with leading eco-friendly fashion brand for 3-month campaign. Looking for authentic lifestyle content creators.',
+                        company: 'EcoWear',
+                        budget: '$3,500 - $6,000',
+                        deadline: '2 weeks',
+                        requirements: '10K+ followers'
+                    },
+                    {
+                        id: 2,
+                        type: 'Product Launch',
+                        title: 'Tech Product Unboxing Series',
+                        description: 'Create engaging unboxing and review content for new smart home devices launching this quarter.',
+                        company: 'SmartHome Inc',
+                        budget: '$2,000 - $4,500',
+                        deadline: '1 week',
+                        requirements: 'Tech niche'
+                    },
+                    {
+                        id: 3,
+                        type: 'Sponsored Content',
+                        title: 'Fitness App Promotion',
+                        description: 'Showcase our AI-powered fitness app in your wellness content. Multiple posts + stories package.',
+                        company: 'FitAI',
+                        budget: '$1,800 - $3,200',
+                        deadline: '10 days',
+                        requirements: 'Health & Fitness'
+                    },
+                    {
+                        id: 4,
+                        type: 'Brand Ambassador',
+                        title: 'Long-term Coffee Brand Ambassador',
+                        description: 'Become the face of our artisan coffee brand. 6-month partnership with monthly content deliverables.',
+                        company: 'Brew & Co',
+                        budget: '$5,000 - $8,000',
+                        deadline: '3 weeks',
+                        requirements: '15K+ followers'
+                    },
+                    {
+                        id: 5,
+                        type: 'Event Coverage',
+                        title: 'Music Festival Coverage',
+                        description: 'Document and create engaging content from our summer music festival. All expenses covered + payment.',
+                        company: 'SoundWave Fest',
+                        budget: '$2,500 - $4,000',
+                        deadline: '5 days',
+                        requirements: 'Entertainment niche'
+                    },
+                    {
+                        id: 6,
+                        type: 'Affiliate Program',
+                        title: 'Travel Gear Affiliate Partnership',
+                        description: 'Join our exclusive affiliate program for travel creators. Earn 15% commission + bonuses.',
+                        company: 'Wanderlust Gear',
+                        budget: '$1,000 - $5,000',
+                        deadline: 'Ongoing',
+                        requirements: 'Travel content'
+                    }
+                ];
+            } else if (userType === 'brand') {
+                opportunities = [
+                    {
+                        id: 1,
+                        type: 'Top Influencer',
+                        title: 'Sarah Chen - Lifestyle Creator',
+                        description: '125K engaged followers, 8.5% engagement rate. Specializes in sustainable living and wellness content.',
+                        company: '@sarahchen',
+                        budget: '$3,000 - $5,000',
+                        deadline: 'Available now',
+                        requirements: '125K followers'
+                    },
+                    {
+                        id: 2,
+                        type: 'Rising Star',
+                        title: 'Alex Rivera - Tech Reviewer',
+                        description: '45K tech-savvy audience, known for honest reviews. Perfect for product launches.',
+                        company: '@alextech',
+                        budget: '$1,500 - $3,000',
+                        deadline: 'Available now',
+                        requirements: '45K followers'
+                    },
+                    {
+                        id: 3,
+                        type: 'Micro Influencer',
+                        title: 'Emma Davis - Fashion Blogger',
+                        description: '28K highly engaged fashion enthusiasts. 12% engagement rate, excellent for niche campaigns.',
+                        company: '@emmastyle',
+                        budget: '$800 - $1,500',
+                        deadline: 'Available now',
+                        requirements: '28K followers'
+                    },
+                    {
+                        id: 4,
+                        type: 'Content Creator',
+                        title: 'Mike Johnson - Fitness Coach',
+                        description: '89K fitness enthusiasts. Creates workout routines and nutrition content.',
+                        company: '@mikefitness',
+                        budget: '$2,200 - $4,000',
+                        deadline: 'Available now',
+                        requirements: '89K followers'
+                    }
+                ];
+            } else {
+                // Freelancer opportunities
+                opportunities = [
+                    {
+                        id: 1,
+                        type: 'Video Editing',
+                        title: 'YouTube Channel Video Editor',
+                        description: 'Edit 4 videos per month for growing lifestyle channel. Ongoing monthly contract.',
+                        company: 'Lifestyle Creators',
+                        budget: '$800 - $1,200',
+                        deadline: '1 week',
+                        requirements: 'Adobe Premiere'
+                    },
+                    {
+                        id: 2,
+                        type: 'Graphic Design',
+                        title: 'Social Media Graphics Package',
+                        description: 'Design Instagram posts, stories, and carousel templates for fashion brand.',
+                        company: 'StyleCo',
+                        budget: '$500 - $900',
+                        deadline: '5 days',
+                        requirements: 'Figma, Canva'
+                    },
+                    {
+                        id: 3,
+                        type: 'Content Writing',
+                        title: 'Blog Post Writer - Tech Niche',
+                        description: 'Write 10 SEO-optimized blog posts about emerging technologies and AI.',
+                        company: 'TechInsight',
+                        budget: '$600 - $1,000',
+                        deadline: '2 weeks',
+                        requirements: 'SEO knowledge'
+                    },
+                    {
+                        id: 4,
+                        type: 'Photography',
+                        title: 'Product Photography Session',
+                        description: 'Professional product photos for new skincare line. Studio session + editing.',
+                        company: 'GlowSkin',
+                        budget: '$1,200 - $2,000',
+                        deadline: '1 week',
+                        requirements: 'Portfolio required'
+                    }
+                ];
+            }
 
             displayOpportunities(opportunities, 'opportunities-grid');
         }
@@ -904,31 +1068,112 @@
             }
         }
 
-        // Display demo messages
+        // Display demo messages based on user type
         function displayDemoMessages() {
-            const messages = [
-                {
-                    id: 1,
-                    sender: 'Sarah Chen',
-                    text: 'Hi! I\'d love to collaborate on your next campaign',
-                    time: '2 hours ago',
-                    avatar: 'SC'
-                },
-                {
-                    id: 2,
-                    sender: 'Mike Johnson',
-                    text: 'The project deliverables look great!',
-                    time: '4 hours ago',
-                    avatar: 'MJ'
-                },
-                {
-                    id: 3,
-                    sender: 'Emma Wilson',
-                    text: 'Can we schedule a call for tomorrow?',
-                    time: '1 day ago',
-                    avatar: 'EW'
-                }
-            ];
+            let messages = [];
+            
+            if (userType === 'influencer') {
+                messages = [
+                    {
+                        id: 1,
+                        sender: 'EcoWear Team',
+                        text: 'We loved your latest sustainable fashion post! Would you be interested in partnering with us?',
+                        time: '2 hours ago',
+                        avatar: 'EW'
+                    },
+                    {
+                        id: 2,
+                        sender: 'SmartHome Inc',
+                        text: 'Your tech reviews are amazing! We have a product launch opportunity for you.',
+                        time: '5 hours ago',
+                        avatar: 'SH'
+                    },
+                    {
+                        id: 3,
+                        sender: 'FitAI Marketing',
+                        text: 'Hi! Congratulations on reaching 50K followers! We\'d love to discuss a partnership.',
+                        time: '1 day ago',
+                        avatar: 'FA'
+                    },
+                    {
+                        id: 4,
+                        sender: 'Brew & Co',
+                        text: 'Are you available for a brand ambassador role? Let\'s chat!',
+                        time: '2 days ago',
+                        avatar: 'BC'
+                    },
+                    {
+                        id: 5,
+                        sender: 'Content Manager',
+                        text: 'Just sent over the campaign brief. Let me know if you have any questions!',
+                        time: '3 days ago',
+                        avatar: 'CM'
+                    }
+                ];
+            } else if (userType === 'brand') {
+                messages = [
+                    {
+                        id: 1,
+                        sender: 'Sarah Chen',
+                        text: 'I\'m very interested in your sustainable fashion campaign! My audience would love this.',
+                        time: '1 hour ago',
+                        avatar: 'SC'
+                    },
+                    {
+                        id: 2,
+                        sender: 'Alex Rivera',
+                        text: 'Thanks for reaching out! I\'d be happy to review your new tech product.',
+                        time: '3 hours ago',
+                        avatar: 'AR'
+                    },
+                    {
+                        id: 3,
+                        sender: 'Emma Davis',
+                        text: 'Your brand aligns perfectly with my content. When can we schedule a call?',
+                        time: '6 hours ago',
+                        avatar: 'ED'
+                    },
+                    {
+                        id: 4,
+                        sender: 'Mike Johnson',
+                        text: 'Just finished the content for your campaign. Want to review before posting?',
+                        time: '1 day ago',
+                        avatar: 'MJ'
+                    }
+                ];
+            } else {
+                // Freelancer messages
+                messages = [
+                    {
+                        id: 1,
+                        sender: 'Lifestyle Creators',
+                        text: 'Your portfolio is impressive! Are you available for an ongoing video editing project?',
+                        time: '3 hours ago',
+                        avatar: 'LC'
+                    },
+                    {
+                        id: 2,
+                        sender: 'StyleCo',
+                        text: 'We need social media graphics ASAP. Can you help?',
+                        time: '5 hours ago',
+                        avatar: 'SC'
+                    },
+                    {
+                        id: 3,
+                        sender: 'TechInsight',
+                        text: 'Love your writing samples! Let\'s discuss the blog post project.',
+                        time: '1 day ago',
+                        avatar: 'TI'
+                    },
+                    {
+                        id: 4,
+                        sender: 'Project Manager',
+                        text: 'The client loved your work! They want to book you for another project.',
+                        time: '2 days ago',
+                        avatar: 'PM'
+                    }
+                ];
+            }
 
             displayMessages(messages);
         }
