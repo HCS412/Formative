@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Formative</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1e2936;
+            --bg-secondary: #2a3f5f;
+            --bg-card: #243447;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --accent-teal: #14b8a6;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --accent-yellow: #fbbf24;
+            --border-color: #374151;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e2936 0%, #2a3f5f 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(30, 41, 54, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-orange) 100%);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: var(--bg-primary);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-30%, -50%);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-teal);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, #0891b2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(20, 184, 166, 0.3);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Profile Header */
+        .profile-header {
+            background: var(--bg-card);
+            border-radius: 1.5rem;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-orange) 100%);
+            opacity: 0.1;
+        }
+
+        .profile-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .profile-photo-container {
+            position: relative;
+        }
+
+        .profile-photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            border: 4px solid var(--accent-teal);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .profile-photo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(20, 184, 166, 0.3);
+        }
+
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .upload-badge {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 40px;
+            height: 40px;
+            background: var(--accent-teal);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-badge:hover {
+            background: var(--accent-orange);
+            transform: scale(1.1);
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-name {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .verified-badge {
+            background: var(--accent-green);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .profile-meta {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .profile-bio {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-top: 1rem;
+            max-width: 700px;
+        }
+
+        .profile-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Edit Mode */
+        .edit-mode {
+            display: none;
+        }
+
+        .edit-mode.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        /* Tabs */
+        .profile-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 2rem;
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 1rem 2rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, #0891b2 100%);
+            color: white;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-teal);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Social Links */
+        .social-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .social-link {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            border-color: var(--accent-teal);
+            transform: translateX(5px);
+        }
+
+        .social-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .social-icon.instagram {
+            background: linear-gradient(135deg, #E4405F 0%, #C13584 100%);
+        }
+
+        .social-icon.tiktok {
+            background: linear-gradient(135deg, #000 0%, #333 100%);
+        }
+
+        .social-icon.youtube {
+            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+        }
+
+        .social-icon.twitter {
+            background: linear-gradient(135deg, #1DA1F2 0%, #0e7490 100%);
+        }
+
+        .social-info {
+            flex: 1;
+        }
+
+        .social-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .social-handle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .social-stats {
+            text-align: right;
+        }
+
+        .follower-count {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Portfolio */
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .portfolio-item {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .portfolio-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .portfolio-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .portfolio-info {
+            padding: 1.5rem;
+        }
+
+        .portfolio-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .portfolio-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .portfolio-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Reviews */
+        .reviews-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .review-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .reviewer-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .reviewer-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .reviewer-name {
+            font-weight: 600;
+        }
+
+        .reviewer-role {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .rating {
+            display: flex;
+            gap: 0.25rem;
+            font-size: 1.2rem;
+        }
+
+        .star {
+            color: var(--accent-yellow);
+        }
+
+        .review-text {
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .review-date {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Add buttons */
+        .add-button {
+            background: var(--bg-card);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .add-button:hover {
+            border-color: var(--accent-teal);
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+        .add-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .profile-top {
+                flex-direction: column;
+                text-align: center;
+                align-items: center;
+            }
+
+            .profile-name {
+                font-size: 2rem;
+                justify-content: center;
+            }
+
+            .profile-meta {
+                justify-content: center;
+            }
+
+            .profile-actions {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo" onclick="window.location.href='dashboard.html'">
+            <div class="logo-icon"></div>
+            <span>Formative</span>
+        </div>
+        <div class="nav-buttons">
+            <a href="dashboard.html" class="btn btn-ghost">← Back to Dashboard</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <!-- View Mode -->
+            <div id="view-mode">
+                <div class="profile-top">
+                    <div class="profile-photo-container">
+                        <div class="profile-photo" id="profile-photo">
+                            <span id="profile-initials">U</span>
+                        </div>
+                        <div class="upload-badge" onclick="document.getElementById('photo-upload').click()" title="Change Photo">
+                            📸
+                        </div>
+                        <input type="file" id="photo-upload" accept="image/*" style="display: none;">
+                    </div>
+
+                    <div class="profile-info">
+                        <div class="profile-name">
+                            <span id="display-name">User Name</span>
+                            <span class="verified-badge">
+                                ✓ Verified
+                            </span>
+                        </div>
+
+                        <div class="profile-meta">
+                            <div class="meta-item">
+                                <span>📍</span>
+                                <span id="display-location">Location</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>🏷️</span>
+                                <span id="display-type">User Type</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>⭐</span>
+                                <span id="display-rating">5.0 Rating</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>📅</span>
+                                <span id="display-joined">Joined 2024</span>
+                            </div>
+                        </div>
+
+                        <div class="profile-bio" id="display-bio">
+                            Your bio will appear here. Click "Edit Profile" to add information about yourself.
+                        </div>
+
+                        <div class="profile-actions">
+                            <button class="btn btn-primary" onclick="toggleEditMode()">
+                                ✏️ Edit Profile
+                            </button>
+                            <button class="btn btn-ghost" onclick="shareProfile()">
+                                🔗 Share Profile
+                            </button>
+                            <button class="btn btn-ghost" onclick="viewPublicProfile()">
+                                👁️ View Public Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Mode -->
+            <div id="edit-mode" class="edit-mode">
+                <h2 style="margin-bottom: 1.5rem;">Edit Your Profile</h2>
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-name">Full Name *</label>
+                        <input type="text" class="form-input" id="edit-name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-location">Location</label>
+                        <input type="text" class="form-input" id="edit-location" placeholder="City, Country">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-bio">Bio</label>
+                        <textarea class="form-textarea" id="edit-bio" placeholder="Tell us about yourself..." maxlength="500"></textarea>
+                        <small style="color: var(--text-secondary);">500 characters max</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-website">Website</label>
+                        <input type="url" class="form-input" id="edit-website" placeholder="https://yourwebsite.com">
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary">
+                            💾 Save Changes
+                        </button>
+                        <button type="button" class="btn btn-ghost" onclick="toggleEditMode()">
+                            ✕ Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Tabs -->
+        <div class="profile-tabs">
+            <button class="tab active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab" onclick="switchTab('social')">Social Media</button>
+            <button class="tab" onclick="switchTab('portfolio')">Portfolio</button>
+            <button class="tab" onclick="switchTab('reviews')">Reviews</button>
+            <button class="tab" onclick="switchTab('settings')">Settings</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview-tab" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value" id="total-reach">0</div>
+                    <div class="stat-label">Total Reach</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value" id="engagement">0%</div>
+                    <div class="stat-label">Engagement Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-value" id="projects-completed">0</div>
+                    <div class="stat-label">Projects Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-value" id="average-rating">5.0</div>
+                    <div class="stat-label">Average Rating</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Social Media Tab -->
+        <div id="social-tab" class="tab-content">
+            <h2 style="margin-bottom: 1.5rem;">Connected Social Accounts</h2>
+            <div class="social-links" id="social-links">
+                <!-- Social links will be populated here -->
+            </div>
+            <div class="add-button" onclick="addSocialAccount()" style="margin-top: 1.5rem;">
+                <div class="add-icon">➕</div>
+                <div>Add Social Account</div>
+            </div>
+        </div>
+
+        <!-- Portfolio Tab -->
+        <div id="portfolio-tab" class="tab-content">
+            <h2 style="margin-bottom: 1.5rem;">My Work</h2>
+            <div class="portfolio-grid" id="portfolio-grid">
+                <!-- Portfolio items will be populated here -->
+            </div>
+            <div class="add-button" onclick="addPortfolioItem()" style="margin-top: 1.5rem;">
+                <div class="add-icon">➕</div>
+                <div>Add Portfolio Item</div>
+            </div>
+        </div>
+
+        <!-- Reviews Tab -->
+        <div id="reviews-tab" class="tab-content">
+            <h2 style="margin-bottom: 1.5rem;">Client Reviews</h2>
+            <div class="reviews-list" id="reviews-list">
+                <!-- Reviews will be populated here -->
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <h2 style="margin-bottom: 1.5rem;">Account Settings</h2>
+            <div style="background: var(--bg-card); border-radius: 1rem; padding: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Privacy Settings</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Control who can see your profile and contact you.</p>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
+                        <input type="checkbox" id="public-profile" checked>
+                        <span>Make my profile public</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
+                        <input type="checkbox" id="show-email">
+                        <span>Show email address on public profile</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
+                        <input type="checkbox" id="show-stats" checked>
+                        <span>Show statistics on public profile</span>
+                    </label>
+                </div>
+                
+                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="saveSettings()">
+                    💾 Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentUser = null;
+        let userType = null;
+        let isEditMode = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+            loadSocialAccounts();
+            loadPortfolio();
+            loadReviews();
+            
+            // Photo upload handler
+            document.getElementById('photo-upload').addEventListener('change', handlePhotoUpload);
+            
+            // Profile form handler
+            document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
+        });
+
+        // Load user profile
+        function loadUserProfile() {
+            const userData = localStorage.getItem('userData');
+            const type = localStorage.getItem('userType');
+            
+            if (userData) {
+                currentUser = JSON.parse(userData);
+            } else {
+                currentUser = {
+                    name: 'Demo User',
+                    email: 'demo@formative.com',
+                    userType: type || 'influencer'
+                };
+            }
+            
+            userType = type || currentUser.userType || 'influencer';
+            
+            // Update UI
+            updateProfileDisplay();
+            loadStats();
+        }
+
+        // Update profile display
+        function updateProfileDisplay() {
+            const name = currentUser.name || 'User';
+            
+            // Update header
+            document.getElementById('profile-initials').textContent = name.charAt(0).toUpperCase();
+            document.getElementById('display-name').textContent = name;
+            document.getElementById('display-type').textContent = userType.charAt(0).toUpperCase() + userType.slice(1);
+            document.getElementById('display-location').textContent = currentUser.location || 'Not specified';
+            document.getElementById('display-bio').textContent = currentUser.bio || 'No bio added yet. Click "Edit Profile" to add one.';
+            document.getElementById('display-joined').textContent = 'Joined ' + (new Date().getFullYear());
+            document.getElementById('display-rating').textContent = '5.0 Rating';
+            
+            // Update edit form
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-location').value = currentUser.location || '';
+            document.getElementById('edit-bio').value = currentUser.bio || '';
+            document.getElementById('edit-website').value = currentUser.website || '';
+        }
+
+        // Load stats
+        function loadStats() {
+            if (userType === 'influencer') {
+                animateValue('total-reach', 0, 125000, 1500, val => {
+                    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                    return val.toString();
+                });
+                animateValue('engagement', 0, 8.7, 1200, val => val.toFixed(1) + '%');
+                animateValue('projects-completed', 0, 24, 1000, val => Math.round(val));
+                animateValue('average-rating', 0, 4.9, 1300, val => val.toFixed(1));
+            } else if (userType === 'brand') {
+                animateValue('total-reach', 0, 500000, 1500, val => {
+                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                    return val.toString();
+                });
+                animateValue('engagement', 0, 12.3, 1200, val => val.toFixed(1) + '%');
+                animateValue('projects-completed', 0, 15, 1000, val => Math.round(val));
+                animateValue('average-rating', 0, 4.8, 1300, val => val.toFixed(1));
+            } else {
+                animateValue('total-reach', 0, 50000, 1500, val => {
+                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                    return val.toString();
+                });
+                animateValue('engagement', 0, 95, 1200, val => Math.round(val) + '%');
+                animateValue('projects-completed', 0, 32, 1000, val => Math.round(val));
+                animateValue('average-rating', 0, 4.9, 1300, val => val.toFixed(1));
+            }
+        }
+
+        // Animate value
+        function animateValue(elementId, start, end, duration, formatter) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const startTime = Date.now();
+            
+            function update() {
+                const now = Date.now();
+                const progress = Math.min((now - startTime) / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const current = start + (end - start) * easeProgress;
+                
+                element.textContent = formatter(current);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            update();
+        }
+
+        // Load social accounts
+        function loadSocialAccounts() {
+            const socialLinksContainer = document.getElementById('social-links');
+            
+            const socialAccounts = [
+                { platform: 'Instagram', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '34.5K', icon: '📷', color: 'instagram' },
+                { platform: 'TikTok', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '22.2K', icon: '🎵', color: 'tiktok' },
+                { platform: 'YouTube', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '12K', icon: '▶️', color: 'youtube' },
+                { platform: 'X (Twitter)', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '5.9K', icon: '𝕏', color: 'twitter' }
+            ];
+            
+            socialLinksContainer.innerHTML = socialAccounts.map(account => `
+                <div class="social-link">
+                    <div class="social-icon ${account.color}">
+                        ${account.icon}
+                    </div>
+                    <div class="social-info">
+                        <div class="social-name">${account.platform}</div>
+                        <div class="social-handle">${account.handle}</div>
+                    </div>
+                    <div class="social-stats">
+                        <div class="follower-count">${account.followers}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">followers</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load portfolio
+        function loadPortfolio() {
+            const portfolioGrid = document.getElementById('portfolio-grid');
+            
+            const portfolioItems = [
+                { title: 'Sustainable Fashion Campaign', description: 'Brand partnership with EcoWear featuring lifestyle content', icon: '👗', views: '45K', likes: '2.3K' },
+                { title: 'Tech Product Review Series', description: 'Unboxing and review content for SmartHome devices', icon: '📱', views: '32K', likes: '1.8K' },
+                { title: 'Fitness App Promotion', description: 'Multi-platform campaign for FitAI wellness app', icon: '💪', views: '28K', likes: '1.5K' }
+            ];
+            
+            portfolioGrid.innerHTML = portfolioItems.map(item => `
+                <div class="portfolio-item">
+                    <div class="portfolio-image">
+                        ${item.icon}
+                    </div>
+                    <div class="portfolio-info">
+                        <div class="portfolio-title">${item.title}</div>
+                        <div class="portfolio-description">${item.description}</div>
+                        <div class="portfolio-meta">
+                            <span>👁️ ${item.views} views</span>
+                            <span>❤️ ${item.likes} likes</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load reviews
+        function loadReviews() {
+            const reviewsList = document.getElementById('reviews-list');
+            
+            const reviews = [
+                { name: 'Sarah Chen', role: 'Brand Manager at EcoWear', rating: 5, text: 'Amazing to work with! Professional, creative, and always delivers on time. The content exceeded our expectations and the engagement was fantastic.', date: '2 weeks ago', avatar: 'SC' },
+                { name: 'Mike Rodriguez', role: 'Marketing Director at SmartHome', rating: 5, text: 'Highly recommend! The tech reviews were thorough and engaging. Our product launch was a huge success thanks to this collaboration.', date: '1 month ago', avatar: 'MR' },
+                { name: 'Emma Davis', role: 'CEO at FitAI', rating: 5, text: 'Exceptional quality and professionalism. The content perfectly captured our brand values and resonated with the target audience.', date: '2 months ago', avatar: 'ED' }
+            ];
+            
+            reviewsList.innerHTML = reviews.map(review => `
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">${review.avatar}</div>
+                            <div>
+                                <div class="reviewer-name">${review.name}</div>
+                                <div class="reviewer-role">${review.role}</div>
+                            </div>
+                        </div>
+                        <div class="rating">
+                            ${'★'.repeat(review.rating)}
+                        </div>
+                    </div>
+                    <div class="review-text">${review.text}</div>
+                    <div class="review-date">${review.date}</div>
+                </div>
+            `).join('');
+        }
+
+        // Toggle edit mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            document.getElementById('view-mode').style.display = isEditMode ? 'none' : 'block';
+            document.getElementById('edit-mode').classList.toggle('active', isEditMode);
+        }
+
+        // Handle profile update
+        async function handleProfileUpdate(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const updatedData = {
+                name: document.getElementById('edit-name').value,
+                location: document.getElementById('edit-location').value,
+                bio: document.getElementById('edit-bio').value,
+                website: document.getElementById('edit-website').value
+            };
+            
+            // Update currentUser
+            currentUser = { ...currentUser, ...updatedData };
+            
+            // Save to localStorage
+            localStorage.setItem('userData', JSON.stringify(currentUser));
+            
+            // Update display
+            updateProfileDisplay();
+            
+            // Exit edit mode
+            toggleEditMode();
+            
+            // Show notification
+            showNotification('Profile updated successfully!', 'success');
+            
+            // Try to save to backend
+            try {
+                const authToken = localStorage.getItem('authToken');
+                if (authToken) {
+                    await fetch('/api/user/profile', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({ name: updatedData.name, profileData: updatedData })
+                    });
+                }
+            } catch (error) {
+                console.log('Profile saved locally (API not available)');
+            }
+        }
+
+        // Handle photo upload
+        function handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const photoElement = document.getElementById('profile-photo');
+                    photoElement.innerHTML = `<img src="${event.target.result}" alt="Profile Photo">`;
+                    showNotification('Photo updated!', 'success');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Switch tab
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+            
+            // Show corresponding content
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // Share profile
+        function shareProfile() {
+            const profileUrl = window.location.origin + '/profile.html?user=' + (currentUser.id || 'demo');
+            navigator.clipboard.writeText(profileUrl);
+            showNotification('Profile link copied to clipboard!', 'success');
+        }
+
+        // View public profile
+        function viewPublicProfile() {
+            window.open('/profile.html?user=' + (currentUser.id || 'demo') + '&view=public', '_blank');
+        }
+
+        // Add social account
+        function addSocialAccount() {
+            showNotification('Social account linking coming soon!', 'info');
+        }
+
+        // Add portfolio item
+        function addPortfolioItem() {
+            showNotification('Portfolio upload coming soon!', 'info');
+        }
+
+        // Save settings
+        function saveSettings() {
+            const settings = {
+                publicProfile: document.getElementById('public-profile').checked,
+                showEmail: document.getElementById('show-email').checked,
+                showStats: document.getElementById('show-stats').checked
+            };
+            
+            localStorage.setItem('profileSettings', JSON.stringify(settings));
+            showNotification('Settings saved!', 'success');
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+

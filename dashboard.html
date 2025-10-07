@@ -454,7 +454,7 @@
                 <a class="nav-tab active" onclick="showPage('dashboard')">Dashboard</a>
                 <a class="nav-tab" onclick="showPage('opportunities')">Opportunities</a>
                 <a class="nav-tab" onclick="showPage('messages')">Messages</a>
-                <a class="nav-tab" onclick="showPage('profile')">Profile</a>
+                <a class="nav-tab" href="profile.html">Profile</a>
             </div>
         </div>
         <div class="user-section">
@@ -465,7 +465,7 @@
             <div class="icon-btn" onclick="showMessages()">
                 <span>💬</span>
             </div>
-            <div class="avatar" id="user-avatar" onclick="showUserMenu()">U</div>
+            <div class="avatar" id="user-avatar" onclick="goToProfile()">U</div>
         </div>
     </nav>
 
@@ -1257,6 +1257,11 @@
             showPage('messages');
         }
 
+        // Go to profile
+        function goToProfile() {
+            window.location.href = 'profile.html';
+        }
+        
         // Show user menu
         function showUserMenu() {
             const action = confirm('Would you like to logout?');
