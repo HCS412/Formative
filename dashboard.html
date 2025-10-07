@@ -40,13 +40,15 @@
             background: rgba(30, 41, 54, 0.95);
             backdrop-filter: blur(10px);
             padding: 1rem 2rem;
-            display: flex;
+            display: flex !important;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
             z-index: 1000;
             border-bottom: 1px solid var(--border-color);
+            min-height: 70px;
+            width: 100%;
         }
 
         .logo {
@@ -431,7 +433,33 @@
         }
 
         @media (max-width: 768px) {
+            .navbar {
+                flex-wrap: wrap;
+                padding: 1rem;
+            }
+            
+            .nav-section {
+                order: 3;
+                width: 100%;
+                margin-top: 1rem;
+            }
+            
             .nav-tabs {
+                width: 100%;
+                justify-content: space-around;
+                gap: 0.5rem;
+            }
+            
+            .nav-tab {
+                font-size: 0.9rem;
+                padding: 0.5rem;
+            }
+            
+            .user-section {
+                gap: 0.5rem;
+            }
+            
+            .greeting {
                 display: none;
             }
             
