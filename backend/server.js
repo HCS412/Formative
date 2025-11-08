@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const path = require('path');
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -311,6 +312,106 @@ app.get('/api/user/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Stats fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get Twitter stats for a user
+app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.query;
+    
+    if (!username) {
+      return res.status(400).json({ 
+        error: 'Username required',
+        message: 'Please provide a Twitter username as a query parameter'
+      });
+    }
+    
+    // Remove @ symbol if present
+    const cleanUsername = username.replace('@', '');
+    
+    // Check if Bearer Token is configured
+    if (!process.env.TWITTER_BEARER_TOKEN) {
+      return res.status(500).json({ 
+        error: 'Twitter API not configured',
+        message: 'TWITTER_BEARER_TOKEN environment variable is missing'
+      });
+    }
+    
+    console.log(`Fetching Twitter stats for: ${cleanUsername}`);
+    
+    // Call Twitter API v2
+    const twitterResponse = await fetch(
+      `https://api.twitter.com/2/users/by/username/${cleanUsername}?user.fields=public_metrics,created_at,description,profile_image_url`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
+          'User-Agent': 'Formative-Dashboard/1.0'
+        }
+      }
+    );
+    
+    const twitterData = await twitterResponse.json();
+    
+    // Handle Twitter API errors
+    if (!twitterResponse.ok) {
+      console.error('Twitter API error:', twitterData);
+      return res.status(twitterResponse.status).json({ 
+        error: 'Twitter API error',
+        message: twitterData.detail || twitterData.title || 'Failed to fetch Twitter data',
+        twitterError: twitterData
+      });
+    }
+    
+    // Check if user was found
+    if (!twitterData.data) {
+      return res.status(404).json({ 
+        error: 'User not found',
+        message: `Twitter user @${cleanUsername} not found`
+      });
+    }
+    
+    const userData = twitterData.data;
+    const metrics = userData.public_metrics;
+    
+    // Calculate engagement rate (simplified - tweets per follower ratio as percentage)
+    // In a real app, you'd fetch recent tweets and calculate actual engagement
+    const engagementRate = metrics.followers_count > 0 
+      ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
+      : 0;
+    
+    // Format the response
+    const formattedStats = {
+      success: true,
+      platform: 'twitter',
+      username: userData.username,
+      displayName: userData.name,
+      profileImage: userData.profile_image_url,
+      bio: userData.description,
+      accountCreated: userData.created_at,
+      stats: {
+        followers: metrics.followers_count,
+        following: metrics.following_count,
+        tweets: metrics.tweet_count,
+        listed: metrics.listed_count,
+        engagementRate: parseFloat(engagementRate)
+      },
+      fetchedAt: new Date().toISOString()
+    };
+    
+    console.log(`✅ Successfully fetched stats for @${cleanUsername}:`, {
+      followers: metrics.followers_count,
+      engagement: engagementRate
+    });
+    
+    res.json(formattedStats);
+    
+  } catch (error) {
+    console.error('Twitter stats fetch error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 });
 
