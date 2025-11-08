@@ -1077,8 +1077,8 @@
                 <a href="#pricing" class="nav-link">Pricing</a>
             </div>
             <div class="nav-buttons">
-                <button class="btn btn-ghost" onclick="document.getElementById('loginModal').style.display='flex'; document.body.style.overflow='hidden';">Sign In</button>
-                <button class="btn btn-primary" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';">Get Started</button>
+                <button class="btn btn-ghost" onclick="openModal('login')">Sign In</button>
+                <button class="btn btn-primary" onclick="openModal('signup')">Get Started</button>
             </div>
         </div>
     </nav>
@@ -1098,7 +1098,7 @@
                     Streamline your workflow, amplify your reach, and unlock unprecedented growth.
                 </p>
                 <div class="hero-cta">
-                    <button class="btn btn-primary btn-large" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';" id="get-started-btn">
+                    <button class="btn btn-primary btn-large" onclick="openModal('signup')">
                         Get Started →
                     </button>
                     <button class="btn btn-ghost btn-large">
@@ -1290,7 +1290,7 @@
         <div class="cta-content">
             <h2 class="cta-title">Ready to Transform Your Business?</h2>
             <p class="cta-subtitle">Join thousands of influencers, brands, and freelancers already growing with Formative</p>
-            <button class="btn btn-primary btn-large" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';" id="cta-get-started-btn">
+            <button class="btn btn-primary btn-large" onclick="openModal('signup')">
                 Get Started Now
             </button>
         </div>
@@ -1373,7 +1373,7 @@
             <div class="modal-header">
                 <h2 class="modal-title">Create Your Account</h2>
                 <p class="modal-subtitle">Join the future of influencer marketing</p>
-                <div class="close-modal" onclick="document.getElementById('signupModal').style.display='none'; document.body.style.overflow='auto';">✕</div>
+                <div class="close-modal" onclick="closeModal('signup')">✕</div>
             </div>
             <div class="modal-body">
                 <form onsubmit="handleSignup(event)">
@@ -1396,15 +1396,15 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="name">Full Name</label>
-                        <input type="text" class="form-input" id="name" placeholder="Jordan Lee" required>
+                        <input type="text" class="form-input" id="name" name="name" placeholder="Jordan Lee" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="email">Email</label>
-                        <input type="email" class="form-input" id="email" placeholder="jordan@example.com" required>
+                        <input type="email" class="form-input" id="email" name="email" placeholder="jordan@example.com" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="password">Password</label>
-                        <input type="password" class="form-input" id="password" placeholder="••••••••" required>
+                        <input type="password" class="form-input" id="password" name="password" placeholder="••••••••" required>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">Create Account</button>
                 </form>
@@ -1421,7 +1421,7 @@
                 </div>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
                     Already have an account? 
-                    <a href="#" onclick="document.getElementById('signupModal').style.display='none'; document.getElementById('loginModal').style.display='flex';" style="color: var(--accent-teal); text-decoration: none;">Sign In</a>
+                    <a href="#" onclick="switchModal('signup', 'login'); return false;" style="color: var(--accent-teal); text-decoration: none;">Sign In</a>
                 </p>
             </div>
         </div>
@@ -1433,17 +1433,17 @@
             <div class="modal-header">
                 <h2 class="modal-title">Welcome Back</h2>
                 <p class="modal-subtitle">Sign in to your account</p>
-                <div class="close-modal" onclick="document.getElementById('loginModal').style.display='none'; document.body.style.overflow='auto';">✕</div>
+                <div class="close-modal" onclick="closeModal('login')">✕</div>
             </div>
             <div class="modal-body">
                 <form onsubmit="handleLogin(event)">
                     <div class="form-group">
                         <label class="form-label" for="loginEmail">Email</label>
-                        <input type="email" class="form-input" id="loginEmail" placeholder="jordan@example.com" required>
+                        <input type="email" class="form-input" id="loginEmail" name="email" placeholder="jordan@example.com" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="loginPassword">Password</label>
-                        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" required>
+                        <input type="password" class="form-input" id="loginPassword" name="password" placeholder="••••••••" required>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
                         <label style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1467,20 +1467,22 @@
                 </div>
                 <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
                     Don't have an account? 
-                    <a href="#" onclick="document.getElementById('loginModal').style.display='none'; document.getElementById('signupModal').style.display='flex';" style="color: var(--accent-teal); text-decoration: none;">Sign Up</a>
+                    <a href="#" onclick="switchModal('login', 'signup'); return false;" style="color: var(--accent-teal); text-decoration: none;">Sign Up</a>
                 </p>
             </div>
         </div>
     </div>
 
     <script>
+        // 🔧 FIX: Store the selected user type cleanly
+        let selectedUserType = null;
+
         // Check if user is already logged in on page load
         document.addEventListener('DOMContentLoaded', () => {
             const userData = localStorage.getItem('userData');
             const authToken = localStorage.getItem('authToken');
             
             if (userData && authToken) {
-                // User is already logged in, show them a message
                 const user = JSON.parse(userData);
                 console.log('User already logged in:', user.name);
                 
@@ -1513,24 +1515,21 @@
             const modal = document.getElementById(type + 'Modal');
             if (modal) {
                 modal.classList.add('active');
+                modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
                 console.log('Modal opened successfully');
             } else {
                 console.error('Modal not found:', type + 'Modal');
-                // Fallback: try to find modal with different naming
-                const fallbackModal = document.querySelector(`[id*="${type}"]`);
-                if (fallbackModal) {
-                    fallbackModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                    console.log('Modal found with fallback');
-                }
             }
         }
 
         function closeModal(type) {
             const modal = document.getElementById(type + 'Modal');
-            modal.classList.remove('active');
-            document.body.style.overflow = 'auto';
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
         }
 
         function switchModal(from, to) {
@@ -1538,15 +1537,17 @@
             setTimeout(() => openModal(to), 300);
         }
 
-        // User type selection
+        // 🔧 FIX: Store the clean user type value
         function selectUserType(element, type) {
             document.querySelectorAll('.user-type-card').forEach(card => {
                 card.classList.remove('selected');
             });
             element.classList.add('selected');
+            selectedUserType = type; // Store the clean type
+            console.log('User type selected:', type);
         }
 
-        // Enhanced signup handler with real API integration
+        // 🔧 FIX: Use the stored clean user type value
         async function handleSignup(event) {
             event.preventDefault();
             
@@ -1556,8 +1557,10 @@
                 name: formData.get('name'),
                 email: formData.get('email'),
                 password: formData.get('password'),
-                userType: document.querySelector('.user-type-card.selected')?.textContent.toLowerCase()
+                userType: selectedUserType // Use the stored clean value
             };
+            
+            console.log('Signup data:', userData);
             
             // Validation
             if (!userData.userType) {
@@ -1602,8 +1605,7 @@
                     
                     // Close modal and redirect to onboarding
                     setTimeout(() => {
-                        document.getElementById('signupModal').style.display = 'none';
-                        document.body.style.overflow = 'auto';
+                        closeModal('signup');
                         window.location.href = 'onboarding.html';
                     }, 1000);
                 } else {
@@ -1637,8 +1639,7 @@
                 
                 // Close modal and redirect to onboarding
                 setTimeout(() => {
-                    document.getElementById('signupModal').style.display = 'none';
-                    document.body.style.overflow = 'auto';
+                    closeModal('signup');
                     window.location.href = 'onboarding.html';
                 }, 1000);
             } finally {
@@ -1685,8 +1686,7 @@
                     
                     // Close modal and redirect to dashboard
                     setTimeout(() => {
-                        document.getElementById('loginModal').style.display = 'none';
-                        document.body.style.overflow = 'auto';
+                        closeModal('login');
                         window.location.href = 'dashboard.html';
                     }, 1500);
                 } else {
@@ -1715,8 +1715,7 @@
                 showNotification('Welcome back! (Demo Mode)', 'success');
                 
                 setTimeout(() => {
-                    document.getElementById('loginModal').style.display = 'none';
-                    document.body.style.overflow = 'auto';
+                    closeModal('login');
                     window.location.href = 'dashboard.html';
                 }, 1000);
             } finally {
@@ -1754,14 +1753,6 @@
             }, 3000);
         }
 
-        function handleLogin(event) {
-            event.preventDefault();
-            console.log('Logging in...');
-            alert('Login successful! Redirecting to dashboard...');
-            // Redirect to dashboard
-            window.location.href = 'index.html';
-        }
-
         // Click outside modal to close
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
@@ -1770,25 +1761,6 @@
                     closeModal(modalId);
                 }
             });
-        });
-
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.animation = entry.target.dataset.animation || 'fadeInUp 0.8s ease forwards';
-                }
-            });
-        }, observerOptions);
-
-        // Observe all sections
-        document.querySelectorAll('section').forEach(section => {
-            observer.observe(section);
         });
 
         // Smooth scroll for navigation links
@@ -1805,87 +1777,6 @@
                 }
             });
         });
-
-        // Enhanced modal functionality with fallbacks
-        function openModal(type) {
-            console.log('Attempting to open modal:', type);
-            
-            // Try multiple ways to find the modal
-            let modal = document.getElementById(type + 'Modal');
-            if (!modal) {
-                modal = document.querySelector(`[id*="${type}"]`);
-            }
-            if (!modal) {
-                modal = document.querySelector(`.modal[id*="${type}"]`);
-            }
-            
-            if (modal) {
-                modal.classList.add('active');
-                modal.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
-                console.log('Modal opened successfully:', type);
-            } else {
-                console.error('Modal not found:', type);
-                // Show alert as fallback
-                alert('Sign up feature coming soon! Please check back later.');
-            }
-        }
-
-        function closeModal(type) {
-            const modal = document.getElementById(type + 'Modal');
-            if (modal) {
-                modal.classList.remove('active');
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-        }
-
-        // Add event listeners for all Get Started buttons
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add click listeners to all Get Started buttons
-            const getStartedButtons = document.querySelectorAll('[onclick*="openModal"], #get-started-btn, #cta-get-started-btn');
-            getStartedButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Get Started button clicked');
-                    openModal('signup');
-                });
-            });
-
-            // Add click listeners to Sign In buttons
-            const signInButtons = document.querySelectorAll('[onclick*="login"]');
-            signInButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('Sign In button clicked');
-                    openModal('login');
-                });
-            });
-
-            // Close modal when clicking outside
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('modal')) {
-                    const modalId = e.target.id.replace('Modal', '');
-                    closeModal(modalId);
-                }
-            });
-
-            // Close modal with X button
-            document.querySelectorAll('.close-modal').forEach(closeBtn => {
-                closeBtn.addEventListener('click', function() {
-                    const modal = this.closest('.modal');
-                    if (modal) {
-                        const modalId = modal.id.replace('Modal', '');
-                        closeModal(modalId);
-                    }
-                });
-            });
-        });
     </script>
-    <script src="js/main.js"></script>
-    <script src="js/mobile.js"></script>
-    <script src="js/features.js"></script>
-    <script src="js/performance.js"></script>
-    <script src="js/auth.js"></script>
 </body>
 </html>
