@@ -51,9 +51,12 @@
         }
 
         .btn-ghost {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1) !important;
             color: var(--text-primary) !important;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-color) !important;
+            display: inline-flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
         .btn-ghost:hover {
@@ -94,6 +97,13 @@
             gap: 1rem;
             font-size: 1.5rem;
             font-weight: bold;
+            color: var(--text-primary) !important;
+        }
+
+        .logo span {
+            color: var(--text-primary) !important;
+            display: inline-block !important;
+            opacity: 1 !important;
         }
 
         .logo-icon {
@@ -132,16 +142,18 @@
         }
 
         .nav-tab {
-            color: var(--text-secondary);
+            color: var(--text-secondary) !important;
             text-decoration: none;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             transition: all 0.3s ease;
             cursor: pointer;
+            display: inline-block !important;
+            opacity: 1 !important;
         }
 
         .nav-tab:hover, .nav-tab.active {
-            color: var(--text-primary);
+            color: var(--text-primary) !important;
             background: var(--bg-card);
         }
 
@@ -152,8 +164,10 @@
         }
 
         .greeting {
-            color: var(--text-secondary);
+            color: var(--text-secondary) !important;
             font-size: 0.9rem;
+            display: block !important;
+            opacity: 1 !important;
         }
 
         .icon-btn {
@@ -162,11 +176,13 @@
             border-radius: 50%;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            display: flex;
+            display: flex !important;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
+            font-size: 1.2rem;
+            color: var(--text-primary) !important;
         }
 
         .icon-btn:hover {
@@ -174,16 +190,24 @@
             transform: translateY(-2px);
         }
 
+        .icon-btn span {
+            display: block !important;
+            opacity: 1 !important;
+            font-size: 1.2rem;
+        }
+
         .avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
+            display: flex !important;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             cursor: pointer;
+            color: white !important;
+            font-size: 1.1rem;
         }
 
         /* Main Content */
