@@ -1474,6 +1474,9 @@
     </div>
 
     <script>
+        // 🔧 API Configuration - Point to Railway backend
+        const API_URL = 'https://formative-production.up.railway.app/api';
+        
         // 🔧 FIX: Store the selected user type cleanly
         let selectedUserType = null;
 
@@ -1580,8 +1583,9 @@
             submitBtn.disabled = true;
             
             try {
-                // Call real API
-                const response = await fetch('/api/auth/register', {
+                // Call real API on Railway
+                console.log('Calling API:', `${API_URL}/auth/register`);
+                const response = await fetch(`${API_URL}/auth/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1591,16 +1595,16 @@
                 
                 const result = await response.json();
                 
-                if (result.success) {
+                console.log('Signup response status:', response.status);
+                console.log('Signup response data:', result);
+                
+                if (response.ok && result.success) {
                     // Store user data and token
                     localStorage.setItem('userData', JSON.stringify(result.user));
                     localStorage.setItem('authToken', result.token);
                     localStorage.setItem('userType', userData.userType);
                     
-                    console.log('User registered:', result.user);
-                    console.log('Token stored:', result.token);
-                    console.log('User type:', userData.userType);
-                    
+                    console.log('User registered successfully!');
                     showNotification('Account created successfully!', 'success');
                     
                     // Close modal and redirect to onboarding
@@ -1609,7 +1613,8 @@
                         window.location.href = 'onboarding.html';
                     }, 1000);
                 } else {
-                    showNotification(result.error || 'Registration failed', 'error');
+                    console.error('Signup failed:', result.error || result.message);
+                    showNotification(result.error || result.message || 'Registration failed', 'error');
                 }
             } catch (error) {
                 console.error('Registration error:', error);
@@ -1666,7 +1671,8 @@
             submitBtn.disabled = true;
             
             try {
-                const response = await fetch('/api/auth/login', {
+                console.log('Calling API:', `${API_URL}/auth/login`);
+                const response = await fetch(`${API_URL}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1676,48 +1682,39 @@
                 
                 const result = await response.json();
                 
-                if (result.success) {
+                console.log('Login response status:', response.status);
+                console.log('Login response data:', result);
+                
+                if (response.ok && result.success) {
                     // Store user data and token
                     localStorage.setItem('userData', JSON.stringify(result.user));
                     localStorage.setItem('authToken', result.token);
                     localStorage.setItem('userType', result.user.userType);
                     
+                    console.log('Login successful!');
                     showNotification('Welcome back!', 'success');
                     
                     // Close modal and redirect to dashboard
                     setTimeout(() => {
                         closeModal('login');
                         window.location.href = 'dashboard.html';
-                    }, 1500);
+                    }, 1000);
                 } else {
-                    showNotification(result.error || 'Login failed', 'error');
+                    console.error('Login failed:', result.error || result.message);
+                    showNotification(result.error || result.message || 'Login failed. Please check your credentials.', 'error');
                 }
             } catch (error) {
                 console.error('Login error:', error);
+                console.error('Error details:', error.message);
                 
-                // Fallback to demo mode
-                console.log('API not available, using demo login');
+                // Check if it's a network error
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    showNotification('Cannot connect to server. Please check your internet connection.', 'error');
+                } else {
+                    showNotification('An error occurred. Please try again.', 'error');
+                }
                 
-                const demoUser = {
-                    id: Date.now(),
-                    name: 'Demo User',
-                    email: loginData.email,
-                    userType: 'influencer',
-                    createdAt: new Date().toISOString()
-                };
-                
-                const demoToken = 'demo-token-' + Date.now();
-                
-                localStorage.setItem('userData', JSON.stringify(demoUser));
-                localStorage.setItem('authToken', demoToken);
-                localStorage.setItem('userType', 'influencer');
-                
-                showNotification('Welcome back! (Demo Mode)', 'success');
-                
-                setTimeout(() => {
-                    closeModal('login');
-                    window.location.href = 'dashboard.html';
-                }, 1000);
+                // Don't use demo mode for login - users should sign up first
             } finally {
                 // Reset button
                 submitBtn.textContent = originalText;
