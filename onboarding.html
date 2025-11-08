@@ -1294,7 +1294,11 @@
                     const input = document.createElement('div');
                     input.style.marginBottom = '1rem';
                     input.innerHTML = `
-                        <input type="text" class="form-input" placeholder="@your${platformName.toLowerCase()}handle">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">${platformName}</label>
+                        <input type="text" 
+                               class="form-input social-handle-input" 
+                               data-platform="${platformName}" 
+                               placeholder="@your${platformName.toLowerCase().replace(/\s/g, '')}handle">
                     `;
                     handleContainer.appendChild(input);
                 });
@@ -1341,8 +1345,13 @@
                     // Collect onboarding data
                     const onboardingData = collectOnboardingData();
                     
+                    // ALSO save to localStorage for immediate dashboard access
+                    if (onboardingData.socialAccounts) {
+                        localStorage.setItem('socialAccounts', JSON.stringify(onboardingData.socialAccounts));
+                    }
+                    
                     // Send to backend
-                    const response = await fetch('/api/user/onboarding', {
+                    const response = await fetch('https://formative-production.up.railway.app/api/user/onboarding', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1386,6 +1395,7 @@
             // Add user type specific data
             if (userType === 'influencer') {
                 data.platforms = getSelectedPlatforms();
+                data.socialAccounts = getSocialAccountHandles(); // CAPTURE THE HANDLES!
                 data.categories = getSelectedCategories();
                 data.audienceSize = document.getElementById('audience-size')?.value || '';
             } else if (userType === 'brand') {
@@ -1401,6 +1411,32 @@
             }
             
             return data;
+        }
+        
+        // NEW FUNCTION - Get social account handles from input fields
+        function getSocialAccountHandles() {
+            const handleInputs = document.querySelectorAll('.social-handle-input');
+            const accounts = {};
+            
+            handleInputs.forEach(input => {
+                const platformName = input.getAttribute('data-platform');
+                const handleValue = input.value.trim();
+                
+                if (handleValue) {
+                    // Map platform names to standard keys
+                    let key = platformName.toLowerCase().replace(/\s/g, '');
+                    
+                    // Special handling for Twitter/X
+                    if (key === 'x(twitter)' || key === 'twitter' || key === 'x') {
+                        key = 'twitter';
+                    }
+                    
+                    accounts[key] = handleValue;
+                }
+            });
+            
+            console.log('Captured social accounts:', accounts); // Debug log
+            return accounts;
         }
         
         // Get selected platforms
