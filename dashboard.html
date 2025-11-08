@@ -710,40 +710,76 @@
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
-            await initializeDashboard();
+            try {
+                await initializeDashboard();
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                // Clear potentially corrupted localStorage
+                localStorage.removeItem('userData');
+                localStorage.removeItem('authToken');
+                // Show error message but keep UI visible
+                showNotification('Dashboard loaded with errors. Please try logging in again.', 'error');
+            }
         });
 
         // Initialize dashboard with real user data
         async function initializeDashboard() {
             try {
                 // Get user data from localStorage
-                const userData = localStorage.getItem('userData');
-                const token = localStorage.getItem('authToken');
-                const type = localStorage.getItem('userType');
-
-                if (!userData && !type) {
-                    // Only redirect if completely no data
-                    console.log('No user data found, redirecting to home...');
-                    setTimeout(() => {
-                        window.location.href = 'index.html';
-                    }, 2000);
-                    return;
+                let userData, token, type;
+                
+                try {
+                    userData = localStorage.getItem('userData');
+                    token = localStorage.getItem('authToken');
+                    type = localStorage.getItem('userType');
+                    
+                    // Try to parse userData if it exists
+                    if (userData) {
+                        currentUser = JSON.parse(userData);
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing localStorage:', parseError);
+                    // Clear corrupted data
+                    localStorage.clear();
+                    userData = null;
+                    token = null;
+                    type = null;
                 }
 
-                // Parse user data or create demo user
-                if (userData) {
-                    currentUser = JSON.parse(userData);
-                } else {
-                    // Create demo user if no data
+                if (!userData && !type) {
+                    // Create a demo user if no data
+                    console.log('No user data found, using demo mode');
                     currentUser = {
                         name: 'Demo User',
                         email: 'demo@formative.com',
-                        userType: type || 'influencer'
+                        userType: 'influencer'
                     };
+                    userType = 'influencer';
+                    authToken = 'demo-token';
+                } else {
+                    // Parse user data or create demo user
+                    if (!currentUser && userData) {
+                        try {
+                            currentUser = JSON.parse(userData);
+                        } catch (e) {
+                            currentUser = {
+                                name: 'Demo User',
+                                email: 'demo@formative.com',
+                                userType: type || 'influencer'
+                            };
+                        }
+                    } else if (!currentUser) {
+                        // Create demo user if no data
+                        currentUser = {
+                            name: 'Demo User',
+                            email: 'demo@formative.com',
+                            userType: type || 'influencer'
+                        };
+                    }
+                    
+                    userType = type || currentUser.userType || 'influencer';
+                    authToken = token || 'demo-token';
                 }
-                
-                userType = type || currentUser.userType || 'influencer';
-                authToken = token || 'demo-token';
 
                 // Update UI with user data
                 updateUserInterface();
@@ -1112,7 +1148,16 @@
         // Display opportunities in grid
         function displayOpportunities(opportunities, containerId) {
             const container = document.getElementById(containerId);
+            if (!container) return;
+            
             container.innerHTML = '';
+
+            // Make sure opportunities is an array
+            if (!Array.isArray(opportunities)) {
+                console.error('Opportunities is not an array:', opportunities);
+                container.innerHTML = '<div class="loading">No opportunities available</div>';
+                return;
+            }
 
             opportunities.forEach(opportunity => {
                 const card = document.createElement('div');
@@ -1274,8 +1319,19 @@
             const container = document.getElementById('messages-list');
             const countElement = document.getElementById('message-count');
             
+            if (!container) return;
+            
             container.innerHTML = '';
-            countElement.textContent = messages.length;
+            
+            // Make sure messages is an array
+            if (!Array.isArray(messages)) {
+                console.error('Messages is not an array:', messages);
+                container.innerHTML = '<div class="loading">No messages available</div>';
+                if (countElement) countElement.textContent = '0';
+                return;
+            }
+            
+            if (countElement) countElement.textContent = messages.length;
 
             messages.forEach(message => {
                 const messageElement = document.createElement('div');
@@ -1401,10 +1457,5 @@
             }, 3000);
         }
     </script>
-    <script src="js/main.js"></script>
-    <script src="js/mobile.js"></script>
-    <script src="js/features.js"></script>
-    <script src="js/performance.js"></script>
-    <script src="js/auth.js"></script>
 </body>
 </html>
