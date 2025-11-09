@@ -35,7 +35,7 @@
             overflow-x: hidden;
         }
 
-        /* Button Styles - THIS FIXES THE INVISIBLE BUTTONS! */
+        /* Button Styles */
         .btn {
             padding: 0.75rem 1.5rem;
             border-radius: 0.75rem;
@@ -73,6 +73,21 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(20, 184, 166, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white !important;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
         }
 
         /* Navigation */
@@ -231,13 +246,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Dashboard Grid */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
-            gap: 2rem;
-        }
-
         /* Cards */
         .card {
             background: var(--bg-card);
@@ -284,16 +292,7 @@
             font-size: 1.1rem;
         }
 
-        /* Dynamic Content Based on User Type */
-        .user-type-content {
-            display: none;
-        }
-
-        .user-type-content.active {
-            display: block;
-        }
-
-        /* Influencer Dashboard */
+        /* Stats */
         .influencer-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -330,34 +329,171 @@
             gap: 0.25rem;
         }
 
-        /* Brand Dashboard */
-        .brand-metrics {
+        /* Settings Page Styles */
+        .settings-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: 1fr;
+            gap: 2rem;
         }
 
-        .metric-card {
+        .connected-accounts {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .account-card {
             background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: 0.75rem;
             padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .account-card.connected {
+            border-color: var(--accent-green);
+        }
+
+        .account-card.disconnected {
+            opacity: 0.6;
+        }
+
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .platform-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .status-disconnected {
+            background: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .account-details {
+            margin-bottom: 1rem;
+        }
+
+        .account-username {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .account-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .mini-stat {
+            background: var(--bg-secondary);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
             text-align: center;
         }
 
-        /* Freelancer Dashboard */
-        .freelancer-portfolio {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+        .mini-stat-value {
+            font-weight: bold;
+            font-size: 1.1rem;
         }
 
-        .portfolio-item {
+        .mini-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .connect-form {
             background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: 0.75rem;
             padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
             border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-teal);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* Opportunities */
@@ -379,41 +515,6 @@
         .opportunity-card:hover {
             transform: translateY(-5px);
             border-color: var(--accent-teal);
-        }
-
-        .opportunity-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .opportunity-type {
-            background: var(--accent-teal);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .opportunity-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .opportunity-description {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-
-        .opportunity-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
         }
 
         /* Messages */
@@ -472,37 +573,7 @@
             color: var(--text-secondary);
         }
 
-        /* Loading States */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--border-color);
-            border-top: 2px solid var(--accent-teal);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 0.5rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         /* Responsive */
-        @media (max-width: 1200px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
         @media (max-width: 768px) {
             .navbar {
                 flex-wrap: wrap;
@@ -519,10 +590,11 @@
                 width: 100%;
                 justify-content: space-around;
                 gap: 0.5rem;
+                flex-wrap: wrap;
             }
             
             .nav-tab {
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 padding: 0.5rem;
             }
             
@@ -534,8 +606,11 @@
                 display: none;
             }
             
-            .influencer-stats,
-            .brand-metrics {
+            .influencer-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .connected-accounts {
                 grid-template-columns: 1fr;
             }
         }
@@ -553,7 +628,7 @@
                 <a class="nav-tab active" onclick="showPage('dashboard')">Dashboard</a>
                 <a class="nav-tab" onclick="showPage('opportunities')">Opportunities</a>
                 <a class="nav-tab" onclick="showPage('messages')">Messages</a>
-                <a class="nav-tab" href="profile.html">Profile</a>
+                <a class="nav-tab" onclick="showPage('settings')">Settings</a>
             </div>
         </div>
         <div class="user-section">
@@ -565,7 +640,7 @@
                 <span>💬</span>
             </div>
             <div class="avatar" id="user-avatar" onclick="goToProfile()" title="View Profile">U</div>
-            <button class="btn btn-ghost" onclick="logout()" style="margin-left: 1rem;">Logout</button>
+            <button class="btn btn-ghost btn-sm" onclick="logout()" style="margin-left: 1rem;">Logout</button>
         </div>
     </nav>
 
@@ -603,34 +678,34 @@
                 </div>
             </div>
 
-            <div id="brand-content" class="user-type-content">
-                <div class="brand-metrics">
-                    <div class="metric-card">
+            <div id="brand-content" class="user-type-content" style="display: none;">
+                <div class="brand-metrics" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="stat-card">
                         <div class="stat-value" id="campaigns-launched">0</div>
                         <div class="stat-label">Campaigns Launched</div>
                     </div>
-                    <div class="metric-card">
+                    <div class="stat-card">
                         <div class="stat-value" id="influencers-connected">0</div>
                         <div class="stat-label">Influencers Connected</div>
                     </div>
-                    <div class="metric-card">
+                    <div class="stat-card">
                         <div class="stat-value" id="roi-percentage">0%</div>
                         <div class="stat-label">Average ROI</div>
                     </div>
                 </div>
             </div>
 
-            <div id="freelancer-content" class="user-type-content">
-                <div class="freelancer-portfolio">
-                    <div class="portfolio-item">
+            <div id="freelancer-content" class="user-type-content" style="display: none;">
+                <div class="freelancer-portfolio" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="stat-card">
                         <h3>Skills & Services</h3>
                         <p>Showcase your expertise and attract the right clients</p>
                     </div>
-                    <div class="portfolio-item">
+                    <div class="stat-card">
                         <h3>Active Projects</h3>
                         <p>Manage your current work and deadlines</p>
                     </div>
-                    <div class="portfolio-item">
+                    <div class="stat-card">
                         <h3>Client Reviews</h3>
                         <p>Build trust with verified testimonials</p>
                     </div>
@@ -657,22 +732,11 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">All Opportunities</h3>
-                    <div style="display: flex; gap: 1rem;">
-                        <select style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; color: var(--text-primary);">
-                            <option>All Types</option>
-                            <option>Influencer</option>
-                            <option>Brand</option>
-                            <option>Freelancer</option>
-                        </select>
-                        <button style="background: var(--accent-teal); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
-                            Filter
-                        </button>
-                    </div>
                 </div>
                 <div class="opportunities-grid" id="all-opportunities">
                     <div class="loading">
                         <div class="spinner"></div>
-                        Loading all opportunities...
+                        Loading opportunities...
                     </div>
                 </div>
             </div>
@@ -694,19 +758,62 @@
             </div>
         </div>
 
-        <!-- Profile Page -->
-        <div id="profile" class="page">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Your Profile</h3>
-                    <button style="background: var(--accent-teal); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
-                        Edit Profile
-                    </button>
+        <!-- Settings Page (NEW!) -->
+        <div id="settings" class="page">
+            <h2 style="margin-bottom: 2rem;">Settings</h2>
+            
+            <div class="settings-grid">
+                <!-- Connected Social Accounts -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Connected Social Accounts</h3>
+                        <button class="btn btn-primary btn-sm" onclick="refreshAllStats()">
+                            🔄 Refresh All Stats
+                        </button>
+                    </div>
+                    <div class="connected-accounts" id="connected-accounts">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading connected accounts...
+                        </div>
+                    </div>
                 </div>
-                <div id="profile-content">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading profile...
+
+                <!-- Connect New Account -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Connect New Account</h3>
+                    </div>
+                    <div class="connect-form">
+                        <div class="form-group">
+                            <label class="form-label">Platform</label>
+                            <select id="new-platform" class="form-select">
+                                <option value="">Select a platform...</option>
+                                <option value="twitter">Twitter / X</option>
+                                <option value="tiktok">TikTok</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="bluesky">Bluesky</option>
+                                <option value="twitch">Twitch</option>
+                                <option value="reddit">Reddit</option>
+                                <option value="discord">Discord</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Username / Handle</label>
+                            <input 
+                                type="text" 
+                                id="new-username" 
+                                class="form-input" 
+                                placeholder="@username or channel URL"
+                            >
+                            <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">
+                                Include @ symbol for Twitter, or full URL for YouTube channels
+                            </small>
+                        </div>
+                        <button class="btn btn-primary" onclick="connectNewAccount()">
+                            Connect Account
+                        </button>
                     </div>
                 </div>
             </div>
@@ -718,6 +825,10 @@
         let currentUser = null;
         let userType = null;
         let authToken = null;
+        let connectedAccounts = [];
+
+        // API Base URL
+        const API_BASE = 'https://formative-production.up.railway.app';
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
@@ -725,8 +836,6 @@
                 await initializeDashboard();
             } catch (error) {
                 console.error('Dashboard initialization failed:', error);
-                localStorage.removeItem('userData');
-                localStorage.removeItem('authToken');
                 showNotification('Dashboard loaded with errors. Please try logging in again.', 'error');
             }
         });
@@ -734,55 +843,20 @@
         // Initialize dashboard with real user data
         async function initializeDashboard() {
             try {
-                let userData, token, type;
+                // Get user data from storage
+                const userData = localStorage.getItem('userData');
+                const token = localStorage.getItem('authToken');
+                const type = localStorage.getItem('userType');
                 
-                try {
-                    userData = localStorage.getItem('userData');
-                    token = localStorage.getItem('authToken');
-                    type = localStorage.getItem('userType');
-                    
-                    if (userData) {
-                        currentUser = JSON.parse(userData);
-                    }
-                } catch (parseError) {
-                    console.error('Error parsing localStorage:', parseError);
-                    localStorage.clear();
-                    userData = null;
-                    token = null;
-                    type = null;
+                if (!userData || !token) {
+                    console.log('No auth data found, redirecting to login');
+                    window.location.href = 'index.html';
+                    return;
                 }
 
-                if (!userData && !type) {
-                    console.log('No user data found, using demo mode');
-                    currentUser = {
-                        name: 'Demo User',
-                        email: 'demo@formative.com',
-                        userType: 'influencer'
-                    };
-                    userType = 'influencer';
-                    authToken = 'demo-token';
-                } else {
-                    if (!currentUser && userData) {
-                        try {
-                            currentUser = JSON.parse(userData);
-                        } catch (e) {
-                            currentUser = {
-                                name: 'Demo User',
-                                email: 'demo@formative.com',
-                                userType: type || 'influencer'
-                            };
-                        }
-                    } else if (!currentUser) {
-                        currentUser = {
-                            name: 'Demo User',
-                            email: 'demo@formative.com',
-                            userType: type || 'influencer'
-                        };
-                    }
-                    
-                    userType = type || currentUser.userType || 'influencer';
-                    authToken = token || 'demo-token';
-                }
+                currentUser = JSON.parse(userData);
+                userType = type || currentUser.userType || 'influencer';
+                authToken = token;
 
                 updateUserInterface();
                 await loadDashboardContent();
@@ -797,8 +871,7 @@
 
         // Update UI with user data
         function updateUserInterface() {
-            const userName = currentUser?.name || 'there';
-            const userEmail = currentUser?.email || '';
+            const userName = currentUser?.name || 'User';
             
             const greeting = document.getElementById('user-greeting');
             const timeOfDay = getTimeOfDay();
@@ -815,26 +888,19 @@
                 welcomeSubtitle.textContent = 'Find perfect influencers, launch campaigns, and track your ROI in real-time.';
             } else if (userType === 'freelancer') {
                 welcomeSubtitle.textContent = 'Your next big project awaits. Showcase your talent and connect with clients.';
-            } else {
-                welcomeSubtitle.textContent = 'Let\'s start building your success story together.';
             }
 
             const avatar = document.getElementById('user-avatar');
-            if (userName && userName !== 'there') {
-                avatar.textContent = userName.charAt(0).toUpperCase();
-            } else {
-                avatar.textContent = '👤';
-            }
+            avatar.textContent = userName.charAt(0).toUpperCase();
 
+            // Show correct user type content
             document.querySelectorAll('.user-type-content').forEach(content => {
-                content.classList.remove('active');
+                content.style.display = 'none';
             });
             
             const userTypeContent = document.getElementById(`${userType}-content`);
             if (userTypeContent) {
-                userTypeContent.classList.add('active');
-            } else {
-                document.getElementById('influencer-content').classList.add('active');
+                userTypeContent.style.display = 'block';
             }
         }
 
@@ -861,87 +927,177 @@
             }
         }
 
-        // Load influencer statistics - UPDATED TO FETCH REAL TWITTER DATA
+        // Load influencer statistics - UPDATED TO FETCH FROM DATABASE
         async function loadInfluencerStats() {
-            // Get social accounts from localStorage (saved during onboarding)
+            try {
+                console.log('🔍 Fetching social accounts from database...');
+                
+                // Fetch connected accounts from database
+                const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Database response:', data);
+                    
+                    if (data.success && data.accounts && data.accounts.length > 0) {
+                        connectedAccounts = data.accounts;
+                        
+                        // Find Twitter account
+                        const twitterAccount = data.accounts.find(acc => acc.platform === 'twitter');
+                        
+                        if (twitterAccount) {
+                            await displayTwitterStats(twitterAccount);
+                        } else {
+                            console.log('No Twitter account found in database');
+                            checkLocalStorageFallback();
+                        }
+                    } else {
+                        console.log('No accounts in database, checking localStorage fallback');
+                        checkLocalStorageFallback();
+                    }
+                } else {
+                    console.error('Failed to fetch accounts:', response.status);
+                    checkLocalStorageFallback();
+                }
+                
+            } catch (error) {
+                console.error('Error loading influencer stats:', error);
+                checkLocalStorageFallback();
+            }
+        }
+
+        // Check localStorage for social accounts (migration fallback)
+        function checkLocalStorageFallback() {
             const socialAccountsStr = localStorage.getItem('socialAccounts');
-            let twitterUsername = null;
             
             if (socialAccountsStr) {
                 try {
                     const socialAccounts = JSON.parse(socialAccountsStr);
-                    // Look for Twitter handle in different possible keys
-                    twitterUsername = socialAccounts.twitter || socialAccounts.x || socialAccounts['x(twitter)'];
-                    console.log('Found Twitter username:', twitterUsername);
-                } catch (e) {
-                    console.error('Error parsing social accounts:', e);
-                }
-            }
-
-            // If we have a Twitter username, fetch real stats
-            if (twitterUsername && authToken) {
-                console.log('Fetching Twitter stats for:', twitterUsername);
-                document.getElementById('total-followers').textContent = 'Loading...';
-                document.getElementById('engagement-rate').textContent = 'Loading...';
-                
-                try {
-                    const response = await fetch(
-                        `https://formative-production.up.railway.app/api/social/twitter/stats?username=${encodeURIComponent(twitterUsername)}`,
-                        {
-                            headers: {
-                                'Authorization': `Bearer ${authToken}`
-                            }
-                        }
-                    );
+                    const twitterUsername = socialAccounts.twitter || socialAccounts.x;
                     
-                    if (response.ok) {
-                        const data = await response.json();
-                        console.log('✅ Twitter API response:', data);
-                        
-                        if (data.success && data.stats) {
-                            // Format follower count
-                            const followers = data.stats.followers;
-                            let followersFormatted;
-                            if (followers >= 1000000) {
-                                followersFormatted = (followers / 1000000).toFixed(1) + 'M';
-                            } else if (followers >= 1000) {
-                                followersFormatted = (followers / 1000).toFixed(1) + 'K';
-                            } else {
-                                followersFormatted = followers.toString();
-                            }
-                            
-                            // Update UI with REAL stats
-                            document.getElementById('total-followers').textContent = followersFormatted;
-                            document.getElementById('engagement-rate').textContent = data.stats.engagementRate + '%';
-                            
-                            // Show source badge
-                            document.getElementById('followers-source').innerHTML = '✓ Live from @' + data.username;
-                            document.getElementById('engagement-source').innerHTML = '✓ Live from Twitter';
-                            
-                            // Animate other stats
-                            animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
-                            animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
-                            
-                            showNotification('✅ Loaded real stats from @' + data.username, 'success');
-                        } else {
-                            throw new Error('Invalid response format');
-                        }
+                    if (twitterUsername) {
+                        console.log('📦 Found Twitter in localStorage, fetching stats...');
+                        fetchTwitterStatsFromAPI(twitterUsername);
+                        showNotification('💡 Tip: Your account will be migrated to database on next login', 'info');
                     } else {
-                        const errorData = await response.json();
-                        console.error('❌ Twitter API error:', errorData);
-                        throw new Error(errorData.message || 'Failed to fetch Twitter stats');
+                        showDemoStats();
                     }
-                } catch (error) {
-                    console.error('Error fetching Twitter stats:', error);
-                    showNotification('Could not load Twitter stats: ' + error.message, 'error');
-                    // Fall back to demo data
+                } catch (e) {
+                    console.error('Error parsing localStorage:', e);
                     showDemoStats();
                 }
             } else {
-                console.log('No Twitter username found, showing demo stats');
-                showNotification('No Twitter account connected - showing demo data', 'info');
                 showDemoStats();
             }
+        }
+
+        // Display Twitter stats from database
+        async function displayTwitterStats(twitterAccount) {
+            console.log('Displaying stats for:', twitterAccount);
+            
+            // Check if we have cached stats
+            if (twitterAccount.stats && twitterAccount.stats.followers) {
+                // Use cached stats
+                const stats = twitterAccount.stats;
+                updateStatsUI(stats, twitterAccount.username, twitterAccount.last_synced_at);
+                
+                // Check if stats are stale (older than 24 hours)
+                const hoursSinceSync = twitterAccount.last_synced_at 
+                    ? (Date.now() - new Date(twitterAccount.last_synced_at)) / (1000 * 60 * 60)
+                    : 999;
+                
+                if (hoursSinceSync > 24) {
+                    console.log('Stats are stale, refreshing in background...');
+                    fetchTwitterStatsFromAPI(twitterAccount.username, true);
+                }
+            } else {
+                // No cached stats, fetch from API
+                console.log('No cached stats, fetching from API...');
+                await fetchTwitterStatsFromAPI(twitterAccount.username);
+            }
+        }
+
+        // Fetch Twitter stats from API
+        async function fetchTwitterStatsFromAPI(username, background = false) {
+            if (!background) {
+                document.getElementById('total-followers').textContent = 'Loading...';
+                document.getElementById('engagement-rate').textContent = 'Loading...';
+            }
+            
+            try {
+                const response = await fetch(
+                    `${API_BASE}/api/social/twitter/stats?username=${encodeURIComponent(username)}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    }
+                );
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Twitter API response:', data);
+                    
+                    if (data.success && data.stats) {
+                        updateStatsUI(data.stats, data.username, new Date().toISOString());
+                        
+                        if (!background) {
+                            showNotification('✅ Loaded real stats from @' + data.username, 'success');
+                        }
+                    }
+                } else {
+                    throw new Error('Failed to fetch Twitter stats');
+                }
+            } catch (error) {
+                console.error('Error fetching Twitter stats:', error);
+                if (!background) {
+                    showNotification('Could not load Twitter stats', 'error');
+                    showDemoStats();
+                }
+            }
+        }
+
+        // Update stats UI
+        function updateStatsUI(stats, username, syncedAt) {
+            // Format follower count
+            const followers = stats.followers;
+            let followersFormatted;
+            if (followers >= 1000000) {
+                followersFormatted = (followers / 1000000).toFixed(1) + 'M';
+            } else if (followers >= 1000) {
+                followersFormatted = (followers / 1000).toFixed(1) + 'K';
+            } else {
+                followersFormatted = followers.toString();
+            }
+            
+            // Update UI
+            document.getElementById('total-followers').textContent = followersFormatted;
+            document.getElementById('engagement-rate').textContent = stats.engagementRate + '%';
+            
+            // Show source and last updated time
+            const timeAgo = getTimeAgo(syncedAt);
+            document.getElementById('followers-source').innerHTML = `✓ @${username.replace('@', '')} • ${timeAgo}`;
+            document.getElementById('engagement-source').innerHTML = '✓ Live from Twitter';
+            
+            // Animate other stats
+            animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
+            animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
+        }
+
+        // Get time ago string
+        function getTimeAgo(timestamp) {
+            if (!timestamp) return 'just now';
+            
+            const seconds = Math.floor((new Date() - new Date(timestamp)) / 1000);
+            
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+            return Math.floor(seconds / 86400) + 'd ago';
         }
 
         // Show demo stats as fallback
@@ -955,7 +1111,7 @@
             animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
             animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
             
-            document.getElementById('followers-source').innerHTML = '📊 Demo data';
+            document.getElementById('followers-source').innerHTML = '📊 Demo data - Connect accounts in Settings';
             document.getElementById('engagement-source').innerHTML = '📊 Demo data';
         }
         
@@ -965,7 +1121,6 @@
             if (!element) return;
             
             const startTime = Date.now();
-            const endTime = startTime + duration;
             
             function update() {
                 const now = Date.now();
@@ -983,7 +1138,7 @@
             update();
         }
 
-        // Load brand metrics with animation
+        // Load brand metrics
         async function loadBrandMetrics() {
             animateValue('campaigns-launched', 0, 5, 1000, (val) => Math.round(val).toString());
             animateValue('influencers-connected', 0, 12, 1200, (val) => Math.round(val).toString());
@@ -997,254 +1152,85 @@
 
         // Load opportunities
         async function loadOpportunities() {
-            try {
-                const response = await fetch('https://formative-production.up.railway.app/api/opportunities', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-
-                if (response.ok) {
-                    const opportunities = await response.json();
-                    displayOpportunities(opportunities, 'opportunities-grid');
-                } else {
-                    displayDemoOpportunities();
-                }
-            } catch (error) {
-                console.error('Error loading opportunities:', error);
-                displayDemoOpportunities();
-            }
+            // For now, show demo opportunities
+            displayDemoOpportunities();
         }
 
-        // Display demo opportunities based on user type
+        // Display demo opportunities
         function displayDemoOpportunities() {
-            let opportunities = [];
-            
-            if (userType === 'influencer') {
-                opportunities = [
-                    {
-                        id: 1,
-                        type: 'Brand Campaign',
-                        title: 'Sustainable Fashion Partnership',
-                        description: 'Partner with leading eco-friendly fashion brand for 3-month campaign. Looking for authentic lifestyle content creators.',
-                        company: 'EcoWear',
-                        budget: '$3,500 - $6,000',
-                        deadline: '2 weeks',
-                        requirements: '10K+ followers'
-                    },
-                    {
-                        id: 2,
-                        type: 'Product Launch',
-                        title: 'Tech Product Unboxing Series',
-                        description: 'Create engaging unboxing and review content for new smart home devices launching this quarter.',
-                        company: 'SmartHome Inc',
-                        budget: '$2,000 - $4,500',
-                        deadline: '1 week',
-                        requirements: 'Tech niche'
-                    },
-                    {
-                        id: 3,
-                        type: 'Sponsored Content',
-                        title: 'Fitness App Promotion',
-                        description: 'Showcase our AI-powered fitness app in your wellness content. Multiple posts + stories package.',
-                        company: 'FitAI',
-                        budget: '$1,800 - $3,200',
-                        deadline: '10 days',
-                        requirements: 'Health & Fitness'
-                    }
-                ];
-            } else if (userType === 'brand') {
-                opportunities = [
-                    {
-                        id: 1,
-                        type: 'Top Influencer',
-                        title: 'Sarah Chen - Lifestyle Creator',
-                        description: '125K engaged followers, 8.5% engagement rate. Specializes in sustainable living and wellness content.',
-                        company: '@sarahchen',
-                        budget: '$3,000 - $5,000',
-                        deadline: 'Available now',
-                        requirements: '125K followers'
-                    },
-                    {
-                        id: 2,
-                        type: 'Rising Star',
-                        title: 'Alex Rivera - Tech Reviewer',
-                        description: '45K tech-savvy audience, known for honest reviews. Perfect for product launches.',
-                        company: '@alextech',
-                        budget: '$1,500 - $3,000',
-                        deadline: 'Available now',
-                        requirements: '45K followers'
-                    }
-                ];
-            } else {
-                opportunities = [
-                    {
-                        id: 1,
-                        type: 'Video Editing',
-                        title: 'YouTube Channel Video Editor',
-                        description: 'Edit 4 videos per month for growing lifestyle channel. Ongoing monthly contract.',
-                        company: 'Lifestyle Creators',
-                        budget: '$800 - $1,200',
-                        deadline: '1 week',
-                        requirements: 'Adobe Premiere'
-                    },
-                    {
-                        id: 2,
-                        type: 'Graphic Design',
-                        title: 'Social Media Graphics Package',
-                        description: 'Design Instagram posts, stories, and carousel templates for fashion brand.',
-                        company: 'StyleCo',
-                        budget: '$500 - $900',
-                        deadline: '5 days',
-                        requirements: 'Figma, Canva'
-                    }
-                ];
-            }
+            let opportunities = [
+                {
+                    id: 1,
+                    type: 'Brand Campaign',
+                    title: 'Sustainable Fashion Partnership',
+                    description: 'Partner with leading eco-friendly fashion brand for 3-month campaign.',
+                    company: 'EcoWear',
+                    budget: '$3,500 - $6,000',
+                    deadline: '2 weeks'
+                },
+                {
+                    id: 2,
+                    type: 'Product Launch',
+                    title: 'Tech Product Unboxing Series',
+                    description: 'Create engaging unboxing and review content for new smart home devices.',
+                    company: 'SmartHome Inc',
+                    budget: '$2,000 - $4,500',
+                    deadline: '1 week'
+                }
+            ];
 
             displayOpportunities(opportunities, 'opportunities-grid');
         }
 
-        // Display opportunities in grid
+        // Display opportunities
         function displayOpportunities(opportunities, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
             
             container.innerHTML = '';
 
-            if (!Array.isArray(opportunities)) {
-                console.error('Opportunities is not an array:', opportunities);
-                container.innerHTML = '<div class="loading">No opportunities available</div>';
-                return;
-            }
-
-            opportunities.forEach(opportunity => {
+            opportunities.forEach(opp => {
                 const card = document.createElement('div');
                 card.className = 'opportunity-card';
                 card.innerHTML = `
-                    <div class="opportunity-header">
-                        <span class="opportunity-type">${opportunity.type}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.8rem;">${opportunity.deadline}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span style="background: var(--accent-teal); color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">${opp.type}</span>
+                        <span style="color: var(--text-secondary); font-size: 0.8rem;">${opp.deadline}</span>
                     </div>
-                    <div class="opportunity-title">${opportunity.title}</div>
-                    <div class="opportunity-description">${opportunity.description}</div>
-                    <div class="opportunity-meta">
-                        <span>${opportunity.company}</span>
-                        <span style="color: var(--accent-green); font-weight: 600;">${opportunity.budget}</span>
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">${opp.title}</div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">${opp.description}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-secondary);">
+                        <span>${opp.company}</span>
+                        <span style="color: var(--accent-green); font-weight: 600;">${opp.budget}</span>
                     </div>
                 `;
-                
-                card.addEventListener('click', () => {
-                    showOpportunityDetails(opportunity);
-                });
-                
                 container.appendChild(card);
             });
         }
 
         // Load messages
         async function loadMessages() {
-            try {
-                const response = await fetch('https://formative-production.up.railway.app/api/messages', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-
-                if (response.ok) {
-                    const messages = await response.json();
-                    displayMessages(messages);
-                } else {
-                    displayDemoMessages();
-                }
-            } catch (error) {
-                console.error('Error loading messages:', error);
-                displayDemoMessages();
-            }
+            displayDemoMessages();
         }
 
-        // Display demo messages based on user type
+        // Display demo messages
         function displayDemoMessages() {
-            let messages = [];
-            
-            if (userType === 'influencer') {
-                messages = [
-                    {
-                        id: 1,
-                        sender: 'EcoWear Team',
-                        text: 'We loved your latest sustainable fashion post! Would you be interested in partnering with us?',
-                        time: '2 hours ago',
-                        avatar: 'EW'
-                    },
-                    {
-                        id: 2,
-                        sender: 'SmartHome Inc',
-                        text: 'Your tech reviews are amazing! We have a product launch opportunity for you.',
-                        time: '5 hours ago',
-                        avatar: 'SH'
-                    },
-                    {
-                        id: 3,
-                        sender: 'FitAI Marketing',
-                        text: 'Hi! Congratulations on reaching 50K followers! We\'d love to discuss a partnership.',
-                        time: '1 day ago',
-                        avatar: 'FA'
-                    }
-                ];
-            } else if (userType === 'brand') {
-                messages = [
-                    {
-                        id: 1,
-                        sender: 'Sarah Chen',
-                        text: 'I\'m very interested in your sustainable fashion campaign! My audience would love this.',
-                        time: '1 hour ago',
-                        avatar: 'SC'
-                    },
-                    {
-                        id: 2,
-                        sender: 'Alex Rivera',
-                        text: 'Thanks for reaching out! I\'d be happy to review your new tech product.',
-                        time: '3 hours ago',
-                        avatar: 'AR'
-                    }
-                ];
-            } else {
-                messages = [
-                    {
-                        id: 1,
-                        sender: 'Lifestyle Creators',
-                        text: 'Your portfolio is impressive! Are you available for an ongoing video editing project?',
-                        time: '3 hours ago',
-                        avatar: 'LC'
-                    },
-                    {
-                        id: 2,
-                        sender: 'StyleCo',
-                        text: 'We need social media graphics ASAP. Can you help?',
-                        time: '5 hours ago',
-                        avatar: 'SC'
-                    }
-                ];
-            }
+            const messages = [
+                {
+                    id: 1,
+                    sender: 'EcoWear Team',
+                    text: 'We loved your latest sustainable fashion post!',
+                    time: '2 hours ago',
+                    avatar: 'EW'
+                }
+            ];
 
-            displayMessages(messages);
-        }
-
-        // Display messages
-        function displayMessages(messages) {
             const container = document.getElementById('messages-list');
             const countElement = document.getElementById('message-count');
             
             if (!container) return;
             
             container.innerHTML = '';
-            
-            if (!Array.isArray(messages)) {
-                console.error('Messages is not an array:', messages);
-                container.innerHTML = '<div class="loading">No messages available</div>';
-                if (countElement) countElement.textContent = '0';
-                return;
-            }
-            
             if (countElement) countElement.textContent = messages.length;
 
             messages.forEach(message => {
@@ -1258,13 +1244,253 @@
                     </div>
                     <div class="message-time">${message.time}</div>
                 `;
-                
-                messageElement.addEventListener('click', () => {
-                    showMessageDetails(message);
-                });
-                
                 container.appendChild(messageElement);
             });
+        }
+
+        // SETTINGS PAGE FUNCTIONS
+
+        // Load connected accounts for settings page
+        async function loadConnectedAccounts() {
+            const container = document.getElementById('connected-accounts');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading accounts...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    connectedAccounts = data.accounts || [];
+                    displayConnectedAccounts();
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet. Connect your first account below!</p>';
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                container.innerHTML = '<p style="color: var(--accent-red);">Failed to load accounts</p>';
+            }
+        }
+
+        // Display connected accounts
+        function displayConnectedAccounts() {
+            const container = document.getElementById('connected-accounts');
+            container.innerHTML = '';
+            
+            // Define all supported platforms
+            const allPlatforms = [
+                { id: 'twitter', name: 'Twitter / X', icon: '𝕏' },
+                { id: 'tiktok', name: 'TikTok', icon: '🎵' },
+                { id: 'youtube', name: 'YouTube', icon: '▶️' },
+                { id: 'instagram', name: 'Instagram', icon: '📷' },
+                { id: 'bluesky', name: 'Bluesky', icon: '🦋' },
+                { id: 'twitch', name: 'Twitch', icon: '🎮' },
+                { id: 'reddit', name: 'Reddit', icon: '👽' },
+                { id: 'discord', name: 'Discord', icon: '💬' }
+            ];
+            
+            allPlatforms.forEach(platform => {
+                const account = connectedAccounts.find(acc => acc.platform === platform.id);
+                const card = createAccountCard(platform, account);
+                container.appendChild(card);
+            });
+        }
+
+        // Create account card
+        function createAccountCard(platform, account) {
+            const card = document.createElement('div');
+            const isConnected = !!account;
+            card.className = `account-card ${isConnected ? 'connected' : 'disconnected'}`;
+            
+            let content = `
+                <div class="account-header">
+                    <div class="platform-name">
+                        <span>${platform.icon}</span>
+                        ${platform.name}
+                    </div>
+                    <span class="status-badge ${isConnected ? 'status-connected' : 'status-disconnected'}">
+                        ${isConnected ? '✓ Connected' : 'Not Connected'}
+                    </span>
+                </div>
+            `;
+            
+            if (isConnected) {
+                content += `
+                    <div class="account-details">
+                        <div class="account-username">${account.username}</div>
+                `;
+                
+                if (account.stats) {
+                    content += `
+                        <div class="account-stats">
+                            <div class="mini-stat">
+                                <div class="mini-stat-value">${formatNumber(account.stats.followers)}</div>
+                                <div class="mini-stat-label">Followers</div>
+                            </div>
+                            <div class="mini-stat">
+                                <div class="mini-stat-value">${account.stats.engagementRate}%</div>
+                                <div class="mini-stat-label">Engagement</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (account.last_synced_at) {
+                        content += `<div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.5rem;">Updated ${getTimeAgo(account.last_synced_at)}</div>`;
+                    }
+                }
+                
+                content += `
+                    </div>
+                    <div class="account-actions">
+                        <button class="btn btn-primary btn-sm" onclick="refreshAccountStats('${platform.id}', '${account.username}')">
+                            🔄 Refresh
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="disconnectAccount('${platform.id}')">
+                            Disconnect
+                        </button>
+                    </div>
+                `;
+            } else {
+                content += `
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 1rem 0;">
+                        Connect your ${platform.name} account to track your stats and growth.
+                    </p>
+                `;
+            }
+            
+            card.innerHTML = content;
+            return card;
+        }
+
+        // Format number (e.g., 1000 -> 1K)
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Connect new account
+        async function connectNewAccount() {
+            const platform = document.getElementById('new-platform').value;
+            const username = document.getElementById('new-username').value.trim();
+            
+            if (!platform) {
+                showNotification('Please select a platform', 'error');
+                return;
+            }
+            
+            if (!username) {
+                showNotification('Please enter a username', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/social/connect/${platform}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showNotification(`✅ ${platform} account connected!`, 'success');
+                    
+                    // Clear form
+                    document.getElementById('new-platform').value = '';
+                    document.getElementById('new-username').value = '';
+                    
+                    // Reload accounts
+                    await loadConnectedAccounts();
+                    
+                    // If Twitter, refresh dashboard stats
+                    if (platform === 'twitter') {
+                        await loadInfluencerStats();
+                    }
+                } else {
+                    const error = await response.json();
+                    showNotification('Failed to connect account: ' + (error.message || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error connecting account:', error);
+                showNotification('Failed to connect account', 'error');
+            }
+        }
+
+        // Disconnect account
+        async function disconnectAccount(platform) {
+            if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/social/disconnect/${platform}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    showNotification(`${platform} account disconnected`, 'success');
+                    await loadConnectedAccounts();
+                    
+                    // If Twitter, reload dashboard
+                    if (platform === 'twitter') {
+                        await loadInfluencerStats();
+                    }
+                } else {
+                    showNotification('Failed to disconnect account', 'error');
+                }
+            } catch (error) {
+                console.error('Error disconnecting account:', error);
+                showNotification('Failed to disconnect account', 'error');
+            }
+        }
+
+        // Refresh account stats
+        async function refreshAccountStats(platform, username) {
+            showNotification(`Refreshing ${platform} stats...`, 'info');
+            
+            try {
+                const response = await fetch(
+                    `${API_BASE}/api/social/${platform}/stats?username=${encodeURIComponent(username)}`,
+                    {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    }
+                );
+                
+                if (response.ok) {
+                    showNotification(`✅ ${platform} stats updated!`, 'success');
+                    await loadConnectedAccounts();
+                    
+                    // Also update dashboard if it's Twitter
+                    if (platform === 'twitter') {
+                        await loadInfluencerStats();
+                    }
+                } else {
+                    showNotification(`Failed to refresh ${platform} stats`, 'error');
+                }
+            } catch (error) {
+                console.error('Error refreshing stats:', error);
+                showNotification('Failed to refresh stats', 'error');
+            }
+        }
+
+        // Refresh all stats
+        async function refreshAllStats() {
+            showNotification('Refreshing all stats...', 'info');
+            
+            for (const account of connectedAccounts) {
+                try {
+                    await refreshAccountStats(account.platform, account.username);
+                } catch (error) {
+                    console.error(`Failed to refresh ${account.platform}:`, error);
+                }
+            }
+            
+            showNotification('✅ All stats refreshed!', 'success');
         }
 
         // Page navigation
@@ -1285,21 +1511,12 @@
                 logoText.textContent = 'Opportunities';
             } else if (pageId === 'messages') {
                 logoText.textContent = 'Messages';
-            } else if (pageId === 'profile') {
-                logoText.textContent = 'Profile';
+            } else if (pageId === 'settings') {
+                logoText.textContent = 'Settings';
+                loadConnectedAccounts();
             } else {
                 logoText.textContent = 'Formative';
             }
-        }
-
-        // Show opportunity details
-        function showOpportunityDetails(opportunity) {
-            alert(`Opportunity: ${opportunity.title}\nCompany: ${opportunity.company}\nBudget: ${opportunity.budget}\nDeadline: ${opportunity.deadline}`);
-        }
-
-        // Show message details
-        function showMessageDetails(message) {
-            alert(`From: ${message.sender}\nMessage: ${message.text}\nTime: ${message.time}`);
         }
 
         // Show notifications
@@ -1314,7 +1531,7 @@
 
         // Go to profile
         function goToProfile() {
-            window.location.href = 'profile.html';
+            showPage('settings');
         }
         
         // Logout function
@@ -1322,16 +1539,8 @@
             if (confirm('Are you sure you want to logout?')) {
                 localStorage.clear();
                 sessionStorage.clear();
-                showNotification('Logged out successfully', 'success');
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
+                window.location.href = 'index.html';
             }
-        }
-        
-        // Show user menu
-        function showUserMenu() {
-            logout();
         }
 
         // Notification system
@@ -1349,6 +1558,7 @@
                 box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                 z-index: 10000;
                 animation: slideIn 0.3s ease;
+                max-width: 400px;
             `;
             notification.textContent = message;
             
@@ -1359,6 +1569,20 @@
                 setTimeout(() => notification.remove(), 300);
             }, 3000);
         }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
