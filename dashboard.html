@@ -785,35 +785,39 @@
                         <h3 class="card-title">Connect New Account</h3>
                     </div>
                     <div class="connect-form">
-                        <div class="form-group">
-                            <label class="form-label">Platform</label>
-                            <select id="new-platform" class="form-select">
-                                <option value="">Select a platform...</option>
-                                <option value="twitter">Twitter / X</option>
-                                <option value="tiktok">TikTok</option>
-                                <option value="youtube">YouTube</option>
-                                <option value="instagram">Instagram</option>
-                                <option value="bluesky">Bluesky</option>
-                                <option value="twitch">Twitch</option>
-                                <option value="reddit">Reddit</option>
-                                <option value="discord">Discord</option>
-                            </select>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Connect your social media accounts securely using OAuth. This verifies account ownership and prevents fraud.
+                        </p>
+                        
+                        <div style="display: grid; gap: 1rem;">
+                            <!-- Twitter OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('twitter')" style="justify-content: center; width: 100%;">
+                                <span style="font-size: 1.2rem;">𝕏</span>
+                                Connect Twitter / X
+                            </button>
+                            
+                            <!-- Instagram OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('instagram')" style="justify-content: center; width: 100%; background: linear-gradient(135deg, #f58529 0%, #dd2a7b 50%, #8134af 100%);">
+                                <span style="font-size: 1.2rem;">📷</span>
+                                Connect Instagram
+                            </button>
+                            
+                            <!-- TikTok OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('tiktok')" style="justify-content: center; width: 100%; background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);">
+                                <span style="font-size: 1.2rem;">🎵</span>
+                                Connect TikTok
+                            </button>
+                            
+                            <!-- Coming Soon platforms -->
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                    <strong>Coming Soon:</strong>
+                                </p>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem;">
+                                    YouTube • Twitch • Bluesky • Reddit • Discord
+                                </p>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Username / Handle</label>
-                            <input 
-                                type="text" 
-                                id="new-username" 
-                                class="form-input" 
-                                placeholder="@username or channel URL"
-                            >
-                            <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">
-                                Include @ symbol for Twitter, or full URL for YouTube channels
-                            </small>
-                        </div>
-                        <button class="btn btn-primary" onclick="connectNewAccount()">
-                            Connect Account
-                        </button>
                     </div>
                 </div>
             </div>
@@ -843,6 +847,9 @@
         // Initialize dashboard with real user data
         async function initializeDashboard() {
             try {
+                // Check for OAuth callback first
+                checkOAuthCallback();
+                
                 // Get user data from storage
                 const userData = localStorage.getItem('userData');
                 const token = localStorage.getItem('authToken');
@@ -1249,6 +1256,55 @@
         }
 
         // SETTINGS PAGE FUNCTIONS
+
+        // Initiate OAuth flow
+        function initiateOAuth(platform) {
+            // Store return page in sessionStorage
+            sessionStorage.setItem('oauthReturn', 'settings');
+            
+            // Redirect to OAuth authorization endpoint
+            window.location.href = `${API_BASE}/api/oauth/${platform}/authorize`;
+        }
+
+        // Check for OAuth callback parameters on page load
+        function checkOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const oauthStatus = urlParams.get('oauth');
+            const oauthError = urlParams.get('error');
+            const oauthPlatform = urlParams.get('platform');
+            
+            if (oauthStatus === 'success' && oauthPlatform) {
+                showNotification(`✅ ${oauthPlatform.charAt(0).toUpperCase() + oauthPlatform.slice(1)} connected successfully!`, 'success');
+                
+                // Show settings page
+                showPage('settings');
+                
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Reload accounts
+                setTimeout(() => {
+                    loadConnectedAccounts();
+                    loadInfluencerStats();
+                }, 1000);
+            } else if (oauthError) {
+                let errorMessage = 'OAuth connection failed';
+                
+                if (oauthError === 'oauth_denied') {
+                    errorMessage = 'You cancelled the authorization';
+                } else if (oauthError === 'invalid_state') {
+                    errorMessage = 'Invalid OAuth state. Please try again';
+                }
+                
+                showNotification(errorMessage, 'error');
+                
+                // Show settings page
+                showPage('settings');
+                
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
 
         // Load connected accounts for settings page
         async function loadConnectedAccounts() {
