@@ -1262,8 +1262,16 @@
             // Store return page in sessionStorage
             sessionStorage.setItem('oauthReturn', 'settings');
             
-            // Redirect to OAuth authorization endpoint
-            window.location.href = `${API_BASE}/api/oauth/${platform}/authorize`;
+            // Get auth token from localStorage
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                showNotification('Please log in first', 'error');
+                return;
+            }
+            
+            // Redirect to OAuth authorization endpoint with token as query parameter
+            window.location.href = `${API_BASE}/api/oauth/${platform}/authorize?token=${encodeURIComponent(token)}`;
         }
 
         // Check for OAuth callback parameters on page load
