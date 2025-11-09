@@ -244,36 +244,156 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// Save onboarding data
+// Save onboarding data (UPDATED to save social accounts to database)
 app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  
   try {
-    const userId = req.user.userId;
-    const onboardingData = req.body;
+    await client.query('BEGIN');
     
-    // Update user with onboarding data
-    const result = await pool.query(
+    const userId = req.user.userId;
+    const { socialAccounts, ...otherData } = req.body;
+    
+    // Save profile data (excluding social accounts)
+    await client.query(
       `UPDATE users SET 
         profile_data = $1,
         updated_at = NOW()
-      WHERE id = $2 
-      RETURNING id, name, email, user_type`,
-      [
-        JSON.stringify(onboardingData),
-        userId
-      ]
+      WHERE id = $2`,
+      [JSON.stringify(otherData), userId]
     );
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    // Save social accounts to dedicated table
+    if (socialAccounts && typeof socialAccounts === 'object') {
+      for (const [platform, username] of Object.entries(socialAccounts)) {
+        if (username && username.trim()) {
+          await client.query(
+            `INSERT INTO social_accounts (user_id, platform, username, created_at, updated_at)
+             VALUES ($1, $2, $3, NOW(), NOW())
+             ON CONFLICT (user_id, platform) 
+             DO UPDATE SET username = $3, updated_at = NOW()`,
+            [userId, platform.toLowerCase(), username.trim()]
+          );
+          
+          console.log(`✅ Saved ${platform} account: ${username} for user ${userId}`);
+        }
+      }
     }
+    
+    await client.query('COMMIT');
+    
+    // Get updated user data
+    const result = await client.query(
+      'SELECT id, name, email, user_type FROM users WHERE id = $1',
+      [userId]
+    );
     
     res.json({ 
       success: true, 
       message: 'Onboarding data saved successfully',
       user: result.rows[0]
     });
+    
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Onboarding save error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// Get user's connected social accounts (NEW)
+app.get('/api/user/social-accounts', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT platform, username, stats, last_synced_at, created_at 
+       FROM social_accounts 
+       WHERE user_id = $1 
+       ORDER BY created_at ASC`,
+      [req.user.userId]
+    );
+    
+    res.json({ 
+      success: true,
+      accounts: result.rows 
+    });
+    
+  } catch (error) {
+    console.error('Social accounts fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Connect or update a social media account (NEW)
+app.post('/api/social/connect/:platform', authenticateToken, async (req, res) => {
+  try {
+    const { platform } = req.params;
+    const { username, accessToken, refreshToken, tokenExpiresAt } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO social_accounts 
+        (user_id, platform, username, access_token, refresh_token, token_expires_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+       ON CONFLICT (user_id, platform) 
+       DO UPDATE SET 
+         username = $3,
+         access_token = $4,
+         refresh_token = $5,
+         token_expires_at = $6,
+         updated_at = NOW()
+       RETURNING platform, username, created_at, updated_at`,
+      [
+        req.user.userId, 
+        platform.toLowerCase(), 
+        username, 
+        accessToken || null, 
+        refreshToken || null,
+        tokenExpiresAt || null
+      ]
+    );
+    
+    console.log(`✅ Connected ${platform} account for user ${req.user.userId}`);
+    
+    res.json({ 
+      success: true,
+      message: `${platform} account connected successfully`,
+      account: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Social account connect error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Disconnect a social media account (NEW)
+app.delete('/api/social/disconnect/:platform', authenticateToken, async (req, res) => {
+  try {
+    const { platform } = req.params;
+    
+    const result = await pool.query(
+      'DELETE FROM social_accounts WHERE user_id = $1 AND platform = $2 RETURNING platform',
+      [req.user.userId, platform.toLowerCase()]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Social account not found' });
+    }
+    
+    console.log(`✅ Disconnected ${platform} account for user ${req.user.userId}`);
+    
+    res.json({ 
+      success: true,
+      message: `${platform} account disconnected successfully`
+    });
+    
+  } catch (error) {
+    console.error('Social account disconnect error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -315,7 +435,7 @@ app.get('/api/user/stats', authenticateToken, async (req, res) => {
   }
 });
 
-// Get Twitter stats for a user
+// Get Twitter stats for a user (UPDATED to save stats to database)
 app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
   try {
     const { username } = req.query;
@@ -375,10 +495,29 @@ app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
     const metrics = userData.public_metrics;
     
     // Calculate engagement rate (simplified - tweets per follower ratio as percentage)
-    // In a real app, you'd fetch recent tweets and calculate actual engagement
     const engagementRate = metrics.followers_count > 0 
       ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
       : 0;
+    
+    // Save stats to database
+    const statsData = {
+      followers: metrics.followers_count,
+      following: metrics.following_count,
+      tweets: metrics.tweet_count,
+      listed: metrics.listed_count,
+      engagementRate: parseFloat(engagementRate),
+      displayName: userData.name,
+      profileImage: userData.profile_image_url,
+      bio: userData.description,
+      accountCreated: userData.created_at
+    };
+    
+    await pool.query(
+      `UPDATE social_accounts 
+       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
+       WHERE user_id = $2 AND platform = 'twitter' AND username = $3`,
+      [JSON.stringify(statsData), req.user.userId, `@${cleanUsername}`]
+    );
     
     // Format the response
     const formattedStats = {
@@ -399,10 +538,7 @@ app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
       fetchedAt: new Date().toISOString()
     };
     
-    console.log(`✅ Successfully fetched stats for @${cleanUsername}:`, {
-      followers: metrics.followers_count,
-      engagement: engagementRate
-    });
+    console.log(`✅ Successfully fetched and saved stats for @${cleanUsername}`);
     
     res.json(formattedStats);
     
