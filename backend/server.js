@@ -1,4 +1,4 @@
-// Backend API server for Formative Platform
+// Backend API server for Formative Platform with OAuth Support
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const path = require('path');
 const fetch = require('node-fetch');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,13 +22,46 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
-// JWT Secret (in production, use environment variable)
+// JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+
+// OAuth Configuration
+const OAUTH_CONFIG = {
+  twitter: {
+    clientId: process.env.TWITTER_CLIENT_ID,
+    clientSecret: process.env.TWITTER_CLIENT_SECRET,
+    authUrl: 'https://twitter.com/i/oauth2/authorize',
+    tokenUrl: 'https://api.twitter.com/2/oauth2/token',
+    userUrl: 'https://api.twitter.com/2/users/me',
+    scopes: ['tweet.read', 'users.read', 'follows.read', 'offline.access'],
+    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/twitter/callback`
+  },
+  instagram: {
+    clientId: process.env.INSTAGRAM_CLIENT_ID,
+    clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
+    authUrl: 'https://api.instagram.com/oauth/authorize',
+    tokenUrl: 'https://api.instagram.com/oauth/access_token',
+    userUrl: 'https://graph.instagram.com/me',
+    scopes: ['user_profile', 'user_media'],
+    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/instagram/callback`
+  },
+  tiktok: {
+    clientId: process.env.TIKTOK_CLIENT_ID,
+    clientSecret: process.env.TIKTOK_CLIENT_SECRET,
+    authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
+    tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
+    userUrl: 'https://open.tiktokapis.com/v2/user/info/',
+    scopes: ['user.info.basic', 'user.info.stats', 'video.list'],
+    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/tiktok/callback`
+  }
+};
+
+// In-memory store for OAuth state (in production, use Redis)
+const oauthStates = new Map();
 
 // Database initialization
 async function initializeDatabase() {
   try {
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -41,7 +75,6 @@ async function initializeDatabase() {
       )
     `);
 
-    // Create opportunities table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS opportunities (
         id SERIAL PRIMARY KEY,
@@ -56,7 +89,6 @@ async function initializeDatabase() {
       )
     `);
 
-    // Create applications table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS applications (
         id SERIAL PRIMARY KEY,
@@ -92,11 +124,606 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// API Routes
+// ============================================
+// OAUTH HELPER FUNCTIONS
+// ============================================
+
+// Generate secure random state for OAuth
+function generateOAuthState() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Generate code verifier and challenge for PKCE (Twitter)
+function generatePKCE() {
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto
+    .createHash('sha256')
+    .update(verifier)
+    .digest('base64url');
+  return { verifier, challenge };
+}
+
+// Check if token is expired
+function isTokenExpired(expiresAt) {
+  if (!expiresAt) return true;
+  return new Date(expiresAt) <= new Date();
+}
+
+// Refresh OAuth token
+async function refreshOAuthToken(platform, refreshToken) {
+  const config = OAUTH_CONFIG[platform];
+  
+  try {
+    const params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: config.clientId
+    });
+
+    if (platform === 'twitter') {
+      // Twitter uses Basic Auth
+      const auth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+      
+      const response = await fetch(config.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || refreshToken,
+        expires_in: data.expires_in
+      };
+    } else {
+      // Instagram & TikTok
+      params.append('client_secret', config.clientSecret);
+      
+      const response = await fetch(config.tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || refreshToken,
+        expires_in: data.expires_in
+      };
+    }
+  } catch (error) {
+    console.error(`Error refreshing ${platform} token:`, error);
+    throw error;
+  }
+}
+
+// Get valid access token (refresh if needed)
+async function getValidAccessToken(userId, platform) {
+  const result = await pool.query(
+    'SELECT access_token, refresh_token, token_expires_at FROM social_accounts WHERE user_id = $1 AND platform = $2',
+    [userId, platform]
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error('Account not connected');
+  }
+
+  const account = result.rows[0];
+
+  // Check if token is expired
+  if (isTokenExpired(account.token_expires_at)) {
+    console.log(`Token expired for ${platform}, refreshing...`);
+    
+    const newTokens = await refreshOAuthToken(platform, account.refresh_token);
+    
+    const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
+    
+    await pool.query(
+      `UPDATE social_accounts 
+       SET access_token = $1, refresh_token = $2, token_expires_at = $3, updated_at = NOW()
+       WHERE user_id = $4 AND platform = $5`,
+      [newTokens.access_token, newTokens.refresh_token, expiresAt, userId, platform]
+    );
+
+    return newTokens.access_token;
+  }
+
+  return account.access_token;
+}
+
+// ============================================
+// OAUTH INITIATION ENDPOINTS
+// ============================================
+
+// Twitter OAuth - Initiate
+app.get('/api/oauth/twitter/authorize', authenticateToken, (req, res) => {
+  const state = generateOAuthState();
+  const { verifier, challenge } = generatePKCE();
+  
+  // Store state and verifier (expires in 10 minutes)
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    verifier,
+    platform: 'twitter',
+    timestamp: Date.now()
+  });
+
+  // Clean up old states
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: OAUTH_CONFIG.twitter.clientId,
+    redirect_uri: OAUTH_CONFIG.twitter.redirectUri,
+    scope: OAUTH_CONFIG.twitter.scopes.join(' '),
+    state: state,
+    code_challenge: challenge,
+    code_challenge_method: 'S256'
+  });
+
+  res.redirect(`${OAUTH_CONFIG.twitter.authUrl}?${params}`);
+});
+
+// Instagram OAuth - Initiate
+app.get('/api/oauth/instagram/authorize', authenticateToken, (req, res) => {
+  const state = generateOAuthState();
+  
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'instagram',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_id: OAUTH_CONFIG.instagram.clientId,
+    redirect_uri: OAUTH_CONFIG.instagram.redirectUri,
+    scope: OAUTH_CONFIG.instagram.scopes.join(','),
+    response_type: 'code',
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.instagram.authUrl}?${params}`);
+});
+
+// TikTok OAuth - Initiate
+app.get('/api/oauth/tiktok/authorize', authenticateToken, (req, res) => {
+  const state = generateOAuthState();
+  
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'tiktok',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_key: OAUTH_CONFIG.tiktok.clientId,
+    redirect_uri: OAUTH_CONFIG.tiktok.redirectUri,
+    response_type: 'code',
+    scope: OAUTH_CONFIG.tiktok.scopes.join(','),
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.tiktok.authUrl}?${params}`);
+});
+
+// ============================================
+// OAUTH CALLBACK ENDPOINTS
+// ============================================
+
+// Twitter OAuth - Callback
+app.get('/api/oauth/twitter/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  
+  if (error) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_denied`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'twitter') {
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const auth = Buffer.from(`${OAUTH_CONFIG.twitter.clientId}:${OAUTH_CONFIG.twitter.clientSecret}`).toString('base64');
+    
+    const tokenResponse = await fetch(OAUTH_CONFIG.twitter.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: OAUTH_CONFIG.twitter.redirectUri,
+        code_verifier: stateData.verifier
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error('Token exchange failed');
+    }
+
+    const tokens = await tokenResponse.json();
+
+    // Get user info
+    const userResponse = await fetch(`${OAUTH_CONFIG.twitter.userUrl}?user.fields=public_metrics,username`, {
+      headers: {
+        'Authorization': `Bearer ${tokens.access_token}`
+      }
+    });
+
+    const userData = await userResponse.json();
+    const username = '@' + userData.data.username;
+
+    // Save to database
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+    
+    await pool.query(
+      `INSERT INTO social_accounts 
+        (user_id, platform, username, access_token, refresh_token, token_expires_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+       ON CONFLICT (user_id, platform) 
+       DO UPDATE SET 
+         username = $3,
+         access_token = $4,
+         refresh_token = $5,
+         token_expires_at = $6,
+         updated_at = NOW()`,
+      [stateData.userId, 'twitter', username, tokens.access_token, tokens.refresh_token, expiresAt]
+    );
+
+    console.log(`✅ Twitter connected for user ${stateData.userId}: ${username}`);
+
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?oauth=success&platform=twitter`);
+  } catch (error) {
+    console.error('Twitter OAuth error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=oauth_failed`);
+  }
+});
+
+// Instagram OAuth - Callback
+app.get('/api/oauth/instagram/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  
+  if (error) {
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=oauth_denied`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'instagram') {
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(OAUTH_CONFIG.instagram.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: OAUTH_CONFIG.instagram.clientId,
+        client_secret: OAUTH_CONFIG.instagram.clientSecret,
+        grant_type: 'authorization_code',
+        redirect_uri: OAUTH_CONFIG.instagram.redirectUri,
+        code
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+
+    if (tokens.error_message) {
+      throw new Error(tokens.error_message);
+    }
+
+    // Get user info
+    const userResponse = await fetch(
+      `${OAUTH_CONFIG.instagram.userUrl}?fields=id,username&access_token=${tokens.access_token}`
+    );
+
+    const userData = await userResponse.json();
+    const username = '@' + userData.username;
+
+    // Instagram short-lived tokens last 1 hour, long-lived last 60 days
+    // We'll store as-is and exchange for long-lived token separately if needed
+    const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 days
+
+    await pool.query(
+      `INSERT INTO social_accounts 
+        (user_id, platform, username, access_token, token_expires_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       ON CONFLICT (user_id, platform) 
+       DO UPDATE SET 
+         username = $3,
+         access_token = $4,
+         token_expires_at = $5,
+         updated_at = NOW()`,
+      [stateData.userId, 'instagram', username, tokens.access_token, expiresAt]
+    );
+
+    console.log(`✅ Instagram connected for user ${stateData.userId}: ${username}`);
+
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?oauth=success&platform=instagram`);
+  } catch (error) {
+    console.error('Instagram OAuth error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=oauth_failed`);
+  }
+});
+
+// TikTok OAuth - Callback
+app.get('/api/oauth/tiktok/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  
+  if (error) {
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=oauth_denied`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'tiktok') {
+    return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(OAUTH_CONFIG.tiktok.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_key: OAUTH_CONFIG.tiktok.clientId,
+        client_secret: OAUTH_CONFIG.tiktok.clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: OAUTH_CONFIG.tiktok.redirectUri
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+
+    if (tokens.error) {
+      throw new Error(tokens.error_description || tokens.error);
+    }
+
+    // Get user info
+    const userResponse = await fetch(OAUTH_CONFIG.tiktok.userUrl, {
+      headers: {
+        'Authorization': `Bearer ${tokens.access_token}`
+      }
+    });
+
+    const userData = await userResponse.json();
+    const username = '@' + userData.data.user.display_name;
+
+    // TikTok tokens last 90 days
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+
+    await pool.query(
+      `INSERT INTO social_accounts 
+        (user_id, platform, username, access_token, refresh_token, token_expires_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+       ON CONFLICT (user_id, platform) 
+       DO UPDATE SET 
+         username = $3,
+         access_token = $4,
+         refresh_token = $5,
+         token_expires_at = $6,
+         updated_at = NOW()`,
+      [stateData.userId, 'tiktok', username, tokens.access_token, tokens.refresh_token, expiresAt]
+    );
+
+    console.log(`✅ TikTok connected for user ${stateData.userId}: ${username}`);
+
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?oauth=success&platform=tiktok`);
+  } catch (error) {
+    console.error('TikTok OAuth error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=oauth_failed`);
+  }
+});
+
+// ============================================
+// STATS ENDPOINTS (OAuth-based)
+// ============================================
+
+// Get Twitter stats (OAuth)
+app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
+  try {
+    const accessToken = await getValidAccessToken(req.user.userId, 'twitter');
+
+    // Fetch user data
+    const response = await fetch(
+      'https://api.twitter.com/2/users/me?user.fields=public_metrics,username,name,profile_image_url,description',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Twitter API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const userData = data.data;
+    const metrics = userData.public_metrics;
+
+    // Calculate engagement rate
+    const engagementRate = metrics.followers_count > 0 
+      ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
+      : 0;
+
+    const stats = {
+      followers: metrics.followers_count,
+      following: metrics.following_count,
+      tweets: metrics.tweet_count,
+      engagementRate: parseFloat(engagementRate),
+      displayName: userData.name,
+      profileImage: userData.profile_image_url,
+      bio: userData.description
+    };
+
+    // Save stats to database
+    await pool.query(
+      `UPDATE social_accounts 
+       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
+       WHERE user_id = $2 AND platform = 'twitter'`,
+      [JSON.stringify(stats), req.user.userId]
+    );
+
+    res.json({
+      success: true,
+      platform: 'twitter',
+      username: userData.username,
+      stats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Twitter stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch Twitter stats',
+      message: error.message 
+    });
+  }
+});
+
+// Get Instagram stats (OAuth)
+app.get('/api/social/instagram/stats', authenticateToken, async (req, res) => {
+  try {
+    const accessToken = await getValidAccessToken(req.user.userId, 'instagram');
+
+    // Fetch user data
+    const response = await fetch(
+      `https://graph.instagram.com/me?fields=id,username,media_count,account_type&access_token=${accessToken}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Instagram API error: ${response.status}`);
+    }
+
+    const userData = await response.json();
+
+    // Note: Instagram Basic Display doesn't provide follower count
+    // Need Instagram Graph API (business accounts) for that
+    const stats = {
+      username: userData.username,
+      mediaCount: userData.media_count,
+      accountType: userData.account_type
+    };
+
+    // Save to database
+    await pool.query(
+      `UPDATE social_accounts 
+       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
+       WHERE user_id = $2 AND platform = 'instagram'`,
+      [JSON.stringify(stats), req.user.userId]
+    );
+
+    res.json({
+      success: true,
+      platform: 'instagram',
+      username: userData.username,
+      stats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Instagram stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch Instagram stats',
+      message: error.message 
+    });
+  }
+});
+
+// Get TikTok stats (OAuth)
+app.get('/api/social/tiktok/stats', authenticateToken, async (req, res) => {
+  try {
+    const accessToken = await getValidAccessToken(req.user.userId, 'tiktok');
+
+    // Fetch user data
+    const response = await fetch(
+      'https://open.tiktokapis.com/v2/user/info/?fields=display_name,follower_count,following_count,likes_count,video_count',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`TikTok API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const userData = data.data.user;
+
+    const engagementRate = userData.follower_count > 0
+      ? ((userData.likes_count / (userData.video_count * userData.follower_count)) * 100).toFixed(2)
+      : 0;
+
+    const stats = {
+      followers: userData.follower_count,
+      following: userData.following_count,
+      likes: userData.likes_count,
+      videos: userData.video_count,
+      engagementRate: parseFloat(engagementRate)
+    };
+
+    // Save to database
+    await pool.query(
+      `UPDATE social_accounts 
+       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
+       WHERE user_id = $2 AND platform = 'tiktok'`,
+      [JSON.stringify(stats), req.user.userId]
+    );
+
+    res.json({
+      success: true,
+      platform: 'tiktok',
+      username: userData.display_name,
+      stats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('TikTok stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch TikTok stats',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// EXISTING ENDPOINTS (continued...)
+// ============================================
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Formative API is running' });
+  res.json({ status: 'OK', message: 'Formative API with OAuth is running' });
 });
 
 // User Registration
@@ -104,12 +731,10 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, userType } = req.body;
 
-    // Validate input
     if (!name || !email || !password || !userType) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Check if user already exists
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1',
       [email]
@@ -119,11 +744,9 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'User already exists with this email' });
     }
 
-    // Hash password
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create user
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
       [name, email, passwordHash, userType]
@@ -131,7 +754,6 @@ app.post('/api/auth/register', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
       JWT_SECRET,
@@ -165,7 +787,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user
     const result = await pool.query(
       'SELECT id, name, email, password_hash, user_type FROM users WHERE email = $1',
       [email]
@@ -177,14 +798,12 @@ app.post('/api/auth/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
       JWT_SECRET,
@@ -244,7 +863,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// Save onboarding data (UPDATED to save social accounts to database)
+// Save onboarding data
 app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   
@@ -254,7 +873,6 @@ app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
     const userId = req.user.userId;
     const { socialAccounts, ...otherData } = req.body;
     
-    // Save profile data (excluding social accounts)
     await client.query(
       `UPDATE users SET 
         profile_data = $1,
@@ -263,7 +881,6 @@ app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
       [JSON.stringify(otherData), userId]
     );
     
-    // Save social accounts to dedicated table
     if (socialAccounts && typeof socialAccounts === 'object') {
       for (const [platform, username] of Object.entries(socialAccounts)) {
         if (username && username.trim()) {
@@ -274,15 +891,12 @@ app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
              DO UPDATE SET username = $3, updated_at = NOW()`,
             [userId, platform.toLowerCase(), username.trim()]
           );
-          
-          console.log(`✅ Saved ${platform} account: ${username} for user ${userId}`);
         }
       }
     }
     
     await client.query('COMMIT');
     
-    // Get updated user data
     const result = await client.query(
       'SELECT id, name, email, user_type FROM users WHERE id = $1',
       [userId]
@@ -303,7 +917,7 @@ app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
   }
 });
 
-// Get user's connected social accounts (NEW)
+// Get user's connected social accounts
 app.get('/api/user/social-accounts', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -325,53 +939,7 @@ app.get('/api/user/social-accounts', authenticateToken, async (req, res) => {
   }
 });
 
-// Connect or update a social media account (NEW)
-app.post('/api/social/connect/:platform', authenticateToken, async (req, res) => {
-  try {
-    const { platform } = req.params;
-    const { username, accessToken, refreshToken, tokenExpiresAt } = req.body;
-    
-    if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
-    
-    const result = await pool.query(
-      `INSERT INTO social_accounts 
-        (user_id, platform, username, access_token, refresh_token, token_expires_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-       ON CONFLICT (user_id, platform) 
-       DO UPDATE SET 
-         username = $3,
-         access_token = $4,
-         refresh_token = $5,
-         token_expires_at = $6,
-         updated_at = NOW()
-       RETURNING platform, username, created_at, updated_at`,
-      [
-        req.user.userId, 
-        platform.toLowerCase(), 
-        username, 
-        accessToken || null, 
-        refreshToken || null,
-        tokenExpiresAt || null
-      ]
-    );
-    
-    console.log(`✅ Connected ${platform} account for user ${req.user.userId}`);
-    
-    res.json({ 
-      success: true,
-      message: `${platform} account connected successfully`,
-      account: result.rows[0]
-    });
-    
-  } catch (error) {
-    console.error('Social account connect error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Disconnect a social media account (NEW)
+// Disconnect a social media account
 app.delete('/api/social/disconnect/:platform', authenticateToken, async (req, res) => {
   try {
     const { platform } = req.params;
@@ -395,159 +963,6 @@ app.delete('/api/social/disconnect/:platform', authenticateToken, async (req, re
   } catch (error) {
     console.error('Social account disconnect error:', error);
     res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get user stats (for dashboard)
-app.get('/api/user/stats', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const userType = req.user.userType;
-    
-    // Return demo stats based on user type
-    let stats = {};
-    
-    if (userType === 'influencer') {
-      stats = {
-        totalFollowers: '12.5K',
-        engagementRate: 8.7,
-        activeCampaigns: 3,
-        monthlyEarnings: 2500
-      };
-    } else if (userType === 'brand') {
-      stats = {
-        campaignsLaunched: 5,
-        influencersConnected: 12,
-        averageROI: 234
-      };
-    } else if (userType === 'freelancer') {
-      stats = {
-        projectsCompleted: 8,
-        averageRating: 4.9,
-        monthlyEarnings: 3200
-      };
-    }
-    
-    res.json({ success: true, stats });
-  } catch (error) {
-    console.error('Stats fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get Twitter stats for a user (UPDATED to save stats to database)
-app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
-  try {
-    const { username } = req.query;
-    
-    if (!username) {
-      return res.status(400).json({ 
-        error: 'Username required',
-        message: 'Please provide a Twitter username as a query parameter'
-      });
-    }
-    
-    // Remove @ symbol if present
-    const cleanUsername = username.replace('@', '');
-    
-    // Check if Bearer Token is configured
-    if (!process.env.TWITTER_BEARER_TOKEN) {
-      return res.status(500).json({ 
-        error: 'Twitter API not configured',
-        message: 'TWITTER_BEARER_TOKEN environment variable is missing'
-      });
-    }
-    
-    console.log(`Fetching Twitter stats for: ${cleanUsername}`);
-    
-    // Call Twitter API v2
-    const twitterResponse = await fetch(
-      `https://api.twitter.com/2/users/by/username/${cleanUsername}?user.fields=public_metrics,created_at,description,profile_image_url`,
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.TWITTER_BEARER_TOKEN}`,
-          'User-Agent': 'Formative-Dashboard/1.0'
-        }
-      }
-    );
-    
-    const twitterData = await twitterResponse.json();
-    
-    // Handle Twitter API errors
-    if (!twitterResponse.ok) {
-      console.error('Twitter API error:', twitterData);
-      return res.status(twitterResponse.status).json({ 
-        error: 'Twitter API error',
-        message: twitterData.detail || twitterData.title || 'Failed to fetch Twitter data',
-        twitterError: twitterData
-      });
-    }
-    
-    // Check if user was found
-    if (!twitterData.data) {
-      return res.status(404).json({ 
-        error: 'User not found',
-        message: `Twitter user @${cleanUsername} not found`
-      });
-    }
-    
-    const userData = twitterData.data;
-    const metrics = userData.public_metrics;
-    
-    // Calculate engagement rate (simplified - tweets per follower ratio as percentage)
-    const engagementRate = metrics.followers_count > 0 
-      ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
-      : 0;
-    
-    // Save stats to database
-    const statsData = {
-      followers: metrics.followers_count,
-      following: metrics.following_count,
-      tweets: metrics.tweet_count,
-      listed: metrics.listed_count,
-      engagementRate: parseFloat(engagementRate),
-      displayName: userData.name,
-      profileImage: userData.profile_image_url,
-      bio: userData.description,
-      accountCreated: userData.created_at
-    };
-    
-    await pool.query(
-      `UPDATE social_accounts 
-       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
-       WHERE user_id = $2 AND platform = 'twitter' AND username = $3`,
-      [JSON.stringify(statsData), req.user.userId, `@${cleanUsername}`]
-    );
-    
-    // Format the response
-    const formattedStats = {
-      success: true,
-      platform: 'twitter',
-      username: userData.username,
-      displayName: userData.name,
-      profileImage: userData.profile_image_url,
-      bio: userData.description,
-      accountCreated: userData.created_at,
-      stats: {
-        followers: metrics.followers_count,
-        following: metrics.following_count,
-        tweets: metrics.tweet_count,
-        listed: metrics.listed_count,
-        engagementRate: parseFloat(engagementRate)
-      },
-      fetchedAt: new Date().toISOString()
-    };
-    
-    console.log(`✅ Successfully fetched and saved stats for @${cleanUsername}`);
-    
-    res.json(formattedStats);
-    
-  } catch (error) {
-    console.error('Twitter stats fetch error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message
-    });
   }
 });
 
@@ -606,7 +1021,6 @@ app.post('/api/opportunities/:id/apply', authenticateToken, async (req, res) => 
     const { id } = req.params;
     const { message } = req.body;
 
-    // Check if already applied
     const existingApplication = await pool.query(
       'SELECT id FROM applications WHERE user_id = $1 AND opportunity_id = $2',
       [req.user.userId, id]
@@ -628,7 +1042,7 @@ app.post('/api/opportunities/:id/apply', authenticateToken, async (req, res) => 
   }
 });
 
-// Serve static files (fallback for frontend)
+// Serve static files
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../index.html'));
 });
@@ -639,8 +1053,9 @@ async function startServer() {
     await initializeDatabase();
     
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Formative API server running on port ${PORT}`);
+      console.log(`🚀 Formative API with OAuth running on port ${PORT}`);
       console.log(`📊 Database connected successfully`);
+      console.log(`🔐 OAuth enabled for: Twitter, Instagram, TikTok`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
