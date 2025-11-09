@@ -248,8 +248,32 @@ async function getValidAccessToken(userId, platform) {
 // OAUTH INITIATION ENDPOINTS
 // ============================================
 
+// Modified auth middleware that accepts token from query or header
+const authenticateTokenFlexible = (req, res, next) => {
+  // Try to get token from header first
+  const authHeader = req.headers['authorization'];
+  let token = authHeader && authHeader.split(' ')[1];
+  
+  // If not in header, try query parameter
+  if (!token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // Twitter OAuth - Initiate
-app.get('/api/oauth/twitter/authorize', authenticateToken, (req, res) => {
+app.get('/api/oauth/twitter/authorize', authenticateTokenFlexible, (req, res) => {
   const state = generateOAuthState();
   const { verifier, challenge } = generatePKCE();
   
@@ -278,7 +302,7 @@ app.get('/api/oauth/twitter/authorize', authenticateToken, (req, res) => {
 });
 
 // Instagram OAuth - Initiate
-app.get('/api/oauth/instagram/authorize', authenticateToken, (req, res) => {
+app.get('/api/oauth/instagram/authorize', authenticateTokenFlexible, (req, res) => {
   const state = generateOAuthState();
   
   oauthStates.set(state, {
@@ -301,7 +325,7 @@ app.get('/api/oauth/instagram/authorize', authenticateToken, (req, res) => {
 });
 
 // TikTok OAuth - Initiate
-app.get('/api/oauth/tiktok/authorize', authenticateToken, (req, res) => {
+app.get('/api/oauth/tiktok/authorize', authenticateTokenFlexible, (req, res) => {
   const state = generateOAuthState();
   
   oauthStates.set(state, {
