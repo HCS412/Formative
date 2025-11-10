@@ -682,6 +682,148 @@ app.get('/api/social/instagram/stats', authenticateToken, async (req, res) => {
   }
 });
 
+// Connect Bluesky account (simple verification)
+app.post('/api/social/bluesky/connect', authenticateToken, async (req, res) => {
+  try {
+    const { handle } = req.body;
+    
+    if (!handle) {
+      return res.status(400).json({ error: 'Bluesky handle is required' });
+    }
+    
+    // Clean up handle (remove @ if present, add .bsky.social if not present)
+    let cleanHandle = handle.trim();
+    if (cleanHandle.startsWith('@')) {
+      cleanHandle = cleanHandle.substring(1);
+    }
+    if (!cleanHandle.includes('.')) {
+      cleanHandle = `${cleanHandle}.bsky.social`;
+    }
+    
+    // Verify account exists and get profile data
+    const profileUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${cleanHandle}`;
+    const response = await fetch(profileUrl);
+    
+    if (!response.ok) {
+      return res.status(404).json({ error: 'Bluesky account not found' });
+    }
+    
+    const profileData = await response.json();
+    
+    // Calculate engagement rate (posts per follower ratio)
+    const engagementRate = profileData.followersCount > 0
+      ? ((profileData.postsCount / profileData.followersCount) * 10).toFixed(2)
+      : 0;
+    
+    const stats = {
+      followers: profileData.followersCount || 0,
+      following: profileData.followsCount || 0,
+      posts: profileData.postsCount || 0,
+      engagementRate: parseFloat(engagementRate),
+      displayName: profileData.displayName || cleanHandle,
+      avatar: profileData.avatar || null,
+      description: profileData.description || null
+    };
+    
+    // Save to database
+    await pool.query(
+      `INSERT INTO social_accounts 
+        (user_id, platform, username, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW())
+       ON CONFLICT (user_id, platform) 
+       DO UPDATE SET 
+         username = $3,
+         stats = $4,
+         last_synced_at = NOW(),
+         updated_at = NOW()`,
+      [req.user.userId, 'bluesky', '@' + cleanHandle, JSON.stringify(stats)]
+    );
+    
+    console.log(`✅ Bluesky connected for user ${req.user.userId}: @${cleanHandle}`);
+    
+    res.json({
+      success: true,
+      platform: 'bluesky',
+      username: '@' + cleanHandle,
+      stats,
+      message: 'Bluesky account connected successfully'
+    });
+    
+  } catch (error) {
+    console.error('Bluesky connect error:', error);
+    res.status(500).json({ 
+      error: 'Failed to connect Bluesky account',
+      message: error.message 
+    });
+  }
+});
+
+// Get Bluesky stats
+app.get('/api/social/bluesky/stats', authenticateToken, async (req, res) => {
+  try {
+    // Get account from database
+    const result = await pool.query(
+      'SELECT username, stats, last_synced_at FROM social_accounts WHERE user_id = $1 AND platform = $2',
+      [req.user.userId, 'bluesky']
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bluesky account not connected' });
+    }
+    
+    const account = result.rows[0];
+    let handle = account.username.replace('@', '');
+    
+    // Fetch fresh data from Bluesky API
+    const profileUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${handle}`;
+    const response = await fetch(profileUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Bluesky API error: ${response.status}`);
+    }
+    
+    const profileData = await response.json();
+    
+    // Calculate engagement rate
+    const engagementRate = profileData.followersCount > 0
+      ? ((profileData.postsCount / profileData.followersCount) * 10).toFixed(2)
+      : 0;
+    
+    const stats = {
+      followers: profileData.followersCount || 0,
+      following: profileData.followsCount || 0,
+      posts: profileData.postsCount || 0,
+      engagementRate: parseFloat(engagementRate),
+      displayName: profileData.displayName || handle,
+      avatar: profileData.avatar || null,
+      description: profileData.description || null
+    };
+    
+    // Update cached stats in database
+    await pool.query(
+      `UPDATE social_accounts 
+       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
+       WHERE user_id = $2 AND platform = 'bluesky'`,
+      [JSON.stringify(stats), req.user.userId]
+    );
+    
+    res.json({
+      success: true,
+      platform: 'bluesky',
+      username: '@' + handle,
+      stats,
+      fetchedAt: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Bluesky stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch Bluesky stats',
+      message: error.message 
+    });
+  }
+});
+
 // Get TikTok stats (OAuth)
 app.get('/api/social/tiktok/stats', authenticateToken, async (req, res) => {
   try {
