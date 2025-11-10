@@ -808,13 +808,36 @@
                                 Connect TikTok
                             </button>
                             
+                            <!-- Bluesky Simple Connect -->
+                            <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+                                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                    <strong>Simple Connection (No OAuth Required):</strong>
+                                </p>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input 
+                                        type="text" 
+                                        id="bluesky-handle" 
+                                        class="form-input" 
+                                        placeholder="@yourusername.bsky.social"
+                                        style="flex: 1;"
+                                    >
+                                    <button class="btn btn-primary" onclick="connectBluesky()" style="background: linear-gradient(135deg, #0085ff 0%, #00a8ff 100%); white-space: nowrap;">
+                                        <span style="font-size: 1.2rem;">🦋</span>
+                                        Connect Bluesky
+                                    </button>
+                                </div>
+                                <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.5rem;">
+                                    Enter your Bluesky handle (e.g., @username.bsky.social)
+                                </small>
+                            </div>
+                            
                             <!-- Coming Soon platforms -->
                             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
                                     <strong>Coming Soon:</strong>
                                 </p>
                                 <p style="color: var(--text-secondary); font-size: 0.85rem;">
-                                    YouTube • Twitch • Bluesky • Reddit • Discord
+                                    YouTube • Twitch • LinkedIn • Reddit • Discord
                                 </p>
                             </div>
                         </div>
@@ -953,13 +976,18 @@
                     if (data.success && data.accounts && data.accounts.length > 0) {
                         connectedAccounts = data.accounts;
                         
-                        // Find Twitter account
+                        // Find Twitter account (priority)
                         const twitterAccount = data.accounts.find(acc => acc.platform === 'twitter');
+                        
+                        // Find Bluesky account (fallback)
+                        const blueskyAccount = data.accounts.find(acc => acc.platform === 'bluesky');
                         
                         if (twitterAccount) {
                             await displayTwitterStats(twitterAccount);
+                        } else if (blueskyAccount) {
+                            await displayBlueskyStats(blueskyAccount);
                         } else {
-                            console.log('No Twitter account found in database');
+                            console.log('No Twitter or Bluesky account found in database');
                             checkLocalStorageFallback();
                         }
                     } else {
@@ -999,6 +1027,69 @@
                 }
             } else {
                 showDemoStats();
+            }
+        }
+
+        // Display Bluesky stats from database
+        async function displayBlueskyStats(blueskyAccount) {
+            console.log('Displaying Bluesky stats for:', blueskyAccount);
+            
+            // Check if we have cached stats
+            if (blueskyAccount.stats && blueskyAccount.stats.followers !== undefined) {
+                // Use cached stats
+                const stats = blueskyAccount.stats;
+                updateStatsUI(stats, blueskyAccount.username, blueskyAccount.last_synced_at);
+                
+                // Check if stats are stale (older than 24 hours)
+                const hoursSinceSync = blueskyAccount.last_synced_at 
+                    ? (Date.now() - new Date(blueskyAccount.last_synced_at)) / (1000 * 60 * 60)
+                    : 999;
+                
+                if (hoursSinceSync > 24) {
+                    console.log('Bluesky stats are stale, refreshing in background...');
+                    fetchBlueskyStatsFromAPI(blueskyAccount.username, true);
+                }
+            } else {
+                // No cached stats, fetch from API
+                console.log('No cached Bluesky stats, fetching from API...');
+                await fetchBlueskyStatsFromAPI(blueskyAccount.username);
+            }
+        }
+
+        // Fetch Bluesky stats from API
+        async function fetchBlueskyStatsFromAPI(username, background = false) {
+            try {
+                if (!background) {
+                    showNotification('Fetching Bluesky stats...', 'info');
+                }
+                
+                const response = await fetch(`${API_BASE}/api/social/bluesky/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Bluesky stats received:', data);
+                    
+                    updateStatsUI(data.stats, data.username, data.fetchedAt);
+                    
+                    if (!background) {
+                        showNotification('✅ Bluesky stats updated!', 'success');
+                    }
+                } else {
+                    const error = await response.json();
+                    console.error('Failed to fetch Bluesky stats:', error);
+                    if (!background) {
+                        showNotification('Failed to fetch Bluesky stats', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching Bluesky stats:', error);
+                if (!background) {
+                    showNotification('Failed to fetch Bluesky stats', 'error');
+                }
             }
         }
 
@@ -1274,6 +1365,50 @@
             window.location.href = `${API_BASE}/api/oauth/${platform}/authorize?token=${encodeURIComponent(token)}`;
         }
 
+        // Connect Bluesky account (simple verification)
+        async function connectBluesky() {
+            const handleInput = document.getElementById('bluesky-handle');
+            const handle = handleInput.value.trim();
+            
+            if (!handle) {
+                showNotification('Please enter your Bluesky handle', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('Connecting Bluesky account...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/social/bluesky/connect`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ handle })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`✅ Bluesky account ${data.username} connected!`, 'success');
+                    handleInput.value = '';
+                    
+                    // Reload connected accounts
+                    await loadConnectedAccounts();
+                    
+                    // If on influencer dashboard, refresh stats
+                    if (userType === 'influencer') {
+                        await loadInfluencerStats();
+                    }
+                } else {
+                    showNotification(data.error || 'Failed to connect Bluesky account', 'error');
+                }
+            } catch (error) {
+                console.error('Error connecting Bluesky:', error);
+                showNotification('Failed to connect Bluesky account', 'error');
+            }
+        }
+
         // Check for OAuth callback parameters on page load
         function checkOAuthCallback() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1529,8 +1664,8 @@
                     showNotification(`✅ ${platform} stats updated!`, 'success');
                     await loadConnectedAccounts();
                     
-                    // Also update dashboard if it's Twitter
-                    if (platform === 'twitter') {
+                    // Also update dashboard if it's Twitter or Bluesky
+                    if (platform === 'twitter' || platform === 'bluesky') {
                         await loadInfluencerStats();
                     }
                 } else {
