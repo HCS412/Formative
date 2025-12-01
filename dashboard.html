@@ -1345,6 +1345,7 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Social accounts response:', data);
                     
                     if (data.success && data.accounts && data.accounts.length > 0) {
                         connectedAccounts = data.accounts;
@@ -1354,19 +1355,61 @@
                         let totalEngagement = 0;
                         let accountCount = 0;
                         let primaryPlatform = null;
+                        let accountsNeedingRefresh = [];
                         
                         data.accounts.forEach(account => {
-                            if (account.stats && account.stats.followers) {
-                                totalFollowers += account.stats.followers;
-                                if (account.stats.engagementRate) {
-                                    totalEngagement += parseFloat(account.stats.engagementRate);
+                            // Parse stats if it's a string
+                            let stats = account.stats;
+                            if (typeof stats === 'string') {
+                                try {
+                                    stats = JSON.parse(stats);
+                                } catch (e) {
+                                    console.error('Failed to parse stats:', e);
+                                    stats = null;
+                                }
+                            }
+                            
+                            console.log(`Account ${account.platform} stats:`, stats);
+                            
+                            if (stats && stats.followers) {
+                                totalFollowers += stats.followers;
+                                if (stats.engagementRate) {
+                                    totalEngagement += parseFloat(stats.engagementRate);
                                     accountCount++;
                                 }
                                 if (!primaryPlatform) {
                                     primaryPlatform = account;
                                 }
+                            } else {
+                                // Stats missing - need to refresh
+                                accountsNeedingRefresh.push(account.platform);
                             }
                         });
+                        
+                        // If any accounts need stats refreshed, do it automatically
+                        if (accountsNeedingRefresh.length > 0) {
+                            console.log('Accounts needing stats refresh:', accountsNeedingRefresh);
+                            for (const platform of accountsNeedingRefresh) {
+                                try {
+                                    const statsResponse = await fetch(`${API_BASE}/api/social/${platform}/stats`, {
+                                        headers: { 'Authorization': `Bearer ${authToken}` }
+                                    });
+                                    if (statsResponse.ok) {
+                                        const statsData = await statsResponse.json();
+                                        console.log(`Refreshed ${platform} stats:`, statsData);
+                                        if (statsData.stats && statsData.stats.followers) {
+                                            totalFollowers += statsData.stats.followers;
+                                            if (statsData.stats.engagementRate) {
+                                                totalEngagement += parseFloat(statsData.stats.engagementRate);
+                                                accountCount++;
+                                            }
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.error(`Failed to refresh ${platform} stats:`, err);
+                                }
+                            }
+                        }
                         
                         const avgEngagement = accountCount > 0 ? (totalEngagement / accountCount).toFixed(1) : 0;
                         
