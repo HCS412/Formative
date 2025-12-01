@@ -129,6 +129,41 @@ async function initializeDatabase() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_social_accounts_platform ON social_accounts(platform)
     `);
+    
+    // Add missing columns to social_accounts if they don't exist (for existing tables)
+    const socialAccountColumns = [
+      { name: 'platform_user_id', type: 'VARCHAR(255)' },
+      { name: 'is_verified', type: 'BOOLEAN DEFAULT FALSE' },
+      { name: 'last_synced_at', type: 'TIMESTAMP' },
+      { name: 'access_token', type: 'TEXT' },
+      { name: 'refresh_token', type: 'TEXT' },
+      { name: 'token_expires_at', type: 'TIMESTAMP' },
+      { name: 'stats', type: "JSONB DEFAULT '{}'" }
+    ];
+    
+    for (const col of socialAccountColumns) {
+      try {
+        await client.query(`ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
+    
+    // Add missing columns to users if they don't exist (for existing tables)
+    const userColumns = [
+      { name: 'avatar_url', type: 'TEXT' },
+      { name: 'bio', type: 'TEXT' },
+      { name: 'location', type: 'VARCHAR(255)' },
+      { name: 'website', type: 'VARCHAR(500)' }
+    ];
+    
+    for (const col of userColumns) {
+      try {
+        await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
 
     // 3. OPPORTUNITIES TABLE
     await client.query(`
