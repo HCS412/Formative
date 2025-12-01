@@ -298,6 +298,32 @@ async function initializeDatabase() {
       // Old schema doesn't exist, that's fine
     }
 
+    // 8. COLLABORATIONS TABLE (for brand-influencer partnerships)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS collaborations (
+        id SERIAL PRIMARY KEY,
+        opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
+        brand_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        influencer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+        status VARCHAR(50) DEFAULT 'accepted',
+        agreed_rate INTEGER,
+        notes TEXT,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create indexes for collaborations
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_collaborations_brand ON collaborations(brand_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_collaborations_influencer ON collaborations(influencer_id)
+    `);
+
     // 7. NOTIFICATIONS TABLE
     await client.query(`
       CREATE TABLE IF NOT EXISTS notifications (
@@ -1881,6 +1907,531 @@ app.put('/api/messages/conversation/:conversationId/read', authenticateToken, as
 // Serve static files (for Railway deployment)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../index.html'));
+});
+
+// ============================================
+// BRAND DASHBOARD ENDPOINTS
+// ============================================
+
+// Get brand's own opportunities
+app.get('/api/brand/opportunities', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let query = `
+      SELECT o.*, 
+        (SELECT COUNT(*) FROM applications WHERE opportunity_id = o.id) as applications_count
+      FROM opportunities o 
+      WHERE o.created_by = $1
+    `;
+    const params = [req.user.userId];
+    
+    if (status) {
+      query += ` AND o.status = $2`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY o.created_at DESC`;
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ 
+      success: true,
+      opportunities: result.rows
+    });
+  } catch (error) {
+    console.error('Brand opportunities error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update opportunity (brand only)
+app.put('/api/brand/opportunities/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, type, industry, budgetRange, status } = req.body;
+    
+    // Verify ownership
+    const ownership = await pool.query(
+      'SELECT id FROM opportunities WHERE id = $1 AND created_by = $2',
+      [id, req.user.userId]
+    );
+    
+    if (ownership.rows.length === 0) {
+      return res.status(403).json({ error: 'Not authorized to edit this opportunity' });
+    }
+    
+    const result = await pool.query(
+      `UPDATE opportunities 
+       SET title = COALESCE($1, title),
+           description = COALESCE($2, description),
+           type = COALESCE($3, type),
+           industry = COALESCE($4, industry),
+           budget_range = COALESCE($5, budget_range),
+           status = COALESCE($6, status),
+           updated_at = NOW()
+       WHERE id = $7
+       RETURNING *`,
+      [title, description, type, industry, budgetRange, status, id]
+    );
+    
+    res.json({ success: true, opportunity: result.rows[0] });
+  } catch (error) {
+    console.error('Update opportunity error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete opportunity (brand only)
+app.delete('/api/brand/opportunities/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify ownership
+    const result = await pool.query(
+      'DELETE FROM opportunities WHERE id = $1 AND created_by = $2 RETURNING id',
+      [id, req.user.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: 'Not authorized to delete this opportunity' });
+    }
+    
+    res.json({ success: true, message: 'Opportunity deleted' });
+  } catch (error) {
+    console.error('Delete opportunity error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all applications for brand's opportunities
+app.get('/api/brand/applications', authenticateToken, async (req, res) => {
+  try {
+    const { status, opportunityId } = req.query;
+    
+    let query = `
+      SELECT 
+        a.*,
+        o.title as opportunity_title,
+        o.type as opportunity_type,
+        o.budget_range,
+        u.id as applicant_id,
+        u.name as applicant_name,
+        u.email as applicant_email,
+        u.user_type as applicant_type,
+        u.avatar_url as applicant_avatar,
+        u.bio as applicant_bio,
+        u.location as applicant_location,
+        (
+          SELECT json_agg(json_build_object(
+            'platform', sa.platform,
+            'username', sa.username,
+            'stats', sa.stats,
+            'is_verified', sa.is_verified
+          ))
+          FROM social_accounts sa
+          WHERE sa.user_id = u.id
+        ) as applicant_social_accounts
+      FROM applications a
+      JOIN opportunities o ON a.opportunity_id = o.id
+      JOIN users u ON a.user_id = u.id
+      WHERE o.created_by = $1
+    `;
+    const params = [req.user.userId];
+    let paramCount = 1;
+    
+    if (status) {
+      paramCount++;
+      query += ` AND a.status = $${paramCount}`;
+      params.push(status);
+    }
+    
+    if (opportunityId) {
+      paramCount++;
+      query += ` AND a.opportunity_id = $${paramCount}`;
+      params.push(opportunityId);
+    }
+    
+    query += ` ORDER BY a.created_at DESC`;
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ 
+      success: true,
+      applications: result.rows
+    });
+  } catch (error) {
+    console.error('Brand applications error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get single application details
+app.get('/api/brand/applications/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT 
+        a.*,
+        o.title as opportunity_title,
+        o.type as opportunity_type,
+        o.budget_range,
+        o.description as opportunity_description,
+        u.id as applicant_id,
+        u.name as applicant_name,
+        u.email as applicant_email,
+        u.user_type as applicant_type,
+        u.avatar_url as applicant_avatar,
+        u.bio as applicant_bio,
+        u.location as applicant_location,
+        u.website as applicant_website,
+        (
+          SELECT json_agg(json_build_object(
+            'platform', sa.platform,
+            'username', sa.username,
+            'stats', sa.stats,
+            'is_verified', sa.is_verified
+          ))
+          FROM social_accounts sa
+          WHERE sa.user_id = u.id
+        ) as applicant_social_accounts
+      FROM applications a
+      JOIN opportunities o ON a.opportunity_id = o.id
+      JOIN users u ON a.user_id = u.id
+      WHERE a.id = $1 AND o.created_by = $2
+    `, [id, req.user.userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    res.json({ success: true, application: result.rows[0] });
+  } catch (error) {
+    console.error('Get application error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Accept application (creates collaboration)
+app.post('/api/brand/applications/:id/accept', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    const { id } = req.params;
+    const { agreedRate, notes } = req.body;
+    
+    await client.query('BEGIN');
+    
+    // Get application and verify ownership
+    const appResult = await client.query(`
+      SELECT a.*, o.created_by as brand_id, o.title as opportunity_title
+      FROM applications a
+      JOIN opportunities o ON a.opportunity_id = o.id
+      WHERE a.id = $1 AND o.created_by = $2
+    `, [id, req.user.userId]);
+    
+    if (appResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    const application = appResult.rows[0];
+    
+    if (application.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Application already processed' });
+    }
+    
+    // Update application status
+    await client.query(
+      `UPDATE applications SET status = 'accepted', responded_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      [id]
+    );
+    
+    // Create collaboration
+    const collabResult = await client.query(
+      `INSERT INTO collaborations 
+        (opportunity_id, brand_id, influencer_id, application_id, agreed_rate, notes, started_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING *`,
+      [application.opportunity_id, req.user.userId, application.user_id, id, agreedRate || application.proposed_rate, notes]
+    );
+    
+    // Create or get conversation
+    const existingConvo = await client.query(
+      `SELECT id FROM conversations 
+       WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)`,
+      [req.user.userId, application.user_id]
+    );
+    
+    let conversationId;
+    if (existingConvo.rows.length > 0) {
+      conversationId = existingConvo.rows[0].id;
+    } else {
+      const newConvo = await client.query(
+        `INSERT INTO conversations (user1_id, user2_id) VALUES ($1, $2) RETURNING id`,
+        [req.user.userId, application.user_id]
+      );
+      conversationId = newConvo.rows[0].id;
+    }
+    
+    // Send automatic message
+    await client.query(
+      `INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+       VALUES ($1, $2, $3, $4)`,
+      [conversationId, req.user.userId, application.user_id, 
+       `🎉 Great news! Your application for "${application.opportunity_title}" has been accepted! Let's discuss the details.`]
+    );
+    
+    // Update conversation timestamp
+    await client.query(
+      `UPDATE conversations SET updated_at = NOW() WHERE id = $1`,
+      [conversationId]
+    );
+    
+    // Create notification for influencer
+    await client.query(
+      `INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
+       VALUES ($1, 'application_accepted', 'Application Accepted!', $2, $3, 'collaboration')`,
+      [application.user_id, `Your application for "${application.opportunity_title}" has been accepted!`, collabResult.rows[0].id]
+    );
+    
+    await client.query('COMMIT');
+    
+    console.log(`✅ Application ${id} accepted, collaboration ${collabResult.rows[0].id} created`);
+    
+    res.json({ 
+      success: true, 
+      collaboration: collabResult.rows[0],
+      conversationId
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Accept application error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// Reject application
+app.post('/api/brand/applications/:id/reject', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { responseMessage } = req.body;
+    
+    // Verify ownership
+    const appResult = await pool.query(`
+      SELECT a.*, o.title as opportunity_title
+      FROM applications a
+      JOIN opportunities o ON a.opportunity_id = o.id
+      WHERE a.id = $1 AND o.created_by = $2
+    `, [id, req.user.userId]);
+    
+    if (appResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    const application = appResult.rows[0];
+    
+    // Update application
+    await pool.query(
+      `UPDATE applications 
+       SET status = 'rejected', response_message = $1, responded_at = NOW(), updated_at = NOW() 
+       WHERE id = $2`,
+      [responseMessage, id]
+    );
+    
+    // Create notification for influencer
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
+       VALUES ($1, 'application_rejected', 'Application Update', $2, $3, 'application')`,
+      [application.user_id, `Your application for "${application.opportunity_title}" was not selected this time.`, id]
+    );
+    
+    res.json({ success: true, message: 'Application rejected' });
+  } catch (error) {
+    console.error('Reject application error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get brand's collaborations
+app.get('/api/brand/collaborations', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let query = `
+      SELECT 
+        c.*,
+        o.title as opportunity_title,
+        o.type as opportunity_type,
+        u.name as influencer_name,
+        u.email as influencer_email,
+        u.avatar_url as influencer_avatar,
+        (
+          SELECT json_agg(json_build_object(
+            'platform', sa.platform,
+            'username', sa.username,
+            'stats', sa.stats
+          ))
+          FROM social_accounts sa
+          WHERE sa.user_id = u.id
+        ) as influencer_social_accounts
+      FROM collaborations c
+      LEFT JOIN opportunities o ON c.opportunity_id = o.id
+      JOIN users u ON c.influencer_id = u.id
+      WHERE c.brand_id = $1
+    `;
+    const params = [req.user.userId];
+    
+    if (status) {
+      query += ` AND c.status = $2`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY c.created_at DESC`;
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ success: true, collaborations: result.rows });
+  } catch (error) {
+    console.error('Brand collaborations error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update collaboration status
+app.put('/api/brand/collaborations/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    
+    const validStatuses = ['accepted', 'in_progress', 'completed', 'cancelled'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const result = await pool.query(
+      `UPDATE collaborations 
+       SET status = COALESCE($1, status),
+           notes = COALESCE($2, notes),
+           completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END,
+           updated_at = NOW()
+       WHERE id = $3 AND brand_id = $4
+       RETURNING *`,
+      [status, notes, id, req.user.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Collaboration not found' });
+    }
+    
+    res.json({ success: true, collaboration: result.rows[0] });
+  } catch (error) {
+    console.error('Update collaboration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get brand dashboard stats
+app.get('/api/brand/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get counts
+    const stats = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM opportunities WHERE created_by = $1 AND status = 'active') as active_opportunities,
+        (SELECT COUNT(*) FROM applications a JOIN opportunities o ON a.opportunity_id = o.id WHERE o.created_by = $1 AND a.status = 'pending') as pending_applications,
+        (SELECT COUNT(*) FROM collaborations WHERE brand_id = $1) as total_collaborations,
+        (SELECT COUNT(*) FROM collaborations WHERE brand_id = $1 AND status = 'in_progress') as active_collaborations,
+        (SELECT COUNT(*) FROM collaborations WHERE brand_id = $1 AND status = 'completed') as completed_collaborations
+    `, [userId]);
+    
+    res.json({ success: true, stats: stats.rows[0] });
+  } catch (error) {
+    console.error('Brand stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// INFLUENCER DASHBOARD ENDPOINTS
+// ============================================
+
+// Get influencer's applications
+app.get('/api/influencer/applications', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let query = `
+      SELECT 
+        a.*,
+        o.title as opportunity_title,
+        o.type as opportunity_type,
+        o.budget_range,
+        o.industry,
+        u.name as brand_name,
+        u.avatar_url as brand_avatar
+      FROM applications a
+      JOIN opportunities o ON a.opportunity_id = o.id
+      LEFT JOIN users u ON o.created_by = u.id
+      WHERE a.user_id = $1
+    `;
+    const params = [req.user.userId];
+    
+    if (status) {
+      query += ` AND a.status = $2`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY a.created_at DESC`;
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ success: true, applications: result.rows });
+  } catch (error) {
+    console.error('Influencer applications error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get influencer's collaborations
+app.get('/api/influencer/collaborations', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let query = `
+      SELECT 
+        c.*,
+        o.title as opportunity_title,
+        o.type as opportunity_type,
+        u.name as brand_name,
+        u.email as brand_email,
+        u.avatar_url as brand_avatar
+      FROM collaborations c
+      LEFT JOIN opportunities o ON c.opportunity_id = o.id
+      JOIN users u ON c.brand_id = u.id
+      WHERE c.influencer_id = $1
+    `;
+    const params = [req.user.userId];
+    
+    if (status) {
+      query += ` AND c.status = $2`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY c.created_at DESC`;
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ success: true, collaborations: result.rows });
+  } catch (error) {
+    console.error('Influencer collaborations error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // ============================================
