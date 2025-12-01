@@ -829,6 +829,10 @@
                 if (response.ok) {
                     const data = await response.json();
                     socialAccounts = data.accounts || [];
+                    
+                    // Refresh stats for accounts that don't have them
+                    await refreshMissingStats();
+                    
                     displaySocialAccounts();
                     updateStats();
                 } else {
@@ -837,6 +841,28 @@
             } catch (error) {
                 console.error('Load social accounts error:', error);
                 container.innerHTML = '<p style="color: var(--text-secondary);">Failed to load social accounts</p>';
+            }
+        }
+        
+        // Refresh stats for accounts that don't have them cached
+        async function refreshMissingStats() {
+            for (let i = 0; i < socialAccounts.length; i++) {
+                const account = socialAccounts[i];
+                // If no stats or stats are empty, try to fetch them
+                if (!account.stats || !account.stats.followers) {
+                    try {
+                        const statsResponse = await fetch(`${API_BASE}/api/social/${account.platform}/stats`, {
+                            headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                        if (statsResponse.ok) {
+                            const statsData = await statsResponse.json();
+                            socialAccounts[i].stats = statsData.stats;
+                            console.log(`Refreshed ${account.platform} stats:`, statsData.stats);
+                        }
+                    } catch (err) {
+                        console.log(`Could not refresh ${account.platform} stats:`, err.message);
+                    }
+                }
             }
         }
 
