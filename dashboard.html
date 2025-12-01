@@ -198,6 +198,7 @@
             transition: all 0.3s ease;
             font-size: 1.2rem;
             color: var(--text-primary) !important;
+            position: relative;
         }
 
         .icon-btn:hover {
@@ -209,6 +210,22 @@
             display: block !important;
             opacity: 1 !important;
             font-size: 1.2rem;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--accent-red);
+            color: white;
+            font-size: 0.7rem;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
 
         .avatar {
@@ -496,6 +513,29 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-description {
+            margin-bottom: 1.5rem;
+        }
+
         /* Opportunities */
         .opportunities-grid {
             display: grid;
@@ -515,32 +555,133 @@
         .opportunity-card:hover {
             transform: translateY(-5px);
             border-color: var(--accent-teal);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .opportunity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .opportunity-type {
+            background: var(--accent-teal);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .opportunity-type.freelancer {
+            background: var(--accent-orange);
+        }
+
+        .opportunity-type.brand {
+            background: #8b5cf6;
+        }
+
+        .opportunity-deadline {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .opportunity-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .opportunity-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .opportunity-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .opportunity-budget {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .opportunity-industry {
+            background: var(--bg-secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .opportunity-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
         }
 
         /* Messages */
-        .messages-list {
-            max-height: 400px;
+        .messages-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1.5rem;
+            height: 500px;
+        }
+
+        .conversations-list {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .conversations-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .conversations-scroll {
+            flex: 1;
             overflow-y: auto;
         }
 
-        .message-item {
+        .conversation-item {
             display: flex;
             align-items: center;
             gap: 1rem;
             padding: 1rem;
-            border-radius: 0.5rem;
-            transition: all 0.3s ease;
             cursor: pointer;
-            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .message-item:hover {
+        .conversation-item:hover, .conversation-item.active {
             background: var(--bg-secondary);
         }
 
-        .message-avatar {
-            width: 40px;
-            height: 40px;
+        .conversation-item.unread {
+            background: rgba(20, 184, 166, 0.1);
+        }
+
+        .conversation-avatar {
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
@@ -550,27 +691,146 @@
             flex-shrink: 0;
         }
 
-        .message-content {
+        .conversation-info {
             flex: 1;
             min-width: 0;
         }
 
-        .message-sender {
+        .conversation-name {
             font-weight: 600;
             margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .message-text {
+        .conversation-time {
+            font-size: 0.75rem;
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-weight: normal;
+        }
+
+        .conversation-preview {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
+        .unread-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-teal);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .chat-area {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            background: var(--accent-teal);
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message.received {
+            align-self: flex-start;
+            background: var(--bg-secondary);
+            border-bottom-left-radius: 0.25rem;
+        }
+
         .message-time {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .chat-input-area {
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 1.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background: #0d9488;
+            transform: scale(1.05);
+        }
+
+        .no-chat-selected {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             color: var(--text-secondary);
+        }
+
+        .no-chat-selected-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
         }
 
         /* Responsive */
@@ -613,6 +873,19 @@
             .connected-accounts {
                 grid-template-columns: 1fr;
             }
+
+            .messages-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .conversations-list {
+                max-height: 300px;
+            }
+
+            .chat-area {
+                min-height: 400px;
+            }
         }
     </style>
 </head>
@@ -633,11 +906,13 @@
         </div>
         <div class="user-section">
             <span class="greeting" id="user-greeting">Welcome back!</span>
-            <div class="icon-btn" onclick="showNotifications()">
+            <div class="icon-btn" onclick="showNotifications()" id="notifications-btn">
                 <span>🔔</span>
+                <span class="notification-badge" id="notification-count" style="display: none;">0</span>
             </div>
-            <div class="icon-btn" onclick="showMessages()">
+            <div class="icon-btn" onclick="showPage('messages')" id="messages-btn">
                 <span>💬</span>
+                <span class="notification-badge" id="unread-messages-count" style="display: none;">0</span>
             </div>
             <div class="avatar" id="user-avatar" onclick="goToProfile()" title="View Profile">U</div>
             <button class="btn btn-ghost btn-sm" onclick="logout()" style="margin-left: 1rem;">Logout</button>
@@ -716,40 +991,23 @@
             <div class="card" style="margin-top: 2rem;">
                 <div class="card-header">
                     <h3 class="card-title">Recommended Opportunities</h3>
-                    <span>✨</span>
+                    <button class="btn btn-ghost btn-sm" onclick="showPage('opportunities')">View All →</button>
                 </div>
-                <div class="opportunities-grid" id="opportunities-grid">
+                <div class="opportunities-grid" id="dashboard-opportunities">
                     <div class="loading">
                         <div class="spinner"></div>
                         Loading opportunities...
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Opportunities Page -->
-        <div id="opportunities" class="page">
-            <div class="card">
+            <!-- Recent Messages Preview -->
+            <div class="card" style="margin-top: 2rem;">
                 <div class="card-header">
-                    <h3 class="card-title">All Opportunities</h3>
+                    <h3 class="card-title">Recent Messages</h3>
+                    <button class="btn btn-ghost btn-sm" onclick="showPage('messages')">View All →</button>
                 </div>
-                <div class="opportunities-grid" id="all-opportunities">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading opportunities...
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Messages Page -->
-        <div id="messages" class="page">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Messages</h3>
-                    <span id="message-count">0</span>
-                </div>
-                <div class="messages-list" id="messages-list">
+                <div id="dashboard-messages">
                     <div class="loading">
                         <div class="spinner"></div>
                         Loading messages...
@@ -758,7 +1016,70 @@
             </div>
         </div>
 
-        <!-- Settings Page (NEW!) -->
+        <!-- Opportunities Page -->
+        <div id="opportunities" class="page">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2>Opportunities</h2>
+                <button class="btn btn-primary" onclick="openCreateOpportunityModal()">
+                    ➕ Create Opportunity
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <select class="form-select" id="filter-type" onchange="filterOpportunities()" style="width: auto;">
+                        <option value="">All Types</option>
+                        <option value="influencer">Influencer</option>
+                        <option value="freelancer">Freelancer</option>
+                        <option value="brand">Brand</option>
+                    </select>
+                    <select class="form-select" id="filter-industry" onchange="filterOpportunities()" style="width: auto;">
+                        <option value="">All Industries</option>
+                        <option value="technology">Technology</option>
+                        <option value="fashion">Fashion</option>
+                        <option value="beauty">Beauty</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="sports">Sports</option>
+                        <option value="food">Food & Beverage</option>
+                    </select>
+                    <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <div class="opportunities-grid" id="all-opportunities">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading opportunities...
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Page -->
+        <div id="messages" class="page">
+            <h2 style="margin-bottom: 1.5rem;">Messages</h2>
+            <div class="messages-container">
+                <div class="conversations-list">
+                    <div class="conversations-header">
+                        Conversations
+                    </div>
+                    <div class="conversations-scroll" id="conversations-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-area" id="chat-area">
+                    <div class="no-chat-selected">
+                        <div class="no-chat-selected-icon">💬</div>
+                        <p>Select a conversation to start messaging</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
         <div id="settings" class="page">
             <h2 style="margin-bottom: 2rem;">Settings</h2>
             
@@ -786,7 +1107,7 @@
                     </div>
                     <div class="connect-form">
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            Connect your social media accounts securely using OAuth. This verifies account ownership and prevents fraud.
+                            Connect your social media accounts securely. This verifies account ownership and displays your real stats.
                         </p>
                         
                         <div style="display: grid; gap: 1rem;">
@@ -823,26 +1144,76 @@
                                     >
                                     <button class="btn btn-primary" onclick="connectBluesky()" style="background: linear-gradient(135deg, #0085ff 0%, #00a8ff 100%); white-space: nowrap;">
                                         <span style="font-size: 1.2rem;">🦋</span>
-                                        Connect Bluesky
+                                        Connect
                                     </button>
                                 </div>
-                                <small style="color: var(--text-secondary); font-size: 0.85rem; display: block; margin-top: 0.5rem;">
-                                    Enter your Bluesky handle (e.g., @username.bsky.social)
-                                </small>
-                            </div>
-                            
-                            <!-- Coming Soon platforms -->
-                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
-                                    <strong>Coming Soon:</strong>
-                                </p>
-                                <p style="color: var(--text-secondary); font-size: 0.85rem;">
-                                    YouTube • Twitch • LinkedIn • Reddit • Discord
-                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Opportunity Modal -->
+    <div class="modal" id="createOpportunityModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3>Create New Opportunity</h3>
+                <button onclick="closeCreateOpportunityModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <form id="create-opportunity-form" style="padding: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" class="form-input" id="opp-title" required placeholder="e.g., Social Media Campaign for Tech Startup">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input" id="opp-description" rows="4" placeholder="Describe the opportunity, requirements, and what you're looking for..."></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Type *</label>
+                        <select class="form-select" id="opp-type" required>
+                            <option value="influencer">Influencer</option>
+                            <option value="freelancer">Freelancer</option>
+                            <option value="brand">Brand</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Industry</label>
+                        <select class="form-select" id="opp-industry">
+                            <option value="">Select Industry</option>
+                            <option value="technology">Technology</option>
+                            <option value="fashion">Fashion</option>
+                            <option value="beauty">Beauty</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="sports">Sports</option>
+                            <option value="food">Food & Beverage</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Budget Range</label>
+                    <input type="text" class="form-input" id="opp-budget" placeholder="e.g., $500-$2000">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Create Opportunity</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeCreateOpportunityModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Opportunity Detail Modal -->
+    <div class="modal" id="opportunityDetailModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="detail-title">Opportunity Details</h3>
+                <button onclick="closeOpportunityDetailModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="opportunity-detail-content" style="padding: 1.5rem;">
+                <!-- Content will be populated dynamically -->
             </div>
         </div>
     </div>
@@ -853,6 +1224,9 @@
         let userType = null;
         let authToken = null;
         let connectedAccounts = [];
+        let allOpportunities = [];
+        let conversations = [];
+        let currentConversation = null;
 
         // API Base URL
         const API_BASE = 'https://formative-production.up.railway.app';
@@ -889,9 +1263,12 @@
                 authToken = token;
 
                 updateUserInterface();
-                await loadDashboardContent();
-                await loadOpportunities();
-                await loadMessages();
+                await Promise.all([
+                    loadDashboardContent(),
+                    loadOpportunities(),
+                    loadConversations(),
+                    loadNotifications()
+                ]);
 
             } catch (error) {
                 console.error('Dashboard initialization error:', error);
@@ -957,12 +1334,9 @@
             }
         }
 
-        // Load influencer statistics - UPDATED TO FETCH FROM DATABASE
+        // Load influencer statistics
         async function loadInfluencerStats() {
             try {
-                console.log('🔍 Fetching social accounts from database...');
-                
-                // Fetch connected accounts from database
                 const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
@@ -971,246 +1345,70 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('✅ Database response:', data);
                     
                     if (data.success && data.accounts && data.accounts.length > 0) {
                         connectedAccounts = data.accounts;
                         
-                        // Find Twitter account (priority)
-                        const twitterAccount = data.accounts.find(acc => acc.platform === 'twitter');
+                        // Calculate total followers from all accounts
+                        let totalFollowers = 0;
+                        let totalEngagement = 0;
+                        let accountCount = 0;
+                        let primaryPlatform = null;
                         
-                        // Find Bluesky account (fallback)
-                        const blueskyAccount = data.accounts.find(acc => acc.platform === 'bluesky');
+                        data.accounts.forEach(account => {
+                            if (account.stats && account.stats.followers) {
+                                totalFollowers += account.stats.followers;
+                                if (account.stats.engagementRate) {
+                                    totalEngagement += parseFloat(account.stats.engagementRate);
+                                    accountCount++;
+                                }
+                                if (!primaryPlatform) {
+                                    primaryPlatform = account;
+                                }
+                            }
+                        });
                         
-                        if (twitterAccount) {
-                            await displayTwitterStats(twitterAccount);
-                        } else if (blueskyAccount) {
-                            await displayBlueskyStats(blueskyAccount);
-                        } else {
-                            console.log('No Twitter or Bluesky account found in database');
-                            checkLocalStorageFallback();
-                        }
+                        const avgEngagement = accountCount > 0 ? (totalEngagement / accountCount).toFixed(1) : 0;
+                        
+                        // Update UI
+                        document.getElementById('total-followers').textContent = formatNumber(totalFollowers);
+                        document.getElementById('engagement-rate').textContent = avgEngagement + '%';
+                        
+                        const platformNames = data.accounts.map(a => a.platform).join(', ');
+                        document.getElementById('followers-source').innerHTML = `✓ From ${platformNames}`;
+                        document.getElementById('engagement-source').innerHTML = '✓ Live data';
+                        
+                        animateValue('active-campaigns', 0, 3, 800, (val) => Math.round(val).toString());
+                        animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + Math.round(val).toLocaleString());
                     } else {
-                        console.log('No accounts in database, checking localStorage fallback');
-                        checkLocalStorageFallback();
+                        showDemoStats();
                     }
                 } else {
-                    console.error('Failed to fetch accounts:', response.status);
-                    checkLocalStorageFallback();
+                    showDemoStats();
                 }
                 
             } catch (error) {
                 console.error('Error loading influencer stats:', error);
-                checkLocalStorageFallback();
-            }
-        }
-
-        // Check localStorage for social accounts (migration fallback)
-        function checkLocalStorageFallback() {
-            const socialAccountsStr = localStorage.getItem('socialAccounts');
-            
-            if (socialAccountsStr) {
-                try {
-                    const socialAccounts = JSON.parse(socialAccountsStr);
-                    const twitterUsername = socialAccounts.twitter || socialAccounts.x;
-                    
-                    if (twitterUsername) {
-                        console.log('📦 Found Twitter in localStorage, fetching stats...');
-                        fetchTwitterStatsFromAPI(twitterUsername);
-                        showNotification('💡 Tip: Your account will be migrated to database on next login', 'info');
-                    } else {
-                        showDemoStats();
-                    }
-                } catch (e) {
-                    console.error('Error parsing localStorage:', e);
-                    showDemoStats();
-                }
-            } else {
                 showDemoStats();
             }
         }
 
-        // Display Bluesky stats from database
-        async function displayBlueskyStats(blueskyAccount) {
-            console.log('Displaying Bluesky stats for:', blueskyAccount);
-            
-            // Check if we have cached stats
-            if (blueskyAccount.stats && blueskyAccount.stats.followers !== undefined) {
-                // Use cached stats
-                const stats = blueskyAccount.stats;
-                updateStatsUI(stats, blueskyAccount.username, blueskyAccount.last_synced_at);
-                
-                // Check if stats are stale (older than 24 hours)
-                const hoursSinceSync = blueskyAccount.last_synced_at 
-                    ? (Date.now() - new Date(blueskyAccount.last_synced_at)) / (1000 * 60 * 60)
-                    : 999;
-                
-                if (hoursSinceSync > 24) {
-                    console.log('Bluesky stats are stale, refreshing in background...');
-                    fetchBlueskyStatsFromAPI(blueskyAccount.username, true);
-                }
-            } else {
-                // No cached stats, fetch from API
-                console.log('No cached Bluesky stats, fetching from API...');
-                await fetchBlueskyStatsFromAPI(blueskyAccount.username);
-            }
-        }
-
-        // Fetch Bluesky stats from API
-        async function fetchBlueskyStatsFromAPI(username, background = false) {
-            try {
-                if (!background) {
-                    showNotification('Fetching Bluesky stats...', 'info');
-                }
-                
-                const response = await fetch(`${API_BASE}/api/social/bluesky/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✅ Bluesky stats received:', data);
-                    
-                    updateStatsUI(data.stats, data.username, data.fetchedAt);
-                    
-                    if (!background) {
-                        showNotification('✅ Bluesky stats updated!', 'success');
-                    }
-                } else {
-                    const error = await response.json();
-                    console.error('Failed to fetch Bluesky stats:', error);
-                    if (!background) {
-                        showNotification('Failed to fetch Bluesky stats', 'error');
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching Bluesky stats:', error);
-                if (!background) {
-                    showNotification('Failed to fetch Bluesky stats', 'error');
-                }
-            }
-        }
-
-        // Display Twitter stats from database
-        async function displayTwitterStats(twitterAccount) {
-            console.log('Displaying stats for:', twitterAccount);
-            
-            // Check if we have cached stats
-            if (twitterAccount.stats && twitterAccount.stats.followers) {
-                // Use cached stats
-                const stats = twitterAccount.stats;
-                updateStatsUI(stats, twitterAccount.username, twitterAccount.last_synced_at);
-                
-                // Check if stats are stale (older than 24 hours)
-                const hoursSinceSync = twitterAccount.last_synced_at 
-                    ? (Date.now() - new Date(twitterAccount.last_synced_at)) / (1000 * 60 * 60)
-                    : 999;
-                
-                if (hoursSinceSync > 24) {
-                    console.log('Stats are stale, refreshing in background...');
-                    fetchTwitterStatsFromAPI(twitterAccount.username, true);
-                }
-            } else {
-                // No cached stats, fetch from API
-                console.log('No cached stats, fetching from API...');
-                await fetchTwitterStatsFromAPI(twitterAccount.username);
-            }
-        }
-
-        // Fetch Twitter stats from API
-        async function fetchTwitterStatsFromAPI(username, background = false) {
-            if (!background) {
-                document.getElementById('total-followers').textContent = 'Loading...';
-                document.getElementById('engagement-rate').textContent = 'Loading...';
-            }
-            
-            try {
-                const response = await fetch(
-                    `${API_BASE}/api/social/twitter/stats?username=${encodeURIComponent(username)}`,
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    }
-                );
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✅ Twitter API response:', data);
-                    
-                    if (data.success && data.stats) {
-                        updateStatsUI(data.stats, data.username, new Date().toISOString());
-                        
-                        if (!background) {
-                            showNotification('✅ Loaded real stats from @' + data.username, 'success');
-                        }
-                    }
-                } else {
-                    throw new Error('Failed to fetch Twitter stats');
-                }
-            } catch (error) {
-                console.error('Error fetching Twitter stats:', error);
-                if (!background) {
-                    showNotification('Could not load Twitter stats', 'error');
-                    showDemoStats();
-                }
-            }
-        }
-
-        // Update stats UI
-        function updateStatsUI(stats, username, syncedAt) {
-            // Format follower count
-            const followers = stats.followers;
-            let followersFormatted;
-            if (followers >= 1000000) {
-                followersFormatted = (followers / 1000000).toFixed(1) + 'M';
-            } else if (followers >= 1000) {
-                followersFormatted = (followers / 1000).toFixed(1) + 'K';
-            } else {
-                followersFormatted = followers.toString();
-            }
-            
-            // Update UI
-            document.getElementById('total-followers').textContent = followersFormatted;
-            document.getElementById('engagement-rate').textContent = stats.engagementRate + '%';
-            
-            // Show source and last updated time
-            const timeAgo = getTimeAgo(syncedAt);
-            document.getElementById('followers-source').innerHTML = `✓ @${username.replace('@', '')} • ${timeAgo}`;
-            document.getElementById('engagement-source').innerHTML = '✓ Live from Twitter';
-            
-            // Animate other stats
-            animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
-            animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
-        }
-
-        // Get time ago string
-        function getTimeAgo(timestamp) {
-            if (!timestamp) return 'just now';
-            
-            const seconds = Math.floor((new Date() - new Date(timestamp)) / 1000);
-            
-            if (seconds < 60) return 'just now';
-            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
-            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
-            return Math.floor(seconds / 86400) + 'd ago';
+        // Format number (e.g., 1000 -> 1K)
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
         }
 
         // Show demo stats as fallback
         function showDemoStats() {
-            animateValue('total-followers', 0, 12500, 1500, (val) => {
-                if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
-                return val.toString();
-            });
+            animateValue('total-followers', 0, 0, 500, () => '—');
+            animateValue('engagement-rate', 0, 0, 500, () => '—');
+            animateValue('active-campaigns', 0, 0, 500, () => '0');
+            animateValue('monthly-earnings', 0, 0, 500, () => '$0');
             
-            animateValue('engagement-rate', 0, 8.7, 1200, (val) => val.toFixed(1) + '%');
-            animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
-            animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
-            
-            document.getElementById('followers-source').innerHTML = '📊 Demo data - Connect accounts in Settings';
-            document.getElementById('engagement-source').innerHTML = '📊 Demo data';
+            document.getElementById('followers-source').innerHTML = '📊 Connect accounts in Settings';
+            document.getElementById('engagement-source').innerHTML = '';
         }
         
         // Animate number values
@@ -1248,112 +1446,480 @@
             console.log('Loading freelancer data...');
         }
 
-        // Load opportunities
+        // ============================================
+        // OPPORTUNITIES - REAL API INTEGRATION
+        // ============================================
+
         async function loadOpportunities() {
-            // For now, show demo opportunities
-            displayDemoOpportunities();
-        }
-
-        // Display demo opportunities
-        function displayDemoOpportunities() {
-            let opportunities = [
-                {
-                    id: 1,
-                    type: 'Brand Campaign',
-                    title: 'Sustainable Fashion Partnership',
-                    description: 'Partner with leading eco-friendly fashion brand for 3-month campaign.',
-                    company: 'EcoWear',
-                    budget: '$3,500 - $6,000',
-                    deadline: '2 weeks'
-                },
-                {
-                    id: 2,
-                    type: 'Product Launch',
-                    title: 'Tech Product Unboxing Series',
-                    description: 'Create engaging unboxing and review content for new smart home devices.',
-                    company: 'SmartHome Inc',
-                    budget: '$2,000 - $4,500',
-                    deadline: '1 week'
+            const dashboardGrid = document.getElementById('dashboard-opportunities');
+            const allGrid = document.getElementById('all-opportunities');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/opportunities`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    allOpportunities = data.opportunities || [];
+                    
+                    if (allOpportunities.length > 0) {
+                        // Show first 3 on dashboard
+                        displayOpportunities(allOpportunities.slice(0, 3), 'dashboard-opportunities');
+                        // Show all on opportunities page
+                        displayOpportunities(allOpportunities, 'all-opportunities');
+                    } else {
+                        showEmptyOpportunities(dashboardGrid);
+                        showEmptyOpportunities(allGrid);
+                    }
+                } else {
+                    throw new Error('Failed to fetch opportunities');
                 }
-            ];
-
-            displayOpportunities(opportunities, 'opportunities-grid');
+            } catch (error) {
+                console.error('Error loading opportunities:', error);
+                showEmptyOpportunities(dashboardGrid);
+                showEmptyOpportunities(allGrid);
+            }
         }
 
-        // Display opportunities
         function displayOpportunities(opportunities, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
             
-            container.innerHTML = '';
+            if (opportunities.length === 0) {
+                showEmptyOpportunities(container);
+                return;
+            }
 
-            opportunities.forEach(opp => {
-                const card = document.createElement('div');
-                card.className = 'opportunity-card';
-                card.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <span style="background: var(--accent-teal); color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">${opp.type}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.8rem;">${opp.deadline}</span>
+            container.innerHTML = opportunities.map(opp => `
+                <div class="opportunity-card" onclick="viewOpportunity(${opp.id})">
+                    <div class="opportunity-header">
+                        <span class="opportunity-type ${opp.type}">${opp.type}</span>
+                        ${opp.industry ? `<span class="opportunity-industry">${opp.industry}</span>` : ''}
                     </div>
-                    <div style="font-weight: 600; margin-bottom: 0.5rem;">${opp.title}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">${opp.description}</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-secondary);">
-                        <span>${opp.company}</span>
-                        <span style="color: var(--accent-green); font-weight: 600;">${opp.budget}</span>
+                    <div class="opportunity-title">${escapeHtml(opp.title)}</div>
+                    <div class="opportunity-description">${escapeHtml(opp.description || 'No description provided')}</div>
+                    <div class="opportunity-footer">
+                        <span class="opportunity-budget">${opp.budget_range || 'Budget TBD'}</span>
+                        <div class="opportunity-stats">
+                            <span>👁️ ${opp.views_count || 0}</span>
+                            <span>📝 ${opp.applications_count || 0}</span>
+                        </div>
                     </div>
-                `;
-                container.appendChild(card);
-            });
+                </div>
+            `).join('');
         }
 
-        // Load messages
-        async function loadMessages() {
-            displayDemoMessages();
+        function showEmptyOpportunities(container) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">No opportunities yet</div>
+                    <div class="empty-state-description">Be the first to create an opportunity!</div>
+                    <button class="btn btn-primary" onclick="openCreateOpportunityModal()">
+                        ➕ Create Opportunity
+                    </button>
+                </div>
+            `;
         }
 
-        // Display demo messages
-        function displayDemoMessages() {
-            const messages = [
-                {
-                    id: 1,
-                    sender: 'EcoWear Team',
-                    text: 'We loved your latest sustainable fashion post!',
-                    time: '2 hours ago',
-                    avatar: 'EW'
+        function filterOpportunities() {
+            const typeFilter = document.getElementById('filter-type').value;
+            const industryFilter = document.getElementById('filter-industry').value;
+            
+            let filtered = allOpportunities;
+            
+            if (typeFilter) {
+                filtered = filtered.filter(opp => opp.type === typeFilter);
+            }
+            
+            if (industryFilter) {
+                filtered = filtered.filter(opp => opp.industry === industryFilter);
+            }
+            
+            displayOpportunities(filtered, 'all-opportunities');
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-industry').value = '';
+            displayOpportunities(allOpportunities, 'all-opportunities');
+        }
+
+        async function viewOpportunity(id) {
+            const opp = allOpportunities.find(o => o.id === id);
+            if (!opp) return;
+            
+            const modal = document.getElementById('opportunityDetailModal');
+            const content = document.getElementById('opportunity-detail-content');
+            
+            content.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <span class="opportunity-type ${opp.type}" style="margin-bottom: 0.5rem; display: inline-block;">${opp.type}</span>
+                    ${opp.industry ? `<span class="opportunity-industry" style="margin-left: 0.5rem;">${opp.industry}</span>` : ''}
+                </div>
+                <h2 style="margin-bottom: 1rem;">${escapeHtml(opp.title)}</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
+                    ${escapeHtml(opp.description || 'No description provided')}
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">Budget</div>
+                        <div style="font-weight: 600; color: var(--accent-green);">${opp.budget_range || 'TBD'}</div>
+                    </div>
+                    <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">Applications</div>
+                        <div style="font-weight: 600;">${opp.applications_count || 0}</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" onclick="applyToOpportunity(${opp.id})" style="flex: 1;">
+                        Apply Now
+                    </button>
+                    <button class="btn btn-ghost" onclick="closeOpportunityDetailModal()">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        async function applyToOpportunity(id) {
+            try {
+                const response = await fetch(`${API_BASE}/api/opportunities/${id}/apply`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'I am interested in this opportunity!'
+                    })
+                });
+                
+                if (response.ok) {
+                    showNotification('Application submitted successfully!', 'success');
+                    closeOpportunityDetailModal();
+                    loadOpportunities(); // Refresh to update counts
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to apply', 'error');
                 }
-            ];
-
-            const container = document.getElementById('messages-list');
-            const countElement = document.getElementById('message-count');
-            
-            if (!container) return;
-            
-            container.innerHTML = '';
-            if (countElement) countElement.textContent = messages.length;
-
-            messages.forEach(message => {
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message-item';
-                messageElement.innerHTML = `
-                    <div class="message-avatar">${message.avatar}</div>
-                    <div class="message-content">
-                        <div class="message-sender">${message.sender}</div>
-                        <div class="message-text">${message.text}</div>
-                    </div>
-                    <div class="message-time">${message.time}</div>
-                `;
-                container.appendChild(messageElement);
-            });
+            } catch (error) {
+                console.error('Apply error:', error);
+                showNotification('Failed to submit application', 'error');
+            }
         }
 
-        // SETTINGS PAGE FUNCTIONS
+        function openCreateOpportunityModal() {
+            document.getElementById('createOpportunityModal').style.display = 'flex';
+        }
 
-        // Initiate OAuth flow
-        function initiateOAuth(platform) {
-            // Store return page in sessionStorage
-            sessionStorage.setItem('oauthReturn', 'settings');
+        function closeCreateOpportunityModal() {
+            document.getElementById('createOpportunityModal').style.display = 'none';
+            document.getElementById('create-opportunity-form').reset();
+        }
+
+        function closeOpportunityDetailModal() {
+            document.getElementById('opportunityDetailModal').style.display = 'none';
+        }
+
+        // Create opportunity form handler
+        document.getElementById('create-opportunity-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            // Get auth token from localStorage
+            const opportunity = {
+                title: document.getElementById('opp-title').value,
+                description: document.getElementById('opp-description').value,
+                type: document.getElementById('opp-type').value,
+                industry: document.getElementById('opp-industry').value,
+                budgetRange: document.getElementById('opp-budget').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/opportunities`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(opportunity)
+                });
+                
+                if (response.ok) {
+                    showNotification('Opportunity created successfully!', 'success');
+                    closeCreateOpportunityModal();
+                    loadOpportunities();
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to create opportunity', 'error');
+                }
+            } catch (error) {
+                console.error('Create opportunity error:', error);
+                showNotification('Failed to create opportunity', 'error');
+            }
+        });
+
+        // ============================================
+        // MESSAGES - REAL API INTEGRATION
+        // ============================================
+
+        async function loadConversations() {
+            const container = document.getElementById('conversations-list');
+            const dashboardMessages = document.getElementById('dashboard-messages');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages/conversations`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    conversations = data.conversations || [];
+                    
+                    if (conversations.length > 0) {
+                        displayConversations(conversations);
+                        displayDashboardMessages(conversations.slice(0, 3));
+                        updateUnreadCount();
+                    } else {
+                        showEmptyConversations(container);
+                        showEmptyDashboardMessages(dashboardMessages);
+                    }
+                } else {
+                    // API might not exist yet, show empty state
+                    showEmptyConversations(container);
+                    showEmptyDashboardMessages(dashboardMessages);
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                showEmptyConversations(container);
+                showEmptyDashboardMessages(dashboardMessages);
+            }
+        }
+
+        function displayConversations(convos) {
+            const container = document.getElementById('conversations-list');
+            
+            container.innerHTML = convos.map(convo => `
+                <div class="conversation-item ${convo.unread ? 'unread' : ''} ${currentConversation?.id === convo.id ? 'active' : ''}" 
+                     onclick="selectConversation(${convo.id})">
+                    <div class="conversation-avatar">${getInitials(convo.other_user_name)}</div>
+                    <div class="conversation-info">
+                        <div class="conversation-name">
+                            ${escapeHtml(convo.other_user_name)}
+                            <span class="conversation-time">${formatTime(convo.last_message_at)}</span>
+                        </div>
+                        <div class="conversation-preview">${escapeHtml(convo.last_message_preview || 'No messages yet')}</div>
+                    </div>
+                    ${convo.unread ? '<div class="unread-dot"></div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function displayDashboardMessages(convos) {
+            const container = document.getElementById('dashboard-messages');
+            
+            if (convos.length === 0) {
+                showEmptyDashboardMessages(container);
+                return;
+            }
+            
+            container.innerHTML = convos.map(convo => `
+                <div class="conversation-item" onclick="showPage('messages'); selectConversation(${convo.id})">
+                    <div class="conversation-avatar">${getInitials(convo.other_user_name)}</div>
+                    <div class="conversation-info">
+                        <div class="conversation-name">
+                            ${escapeHtml(convo.other_user_name)}
+                            <span class="conversation-time">${formatTime(convo.last_message_at)}</span>
+                        </div>
+                        <div class="conversation-preview">${escapeHtml(convo.last_message_preview || 'No messages yet')}</div>
+                    </div>
+                    ${convo.unread ? '<div class="unread-dot"></div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function showEmptyConversations(container) {
+            container.innerHTML = `
+                <div class="empty-state" style="padding: 2rem;">
+                    <div class="empty-state-icon">💬</div>
+                    <div class="empty-state-title">No conversations</div>
+                    <div class="empty-state-description">Start a conversation by applying to an opportunity</div>
+                </div>
+            `;
+        }
+
+        function showEmptyDashboardMessages(container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <div class="empty-state-title">No messages yet</div>
+                    <div class="empty-state-description">Your conversations will appear here</div>
+                </div>
+            `;
+        }
+
+        async function selectConversation(conversationId) {
+            currentConversation = conversations.find(c => c.id === conversationId);
+            if (!currentConversation) return;
+            
+            // Update UI to show active conversation
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            event.currentTarget.classList.remove('unread');
+            
+            // Load messages for this conversation
+            await loadMessages(conversationId);
+        }
+
+        async function loadMessages(conversationId) {
+            const chatArea = document.getElementById('chat-area');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages/conversation/${conversationId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayChatArea(data.messages || []);
+                } else {
+                    displayChatArea([]);
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                displayChatArea([]);
+            }
+        }
+
+        function displayChatArea(messages) {
+            const chatArea = document.getElementById('chat-area');
+            
+            chatArea.innerHTML = `
+                <div class="chat-header">
+                    <div class="conversation-avatar">${getInitials(currentConversation.other_user_name)}</div>
+                    <div>
+                        <div style="font-weight: 600;">${escapeHtml(currentConversation.other_user_name)}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">${currentConversation.other_user_type || 'User'}</div>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    ${messages.length > 0 ? messages.map(msg => `
+                        <div class="message ${msg.sender_id === currentUser.id ? 'sent' : 'received'}">
+                            ${escapeHtml(msg.content)}
+                            <div class="message-time">${formatTime(msg.created_at)}</div>
+                        </div>
+                    `).join('') : `
+                        <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                            No messages yet. Say hello! 👋
+                        </div>
+                    `}
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" id="message-input" placeholder="Type a message..." onkeypress="handleMessageKeypress(event)">
+                    <button class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+            `;
+            
+            // Scroll to bottom
+            const messagesContainer = document.getElementById('chat-messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleMessageKeypress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            
+            if (!content || !currentConversation) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        receiverId: currentConversation.other_user_id,
+                        content: content
+                    })
+                });
+                
+                if (response.ok) {
+                    input.value = '';
+                    // Reload messages to show the new one
+                    await loadMessages(currentConversation.id);
+                } else {
+                    showNotification('Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Send message error:', error);
+                showNotification('Failed to send message', 'error');
+            }
+        }
+
+        function updateUnreadCount() {
+            const unreadCount = conversations.filter(c => c.unread).length;
+            const badge = document.getElementById('unread-messages-count');
+            
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // ============================================
+        // NOTIFICATIONS
+        // ============================================
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch(`${API_BASE}/api/notifications`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const unreadCount = data.unreadCount || 0;
+                    
+                    const badge = document.getElementById('notification-count');
+                    if (unreadCount > 0) {
+                        badge.textContent = unreadCount;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        function showNotifications() {
+            showNotification('Notifications panel coming soon!', 'info');
+        }
+
+        // ============================================
+        // SETTINGS & SOCIAL ACCOUNTS
+        // ============================================
+
+        function initiateOAuth(platform) {
+            sessionStorage.setItem('oauthReturn', 'settings');
             const token = localStorage.getItem('authToken');
             
             if (!token) {
@@ -1361,11 +1927,9 @@
                 return;
             }
             
-            // Redirect to OAuth authorization endpoint with token as query parameter
             window.location.href = `${API_BASE}/api/oauth/${platform}/authorize?token=${encodeURIComponent(token)}`;
         }
 
-        // Connect Bluesky account (simple verification)
         async function connectBluesky() {
             const handleInput = document.getElementById('bluesky-handle');
             const handle = handleInput.value.trim();
@@ -1392,14 +1956,8 @@
                 if (response.ok) {
                     showNotification(`✅ Bluesky account ${data.username} connected!`, 'success');
                     handleInput.value = '';
-                    
-                    // Reload connected accounts
                     await loadConnectedAccounts();
-                    
-                    // If on influencer dashboard, refresh stats
-                    if (userType === 'influencer') {
-                        await loadInfluencerStats();
-                    }
+                    await loadInfluencerStats();
                 } else {
                     showNotification(data.error || 'Failed to connect Bluesky account', 'error');
                 }
@@ -1409,7 +1967,6 @@
             }
         }
 
-        // Check for OAuth callback parameters on page load
         function checkOAuthCallback() {
             const urlParams = new URLSearchParams(window.location.search);
             const oauthStatus = urlParams.get('oauth');
@@ -1418,38 +1975,24 @@
             
             if (oauthStatus === 'success' && oauthPlatform) {
                 showNotification(`✅ ${oauthPlatform.charAt(0).toUpperCase() + oauthPlatform.slice(1)} connected successfully!`, 'success');
-                
-                // Show settings page
                 showPage('settings');
-                
-                // Clean URL
                 window.history.replaceState({}, document.title, window.location.pathname);
-                
-                // Reload accounts
                 setTimeout(() => {
                     loadConnectedAccounts();
                     loadInfluencerStats();
                 }, 1000);
             } else if (oauthError) {
                 let errorMessage = 'OAuth connection failed';
-                
-                if (oauthError === 'oauth_denied') {
-                    errorMessage = 'You cancelled the authorization';
-                } else if (oauthError === 'invalid_state') {
-                    errorMessage = 'Invalid OAuth state. Please try again';
-                }
+                if (oauthError === 'oauth_denied') errorMessage = 'You cancelled the authorization';
+                else if (oauthError === 'invalid_state') errorMessage = 'Invalid OAuth state. Please try again';
+                else if (oauthError === 'oauth_not_configured') errorMessage = `${oauthPlatform} OAuth is not configured yet`;
                 
                 showNotification(errorMessage, 'error');
-                
-                // Show settings page
                 showPage('settings');
-                
-                // Clean URL
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 
-        // Load connected accounts for settings page
         async function loadConnectedAccounts() {
             const container = document.getElementById('connected-accounts');
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading accounts...</div>';
@@ -1464,7 +2007,7 @@
                     connectedAccounts = data.accounts || [];
                     displayConnectedAccounts();
                 } else {
-                    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet. Connect your first account below!</p>';
+                    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet.</p>';
                 }
             } catch (error) {
                 console.error('Error loading accounts:', error);
@@ -1472,154 +2015,91 @@
             }
         }
 
-        // Display connected accounts
         function displayConnectedAccounts() {
             const container = document.getElementById('connected-accounts');
-            container.innerHTML = '';
             
-            // Define all supported platforms
-            const allPlatforms = [
-                { id: 'twitter', name: 'Twitter / X', icon: '𝕏' },
-                { id: 'tiktok', name: 'TikTok', icon: '🎵' },
-                { id: 'youtube', name: 'YouTube', icon: '▶️' },
-                { id: 'instagram', name: 'Instagram', icon: '📷' },
-                { id: 'bluesky', name: 'Bluesky', icon: '🦋' },
-                { id: 'twitch', name: 'Twitch', icon: '🎮' },
-                { id: 'reddit', name: 'Reddit', icon: '👽' },
-                { id: 'discord', name: 'Discord', icon: '💬' }
-            ];
+            if (connectedAccounts.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet. Connect your first account below!</p>';
+                return;
+            }
             
-            allPlatforms.forEach(platform => {
-                const account = connectedAccounts.find(acc => acc.platform === platform.id);
-                const card = createAccountCard(platform, account);
-                container.appendChild(card);
-            });
-        }
-
-        // Create account card
-        function createAccountCard(platform, account) {
-            const card = document.createElement('div');
-            const isConnected = !!account;
-            card.className = `account-card ${isConnected ? 'connected' : 'disconnected'}`;
-            
-            let content = `
-                <div class="account-header">
-                    <div class="platform-name">
-                        <span>${platform.icon}</span>
-                        ${platform.name}
+            container.innerHTML = connectedAccounts.map(account => `
+                <div class="account-card connected">
+                    <div class="account-header">
+                        <div class="platform-name">
+                            <span>${getPlatformIcon(account.platform)}</span>
+                            ${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}
+                        </div>
+                        <span class="status-badge status-connected">✓ Connected</span>
                     </div>
-                    <span class="status-badge ${isConnected ? 'status-connected' : 'status-disconnected'}">
-                        ${isConnected ? '✓ Connected' : 'Not Connected'}
-                    </span>
-                </div>
-            `;
-            
-            if (isConnected) {
-                content += `
                     <div class="account-details">
                         <div class="account-username">${account.username}</div>
-                `;
-                
-                if (account.stats) {
-                    content += `
-                        <div class="account-stats">
-                            <div class="mini-stat">
-                                <div class="mini-stat-value">${formatNumber(account.stats.followers)}</div>
-                                <div class="mini-stat-label">Followers</div>
+                        ${account.stats ? `
+                            <div class="account-stats">
+                                <div class="mini-stat">
+                                    <div class="mini-stat-value">${formatNumber(account.stats.followers || 0)}</div>
+                                    <div class="mini-stat-label">Followers</div>
+                                </div>
+                                <div class="mini-stat">
+                                    <div class="mini-stat-value">${account.stats.engagementRate || 0}%</div>
+                                    <div class="mini-stat-label">Engagement</div>
+                                </div>
                             </div>
-                            <div class="mini-stat">
-                                <div class="mini-stat-value">${account.stats.engagementRate}%</div>
-                                <div class="mini-stat-label">Engagement</div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    if (account.last_synced_at) {
-                        content += `<div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.5rem;">Updated ${getTimeAgo(account.last_synced_at)}</div>`;
-                    }
-                }
-                
-                content += `
+                        ` : ''}
                     </div>
                     <div class="account-actions">
-                        <button class="btn btn-primary btn-sm" onclick="refreshAccountStats('${platform.id}', '${account.username}')">
+                        <button class="btn btn-primary btn-sm" onclick="refreshAccountStats('${account.platform}')">
                             🔄 Refresh
                         </button>
-                        <button class="btn btn-danger btn-sm" onclick="disconnectAccount('${platform.id}')">
+                        <button class="btn btn-danger btn-sm" onclick="disconnectAccount('${account.platform}')">
                             Disconnect
                         </button>
                     </div>
-                `;
-            } else {
-                content += `
-                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 1rem 0;">
-                        Connect your ${platform.name} account to track your stats and growth.
-                    </p>
-                `;
-            }
-            
-            card.innerHTML = content;
-            return card;
+                </div>
+            `).join('');
         }
 
-        // Format number (e.g., 1000 -> 1K)
-        function formatNumber(num) {
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-            return num.toString();
+        function getPlatformIcon(platform) {
+            const icons = {
+                twitter: '𝕏',
+                instagram: '📷',
+                tiktok: '🎵',
+                youtube: '▶️',
+                bluesky: '🦋',
+                twitch: '🎮'
+            };
+            return icons[platform] || '🔗';
         }
 
-        // Connect new account
-        async function connectNewAccount() {
-            const platform = document.getElementById('new-platform').value;
-            const username = document.getElementById('new-username').value.trim();
-            
-            if (!platform) {
-                showNotification('Please select a platform', 'error');
-                return;
-            }
-            
-            if (!username) {
-                showNotification('Please enter a username', 'error');
-                return;
-            }
+        async function refreshAccountStats(platform) {
+            showNotification(`Refreshing ${platform} stats...`, 'info');
             
             try {
-                const response = await fetch(`${API_BASE}/api/social/connect/${platform}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username })
+                const response = await fetch(`${API_BASE}/api/social/${platform}/stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    showNotification(`✅ ${platform} account connected!`, 'success');
-                    
-                    // Clear form
-                    document.getElementById('new-platform').value = '';
-                    document.getElementById('new-username').value = '';
-                    
-                    // Reload accounts
+                    showNotification(`✅ ${platform} stats updated!`, 'success');
                     await loadConnectedAccounts();
-                    
-                    // If Twitter, refresh dashboard stats
-                    if (platform === 'twitter') {
-                        await loadInfluencerStats();
-                    }
+                    await loadInfluencerStats();
                 } else {
-                    const error = await response.json();
-                    showNotification('Failed to connect account: ' + (error.message || 'Unknown error'), 'error');
+                    showNotification(`Failed to refresh ${platform} stats`, 'error');
                 }
             } catch (error) {
-                console.error('Error connecting account:', error);
-                showNotification('Failed to connect account', 'error');
+                console.error('Error refreshing stats:', error);
+                showNotification('Failed to refresh stats', 'error');
             }
         }
 
-        // Disconnect account
+        async function refreshAllStats() {
+            showNotification('Refreshing all stats...', 'info');
+            
+            for (const account of connectedAccounts) {
+                await refreshAccountStats(account.platform);
+            }
+        }
+
         async function disconnectAccount(platform) {
             if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) {
                 return;
@@ -1634,11 +2114,7 @@
                 if (response.ok) {
                     showNotification(`${platform} account disconnected`, 'success');
                     await loadConnectedAccounts();
-                    
-                    // If Twitter, reload dashboard
-                    if (platform === 'twitter') {
-                        await loadInfluencerStats();
-                    }
+                    await loadInfluencerStats();
                 } else {
                     showNotification('Failed to disconnect account', 'error');
                 }
@@ -1648,92 +2124,44 @@
             }
         }
 
-        // Refresh account stats
-        async function refreshAccountStats(platform, username) {
-            showNotification(`Refreshing ${platform} stats...`, 'info');
-            
-            try {
-                const response = await fetch(
-                    `${API_BASE}/api/social/${platform}/stats?username=${encodeURIComponent(username)}`,
-                    {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    }
-                );
-                
-                if (response.ok) {
-                    showNotification(`✅ ${platform} stats updated!`, 'success');
-                    await loadConnectedAccounts();
-                    
-                    // Also update dashboard if it's Twitter or Bluesky
-                    if (platform === 'twitter' || platform === 'bluesky') {
-                        await loadInfluencerStats();
-                    }
-                } else {
-                    showNotification(`Failed to refresh ${platform} stats`, 'error');
-                }
-            } catch (error) {
-                console.error('Error refreshing stats:', error);
-                showNotification('Failed to refresh stats', 'error');
-            }
-        }
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
 
-        // Refresh all stats
-        async function refreshAllStats() {
-            showNotification('Refreshing all stats...', 'info');
-            
-            for (const account of connectedAccounts) {
-                try {
-                    await refreshAccountStats(account.platform, account.username);
-                } catch (error) {
-                    console.error(`Failed to refresh ${account.platform}:`, error);
-                }
-            }
-            
-            showNotification('✅ All stats refreshed!', 'success');
-        }
-
-        // Page navigation
         function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             
             document.getElementById(pageId).classList.add('active');
-            event.target.classList.add('active');
+            
+            // Find and activate the corresponding tab
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                if (tab.textContent.toLowerCase().includes(pageId)) {
+                    tab.classList.add('active');
+                }
+            });
 
             const logoText = document.getElementById('logo-text');
-            if (pageId === 'opportunities') {
-                logoText.textContent = 'Opportunities';
-            } else if (pageId === 'messages') {
-                logoText.textContent = 'Messages';
-            } else if (pageId === 'settings') {
-                logoText.textContent = 'Settings';
+            const pageNames = {
+                'dashboard': 'Formative',
+                'opportunities': 'Opportunities',
+                'messages': 'Messages',
+                'settings': 'Settings'
+            };
+            logoText.textContent = pageNames[pageId] || 'Formative';
+
+            // Load page-specific data
+            if (pageId === 'settings') {
                 loadConnectedAccounts();
-            } else {
-                logoText.textContent = 'Formative';
+            } else if (pageId === 'messages') {
+                loadConversations();
             }
         }
 
-        // Show notifications
-        function showNotifications() {
-            alert('You have 3 new notifications');
-        }
-
-        // Show messages
-        function showMessages() {
-            showPage('messages');
-        }
-
-        // Go to profile
         function goToProfile() {
-            showPage('settings');
+            window.location.href = 'profile.html';
         }
         
-        // Logout function
         function logout() {
             if (confirm('Are you sure you want to logout?')) {
                 localStorage.clear();
@@ -1742,10 +2170,33 @@
             }
         }
 
-        // Notification system
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h';
+            if (diff < 604800000) return Math.floor(diff / 86400000) + 'd';
+            return date.toLocaleDateString();
+        }
+
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
             notification.style.cssText = `
                 position: fixed;
                 top: 20px;
