@@ -116,6 +116,12 @@
             box-shadow: 0 5px 15px rgba(20, 184, 166, 0.3);
         }
 
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         /* Container */
         .container {
             max-width: 1200px;
@@ -214,6 +220,7 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex-wrap: wrap;
         }
 
         .verified-badge {
@@ -225,6 +232,10 @@
             display: flex;
             align-items: center;
             gap: 0.25rem;
+        }
+
+        .verified-badge.unverified {
+            background: var(--border-color);
         }
 
         .profile-meta {
@@ -252,6 +263,7 @@
             display: flex;
             gap: 1rem;
             margin-top: 1.5rem;
+            flex-wrap: wrap;
         }
 
         /* Edit Mode */
@@ -379,6 +391,12 @@
             font-size: 0.9rem;
         }
 
+        .stat-source {
+            color: var(--accent-teal);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
         /* Social Links */
         .social-links {
             display: grid;
@@ -397,6 +415,10 @@
             transition: all 0.3s ease;
         }
 
+        .social-link.connected {
+            border-color: var(--accent-green);
+        }
+
         .social-link:hover {
             border-color: var(--accent-teal);
             transform: translateX(5px);
@@ -412,44 +434,18 @@
             font-size: 1.5rem;
         }
 
-        .social-icon.instagram {
-            background: linear-gradient(135deg, #E4405F 0%, #C13584 100%);
-        }
+        .social-icon.instagram { background: linear-gradient(135deg, #E4405F 0%, #C13584 100%); }
+        .social-icon.tiktok { background: linear-gradient(135deg, #000 0%, #333 100%); }
+        .social-icon.youtube { background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%); }
+        .social-icon.twitter { background: linear-gradient(135deg, #1DA1F2 0%, #0e7490 100%); }
+        .social-icon.bluesky { background: linear-gradient(135deg, #0085ff 0%, #00a8ff 100%); }
 
-        .social-icon.tiktok {
-            background: linear-gradient(135deg, #000 0%, #333 100%);
-        }
-
-        .social-icon.youtube {
-            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
-        }
-
-        .social-icon.twitter {
-            background: linear-gradient(135deg, #1DA1F2 0%, #0e7490 100%);
-        }
-
-        .social-info {
-            flex: 1;
-        }
-
-        .social-name {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-
-        .social-handle {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .social-stats {
-            text-align: right;
-        }
-
-        .follower-count {
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
+        .social-info { flex: 1; }
+        .social-name { font-weight: 600; margin-bottom: 0.25rem; }
+        .social-handle { color: var(--text-secondary); font-size: 0.9rem; }
+        .social-stats { text-align: right; }
+        .follower-count { font-size: 1.2rem; font-weight: bold; }
+        .social-verified { color: var(--accent-green); font-size: 0.8rem; }
 
         /* Portfolio */
         .portfolio-grid {
@@ -482,35 +478,13 @@
             font-size: 3rem;
         }
 
-        .portfolio-info {
-            padding: 1.5rem;
-        }
-
-        .portfolio-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .portfolio-description {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-
-        .portfolio-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
+        .portfolio-info { padding: 1.5rem; }
+        .portfolio-title { font-weight: 600; margin-bottom: 0.5rem; }
+        .portfolio-description { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; }
+        .portfolio-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); }
 
         /* Reviews */
-        .reviews-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
+        .reviews-list { display: flex; flex-direction: column; gap: 1.5rem; }
 
         .review-card {
             background: var(--bg-card);
@@ -519,18 +493,8 @@
             border: 1px solid var(--border-color);
         }
 
-        .review-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .reviewer-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .reviewer-info { display: flex; align-items: center; gap: 1rem; }
 
         .reviewer-avatar {
             width: 50px;
@@ -543,35 +507,12 @@
             font-weight: bold;
         }
 
-        .reviewer-name {
-            font-weight: 600;
-        }
-
-        .reviewer-role {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .rating {
-            display: flex;
-            gap: 0.25rem;
-            font-size: 1.2rem;
-        }
-
-        .star {
-            color: var(--accent-yellow);
-        }
-
-        .review-text {
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
-
-        .review-date {
-            margin-top: 1rem;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
+        .reviewer-name { font-weight: 600; }
+        .reviewer-role { color: var(--text-secondary); font-size: 0.9rem; }
+        .rating { display: flex; gap: 0.25rem; font-size: 1.2rem; }
+        .star { color: var(--accent-yellow); }
+        .review-text { line-height: 1.6; color: var(--text-secondary); }
+        .review-date { margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary); }
 
         /* Add buttons */
         .add-button {
@@ -589,35 +530,36 @@
             background: rgba(20, 184, 166, 0.05);
         }
 
-        .add-icon {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
+        .add-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
+        .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+        /* Loading */
+        .loading { display: flex; align-items: center; justify-content: center; padding: 2rem; color: var(--text-secondary); }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-teal);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
         }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .profile-top {
-                flex-direction: column;
-                text-align: center;
-                align-items: center;
-            }
-
-            .profile-name {
-                font-size: 2rem;
-                justify-content: center;
-            }
-
-            .profile-meta {
-                justify-content: center;
-            }
-
-            .profile-actions {
-                flex-direction: column;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
+            .profile-top { flex-direction: column; text-align: center; align-items: center; }
+            .profile-name { font-size: 2rem; justify-content: center; }
+            .profile-meta { justify-content: center; }
+            .profile-actions { flex-direction: column; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -644,53 +586,29 @@
                         <div class="profile-photo" id="profile-photo">
                             <span id="profile-initials">U</span>
                         </div>
-                        <div class="upload-badge" onclick="document.getElementById('photo-upload').click()" title="Change Photo">
-                            📸
-                        </div>
+                        <div class="upload-badge" onclick="document.getElementById('photo-upload').click()" title="Change Photo">📸</div>
                         <input type="file" id="photo-upload" accept="image/*" style="display: none;">
                     </div>
 
                     <div class="profile-info">
                         <div class="profile-name">
-                            <span id="display-name">User Name</span>
-                            <span class="verified-badge">
-                                ✓ Verified
-                            </span>
+                            <span id="display-name">Loading...</span>
+                            <span class="verified-badge" id="verified-badge" style="display: none;">✓ Verified</span>
                         </div>
 
                         <div class="profile-meta">
-                            <div class="meta-item">
-                                <span>📍</span>
-                                <span id="display-location">Location</span>
-                            </div>
-                            <div class="meta-item">
-                                <span>🏷️</span>
-                                <span id="display-type">User Type</span>
-                            </div>
-                            <div class="meta-item">
-                                <span>⭐</span>
-                                <span id="display-rating">5.0 Rating</span>
-                            </div>
-                            <div class="meta-item">
-                                <span>📅</span>
-                                <span id="display-joined">Joined 2024</span>
-                            </div>
+                            <div class="meta-item"><span>📍</span><span id="display-location">—</span></div>
+                            <div class="meta-item"><span>🏷️</span><span id="display-type">—</span></div>
+                            <div class="meta-item"><span>📧</span><span id="display-email">—</span></div>
+                            <div class="meta-item"><span>📅</span><span id="display-joined">—</span></div>
                         </div>
 
-                        <div class="profile-bio" id="display-bio">
-                            Your bio will appear here. Click "Edit Profile" to add information about yourself.
-                        </div>
+                        <div class="profile-bio" id="display-bio">Loading...</div>
 
                         <div class="profile-actions">
-                            <button class="btn btn-primary" onclick="toggleEditMode()">
-                                ✏️ Edit Profile
-                            </button>
-                            <button class="btn btn-ghost" onclick="shareProfile()">
-                                🔗 Share Profile
-                            </button>
-                            <button class="btn btn-ghost" onclick="viewPublicProfile()">
-                                👁️ View Public Profile
-                            </button>
+                            <button class="btn btn-primary" onclick="toggleEditMode()">✏️ Edit Profile</button>
+                            <button class="btn btn-ghost" onclick="shareProfile()">🔗 Share Profile</button>
+                            <button class="btn btn-ghost" onclick="viewPublicProfile()">👁️ View Public Profile</button>
                         </div>
                     </div>
                 </div>
@@ -704,30 +622,22 @@
                         <label class="form-label" for="edit-name">Full Name *</label>
                         <input type="text" class="form-input" id="edit-name" required>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label" for="edit-location">Location</label>
                         <input type="text" class="form-input" id="edit-location" placeholder="City, Country">
                     </div>
-
                     <div class="form-group">
                         <label class="form-label" for="edit-bio">Bio</label>
                         <textarea class="form-textarea" id="edit-bio" placeholder="Tell us about yourself..." maxlength="500"></textarea>
                         <small style="color: var(--text-secondary);">500 characters max</small>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label" for="edit-website">Website</label>
                         <input type="url" class="form-input" id="edit-website" placeholder="https://yourwebsite.com">
                     </div>
-
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button type="submit" class="btn btn-primary">
-                            💾 Save Changes
-                        </button>
-                        <button type="button" class="btn btn-ghost" onclick="toggleEditMode()">
-                            ✕ Cancel
-                        </button>
+                        <button type="submit" class="btn btn-primary" id="save-btn">💾 Save Changes</button>
+                        <button type="button" class="btn btn-ghost" onclick="toggleEditMode()">✕ Cancel</button>
                     </div>
                 </form>
             </div>
@@ -747,23 +657,24 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">👥</div>
-                    <div class="stat-value" id="total-reach">0</div>
-                    <div class="stat-label">Total Reach</div>
+                    <div class="stat-value" id="total-reach">—</div>
+                    <div class="stat-label">Total Followers</div>
+                    <div class="stat-source" id="reach-source"></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📊</div>
-                    <div class="stat-value" id="engagement">0%</div>
-                    <div class="stat-label">Engagement Rate</div>
+                    <div class="stat-value" id="engagement">—</div>
+                    <div class="stat-label">Avg Engagement</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">🎯</div>
-                    <div class="stat-value" id="projects-completed">0</div>
-                    <div class="stat-label">Projects Completed</div>
+                    <div class="stat-icon">🔗</div>
+                    <div class="stat-value" id="connected-accounts">0</div>
+                    <div class="stat-label">Connected Accounts</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">⭐</div>
-                    <div class="stat-value" id="average-rating">5.0</div>
-                    <div class="stat-label">Average Rating</div>
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value" id="applications-count">0</div>
+                    <div class="stat-label">Applications</div>
                 </div>
             </div>
         </div>
@@ -772,20 +683,18 @@
         <div id="social-tab" class="tab-content">
             <h2 style="margin-bottom: 1.5rem;">Connected Social Accounts</h2>
             <div class="social-links" id="social-links">
-                <!-- Social links will be populated here -->
+                <div class="loading"><div class="spinner"></div>Loading connected accounts...</div>
             </div>
-            <div class="add-button" onclick="addSocialAccount()" style="margin-top: 1.5rem;">
+            <div class="add-button" onclick="goToSettings()" style="margin-top: 1.5rem;">
                 <div class="add-icon">➕</div>
-                <div>Add Social Account</div>
+                <div>Connect More Accounts</div>
             </div>
         </div>
 
         <!-- Portfolio Tab -->
         <div id="portfolio-tab" class="tab-content">
             <h2 style="margin-bottom: 1.5rem;">My Work</h2>
-            <div class="portfolio-grid" id="portfolio-grid">
-                <!-- Portfolio items will be populated here -->
-            </div>
+            <div class="portfolio-grid" id="portfolio-grid"></div>
             <div class="add-button" onclick="addPortfolioItem()" style="margin-top: 1.5rem;">
                 <div class="add-icon">➕</div>
                 <div>Add Portfolio Item</div>
@@ -794,10 +703,8 @@
 
         <!-- Reviews Tab -->
         <div id="reviews-tab" class="tab-content">
-            <h2 style="margin-bottom: 1.5rem;">Client Reviews</h2>
-            <div class="reviews-list" id="reviews-list">
-                <!-- Reviews will be populated here -->
-            </div>
+            <h2 style="margin-bottom: 1.5rem;">Reviews</h2>
+            <div class="reviews-list" id="reviews-list"></div>
         </div>
 
         <!-- Settings Tab -->
@@ -805,374 +712,329 @@
             <h2 style="margin-bottom: 1.5rem;">Account Settings</h2>
             <div style="background: var(--bg-card); border-radius: 1rem; padding: 2rem;">
                 <h3 style="margin-bottom: 1rem;">Privacy Settings</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Control who can see your profile and contact you.</p>
-                
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Control who can see your profile.</p>
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
                         <input type="checkbox" id="public-profile" checked>
                         <span>Make my profile public</span>
                     </label>
                 </div>
-                
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
                         <input type="checkbox" id="show-email">
                         <span>Show email address on public profile</span>
                     </label>
                 </div>
-                
                 <div class="form-group">
                     <label style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
                         <input type="checkbox" id="show-stats" checked>
                         <span>Show statistics on public profile</span>
                     </label>
                 </div>
-                
-                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="saveSettings()">
-                    💾 Save Settings
-                </button>
+                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="saveSettings()">💾 Save Settings</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Global state
+        const API_BASE = 'https://formative-production.up.railway.app';
+
         let currentUser = null;
         let userType = null;
+        let authToken = null;
         let isEditMode = false;
+        let socialAccounts = [];
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUserProfile();
-            loadSocialAccounts();
+        document.addEventListener('DOMContentLoaded', async () => {
+            authToken = localStorage.getItem('authToken');
+            if (!authToken) { window.location.href = 'index.html'; return; }
+
+            await loadUserProfile();
+            await loadSocialAccounts();
             loadPortfolio();
             loadReviews();
+            loadSettings();
             
-            // Photo upload handler
             document.getElementById('photo-upload').addEventListener('change', handlePhotoUpload);
-            
-            // Profile form handler
             document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
         });
 
-        // Load user profile
-        function loadUserProfile() {
-            const userData = localStorage.getItem('userData');
-            const type = localStorage.getItem('userType');
-            
-            if (userData) {
-                currentUser = JSON.parse(userData);
-            } else {
-                currentUser = {
-                    name: 'Demo User',
-                    email: 'demo@formative.com',
-                    userType: type || 'influencer'
-                };
+        async function loadUserProfile() {
+            try {
+                const response = await fetch(`${API_BASE}/api/user/profile`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    userType = currentUser.user_type || localStorage.getItem('userType') || 'influencer';
+                    localStorage.setItem('userData', JSON.stringify(currentUser));
+                    localStorage.setItem('userType', userType);
+                } else if (response.status === 401 || response.status === 403) {
+                    localStorage.clear();
+                    window.location.href = 'index.html';
+                    return;
+                } else {
+                    loadFromLocalStorage();
+                }
+            } catch (error) {
+                console.error('Load profile error:', error);
+                loadFromLocalStorage();
             }
-            
-            userType = type || currentUser.userType || 'influencer';
-            
-            // Update UI
             updateProfileDisplay();
-            loadStats();
         }
 
-        // Update profile display
+        function loadFromLocalStorage() {
+            const userData = localStorage.getItem('userData');
+            currentUser = userData ? JSON.parse(userData) : { name: 'User', email: '', userType: 'influencer' };
+            userType = localStorage.getItem('userType') || currentUser.userType || currentUser.user_type || 'influencer';
+        }
+
         function updateProfileDisplay() {
+            if (!currentUser) return;
             const name = currentUser.name || 'User';
             
-            // Update header
             document.getElementById('profile-initials').textContent = name.charAt(0).toUpperCase();
             document.getElementById('display-name').textContent = name;
-            document.getElementById('display-type').textContent = userType.charAt(0).toUpperCase() + userType.slice(1);
+            document.getElementById('display-type').textContent = (userType || 'influencer').charAt(0).toUpperCase() + (userType || 'influencer').slice(1);
             document.getElementById('display-location').textContent = currentUser.location || 'Not specified';
+            document.getElementById('display-email').textContent = currentUser.email || '';
             document.getElementById('display-bio').textContent = currentUser.bio || 'No bio added yet. Click "Edit Profile" to add one.';
-            document.getElementById('display-joined').textContent = 'Joined ' + (new Date().getFullYear());
-            document.getElementById('display-rating').textContent = '5.0 Rating';
             
-            // Update edit form
+            if (currentUser.created_at) {
+                const date = new Date(currentUser.created_at);
+                document.getElementById('display-joined').textContent = 'Joined ' + date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            } else {
+                document.getElementById('display-joined').textContent = 'Joined ' + new Date().getFullYear();
+            }
+
+            if (currentUser.avatar_url) {
+                document.getElementById('profile-photo').innerHTML = `<img src="${currentUser.avatar_url}" alt="Profile Photo">`;
+            }
+            
             document.getElementById('edit-name').value = name;
             document.getElementById('edit-location').value = currentUser.location || '';
             document.getElementById('edit-bio').value = currentUser.bio || '';
             document.getElementById('edit-website').value = currentUser.website || '';
         }
 
-        // Load stats
-        function loadStats() {
-            if (userType === 'influencer') {
-                animateValue('total-reach', 0, 125000, 1500, val => {
-                    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
-                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
-                    return val.toString();
-                });
-                animateValue('engagement', 0, 8.7, 1200, val => val.toFixed(1) + '%');
-                animateValue('projects-completed', 0, 24, 1000, val => Math.round(val));
-                animateValue('average-rating', 0, 4.9, 1300, val => val.toFixed(1));
-            } else if (userType === 'brand') {
-                animateValue('total-reach', 0, 500000, 1500, val => {
-                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
-                    return val.toString();
-                });
-                animateValue('engagement', 0, 12.3, 1200, val => val.toFixed(1) + '%');
-                animateValue('projects-completed', 0, 15, 1000, val => Math.round(val));
-                animateValue('average-rating', 0, 4.8, 1300, val => val.toFixed(1));
-            } else {
-                animateValue('total-reach', 0, 50000, 1500, val => {
-                    if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
-                    return val.toString();
-                });
-                animateValue('engagement', 0, 95, 1200, val => Math.round(val) + '%');
-                animateValue('projects-completed', 0, 32, 1000, val => Math.round(val));
-                animateValue('average-rating', 0, 4.9, 1300, val => val.toFixed(1));
-            }
-        }
-
-        // Animate value
-        function animateValue(elementId, start, end, duration, formatter) {
-            const element = document.getElementById(elementId);
-            if (!element) return;
-            
-            const startTime = Date.now();
-            
-            function update() {
-                const now = Date.now();
-                const progress = Math.min((now - startTime) / duration, 1);
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                const current = start + (end - start) * easeProgress;
-                
-                element.textContent = formatter(current);
-                
-                if (progress < 1) {
-                    requestAnimationFrame(update);
-                }
-            }
-            
-            update();
-        }
-
-        // Load social accounts
-        function loadSocialAccounts() {
-            const socialLinksContainer = document.getElementById('social-links');
-            
-            const socialAccounts = [
-                { platform: 'Instagram', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '34.5K', icon: '📷', color: 'instagram' },
-                { platform: 'TikTok', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '22.2K', icon: '🎵', color: 'tiktok' },
-                { platform: 'YouTube', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '12K', icon: '▶️', color: 'youtube' },
-                { platform: 'X (Twitter)', handle: '@' + (currentUser.name || 'user').toLowerCase().replace(' ', ''), followers: '5.9K', icon: '𝕏', color: 'twitter' }
-            ];
-            
-            socialLinksContainer.innerHTML = socialAccounts.map(account => `
-                <div class="social-link">
-                    <div class="social-icon ${account.color}">
-                        ${account.icon}
-                    </div>
-                    <div class="social-info">
-                        <div class="social-name">${account.platform}</div>
-                        <div class="social-handle">${account.handle}</div>
-                    </div>
-                    <div class="social-stats">
-                        <div class="follower-count">${account.followers}</div>
-                        <div style="color: var(--text-secondary); font-size: 0.8rem;">followers</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Load portfolio
-        function loadPortfolio() {
-            const portfolioGrid = document.getElementById('portfolio-grid');
-            
-            const portfolioItems = [
-                { title: 'Sustainable Fashion Campaign', description: 'Brand partnership with EcoWear featuring lifestyle content', icon: '👗', views: '45K', likes: '2.3K' },
-                { title: 'Tech Product Review Series', description: 'Unboxing and review content for SmartHome devices', icon: '📱', views: '32K', likes: '1.8K' },
-                { title: 'Fitness App Promotion', description: 'Multi-platform campaign for FitAI wellness app', icon: '💪', views: '28K', likes: '1.5K' }
-            ];
-            
-            portfolioGrid.innerHTML = portfolioItems.map(item => `
-                <div class="portfolio-item">
-                    <div class="portfolio-image">
-                        ${item.icon}
-                    </div>
-                    <div class="portfolio-info">
-                        <div class="portfolio-title">${item.title}</div>
-                        <div class="portfolio-description">${item.description}</div>
-                        <div class="portfolio-meta">
-                            <span>👁️ ${item.views} views</span>
-                            <span>❤️ ${item.likes} likes</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Load reviews
-        function loadReviews() {
-            const reviewsList = document.getElementById('reviews-list');
-            
-            const reviews = [
-                { name: 'Sarah Chen', role: 'Brand Manager at EcoWear', rating: 5, text: 'Amazing to work with! Professional, creative, and always delivers on time. The content exceeded our expectations and the engagement was fantastic.', date: '2 weeks ago', avatar: 'SC' },
-                { name: 'Mike Rodriguez', role: 'Marketing Director at SmartHome', rating: 5, text: 'Highly recommend! The tech reviews were thorough and engaging. Our product launch was a huge success thanks to this collaboration.', date: '1 month ago', avatar: 'MR' },
-                { name: 'Emma Davis', role: 'CEO at FitAI', rating: 5, text: 'Exceptional quality and professionalism. The content perfectly captured our brand values and resonated with the target audience.', date: '2 months ago', avatar: 'ED' }
-            ];
-            
-            reviewsList.innerHTML = reviews.map(review => `
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-info">
-                            <div class="reviewer-avatar">${review.avatar}</div>
-                            <div>
-                                <div class="reviewer-name">${review.name}</div>
-                                <div class="reviewer-role">${review.role}</div>
-                            </div>
-                        </div>
-                        <div class="rating">
-                            ${'★'.repeat(review.rating)}
-                        </div>
-                    </div>
-                    <div class="review-text">${review.text}</div>
-                    <div class="review-date">${review.date}</div>
-                </div>
-            `).join('');
-        }
-
-        // Toggle edit mode
-        function toggleEditMode() {
-            isEditMode = !isEditMode;
-            document.getElementById('view-mode').style.display = isEditMode ? 'none' : 'block';
-            document.getElementById('edit-mode').classList.toggle('active', isEditMode);
-        }
-
-        // Handle profile update
-        async function handleProfileUpdate(e) {
-            e.preventDefault();
-            
-            // Get form data
-            const updatedData = {
-                name: document.getElementById('edit-name').value,
-                location: document.getElementById('edit-location').value,
-                bio: document.getElementById('edit-bio').value,
-                website: document.getElementById('edit-website').value
-            };
-            
-            // Update currentUser
-            currentUser = { ...currentUser, ...updatedData };
-            
-            // Save to localStorage
-            localStorage.setItem('userData', JSON.stringify(currentUser));
-            
-            // Update display
-            updateProfileDisplay();
-            
-            // Exit edit mode
-            toggleEditMode();
-            
-            // Show notification
-            showNotification('Profile updated successfully!', 'success');
-            
-            // Try to save to backend
+        async function loadSocialAccounts() {
+            const container = document.getElementById('social-links');
             try {
-                const authToken = localStorage.getItem('authToken');
-                if (authToken) {
-                    await fetch('/api/user/profile', {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authToken}`
-                        },
-                        body: JSON.stringify({ name: updatedData.name, profileData: updatedData })
-                    });
+                const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    socialAccounts = data.accounts || [];
+                    displaySocialAccounts();
+                    updateStats();
+                } else {
+                    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔗</div><p>No connected accounts yet</p><button class="btn btn-primary" onclick="goToSettings()" style="margin-top: 1rem;">Connect Accounts</button></div>`;
                 }
             } catch (error) {
-                console.log('Profile saved locally (API not available)');
+                console.error('Load social accounts error:', error);
+                container.innerHTML = '<p style="color: var(--text-secondary);">Failed to load social accounts</p>';
             }
         }
 
-        // Handle photo upload
+        function displaySocialAccounts() {
+            const container = document.getElementById('social-links');
+            if (socialAccounts.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔗</div><p>No connected accounts yet</p><button class="btn btn-primary" onclick="goToSettings()" style="margin-top: 1rem;">Connect Accounts</button></div>`;
+                return;
+            }
+
+            container.innerHTML = socialAccounts.map(account => {
+                const stats = account.stats || {};
+                const followers = stats.followers ? formatNumber(stats.followers) : '—';
+                return `
+                    <div class="social-link connected">
+                        <div class="social-icon ${account.platform.toLowerCase()}">${getPlatformIcon(account.platform)}</div>
+                        <div class="social-info">
+                            <div class="social-name">${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}</div>
+                            <div class="social-handle">${account.username || '—'}</div>
+                            ${account.is_verified ? '<div class="social-verified">✓ Verified</div>' : ''}
+                        </div>
+                        <div class="social-stats">
+                            <div class="follower-count">${followers}</div>
+                            <div style="color: var(--text-secondary); font-size: 0.8rem;">followers</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            let totalFollowers = 0, totalEngagement = 0, accountsWithEngagement = 0;
+
+            socialAccounts.forEach(account => {
+                if (account.stats) {
+                    if (account.stats.followers) totalFollowers += account.stats.followers;
+                    if (account.stats.engagementRate) { totalEngagement += parseFloat(account.stats.engagementRate); accountsWithEngagement++; }
+                }
+            });
+
+            const avgEngagement = accountsWithEngagement > 0 ? (totalEngagement / accountsWithEngagement).toFixed(1) : 0;
+
+            document.getElementById('total-reach').textContent = formatNumber(totalFollowers);
+            document.getElementById('engagement').textContent = avgEngagement + '%';
+            document.getElementById('connected-accounts').textContent = socialAccounts.length;
+
+            const hasVerified = socialAccounts.some(a => a.is_verified);
+            if (hasVerified) document.getElementById('verified-badge').style.display = 'flex';
+
+            if (socialAccounts.length > 0) {
+                document.getElementById('reach-source').textContent = `From ${socialAccounts.map(a => a.platform).join(', ')}`;
+            }
+        }
+
+        async function handleProfileUpdate(e) {
+            e.preventDefault();
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;display:inline-block;margin-right:8px;"></span> Saving...';
+
+            const updatedData = {
+                name: document.getElementById('edit-name').value.trim(),
+                location: document.getElementById('edit-location').value.trim(),
+                bio: document.getElementById('edit-bio').value.trim(),
+                website: document.getElementById('edit-website').value.trim()
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = { ...currentUser, ...data.user, ...updatedData };
+                    localStorage.setItem('userData', JSON.stringify(currentUser));
+                    updateProfileDisplay();
+                    toggleEditMode();
+                    showNotification('Profile updated successfully!', 'success');
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (error) {
+                currentUser = { ...currentUser, ...updatedData };
+                localStorage.setItem('userData', JSON.stringify(currentUser));
+                updateProfileDisplay();
+                toggleEditMode();
+                showNotification('Profile saved locally', 'info');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '💾 Save Changes';
+            }
+        }
+
         function handlePhotoUpload(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(event) {
-                    const photoElement = document.getElementById('profile-photo');
-                    photoElement.innerHTML = `<img src="${event.target.result}" alt="Profile Photo">`;
+                reader.onload = (event) => {
+                    document.getElementById('profile-photo').innerHTML = `<img src="${event.target.result}" alt="Profile Photo">`;
                     showNotification('Photo updated!', 'success');
                 };
                 reader.readAsDataURL(file);
             }
         }
 
-        // Switch tab
         function switchTab(tabName) {
-            // Remove active class from all tabs and content
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked tab
             event.target.classList.add('active');
-            
-            // Show corresponding content
             document.getElementById(tabName + '-tab').classList.add('active');
         }
 
-        // Share profile
-        function shareProfile() {
-            const profileUrl = window.location.origin + '/profile.html?user=' + (currentUser.id || 'demo');
-            navigator.clipboard.writeText(profileUrl);
-            showNotification('Profile link copied to clipboard!', 'success');
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            document.getElementById('view-mode').style.display = isEditMode ? 'none' : 'block';
+            document.getElementById('edit-mode').classList.toggle('active', isEditMode);
         }
 
-        // View public profile
-        function viewPublicProfile() {
-            window.open('/profile.html?user=' + (currentUser.id || 'demo') + '&view=public', '_blank');
+        function loadPortfolio() {
+            const grid = document.getElementById('portfolio-grid');
+            const items = [
+                { title: 'Sustainable Fashion Campaign', desc: 'Brand partnership with EcoWear', icon: '👗', views: '45K', likes: '2.3K' },
+                { title: 'Tech Product Review Series', desc: 'Unboxing and review content', icon: '📱', views: '32K', likes: '1.8K' },
+                { title: 'Fitness App Promotion', desc: 'Multi-platform campaign', icon: '💪', views: '28K', likes: '1.5K' }
+            ];
+            grid.innerHTML = items.map(item => `
+                <div class="portfolio-item">
+                    <div class="portfolio-image">${item.icon}</div>
+                    <div class="portfolio-info">
+                        <div class="portfolio-title">${item.title}</div>
+                        <div class="portfolio-description">${item.desc}</div>
+                        <div class="portfolio-meta"><span>👁️ ${item.views}</span><span>❤️ ${item.likes}</span></div>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        // Add social account
-        function addSocialAccount() {
-            showNotification('Social account linking coming soon!', 'info');
+        function loadReviews() {
+            const list = document.getElementById('reviews-list');
+            const reviews = [
+                { name: 'Sarah Chen', role: 'Brand Manager at EcoWear', rating: 5, text: 'Amazing to work with! Professional and creative.', date: '2 weeks ago', avatar: 'SC' },
+                { name: 'Mike Rodriguez', role: 'Marketing Director', rating: 5, text: 'Highly recommend! Great collaboration.', date: '1 month ago', avatar: 'MR' },
+                { name: 'Emma Davis', role: 'CEO at FitAI', rating: 5, text: 'Exceptional quality and professionalism.', date: '2 months ago', avatar: 'ED' }
+            ];
+            list.innerHTML = reviews.map(r => `
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info"><div class="reviewer-avatar">${r.avatar}</div><div><div class="reviewer-name">${r.name}</div><div class="reviewer-role">${r.role}</div></div></div>
+                        <div class="rating">${'★'.repeat(r.rating)}</div>
+                    </div>
+                    <div class="review-text">${r.text}</div>
+                    <div class="review-date">${r.date}</div>
+                </div>
+            `).join('');
         }
 
-        // Add portfolio item
-        function addPortfolioItem() {
-            showNotification('Portfolio upload coming soon!', 'info');
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('profileSettings') || '{}');
+            document.getElementById('public-profile').checked = settings.publicProfile !== false;
+            document.getElementById('show-email').checked = settings.showEmail === true;
+            document.getElementById('show-stats').checked = settings.showStats !== false;
         }
 
-        // Save settings
         function saveSettings() {
-            const settings = {
+            localStorage.setItem('profileSettings', JSON.stringify({
                 publicProfile: document.getElementById('public-profile').checked,
                 showEmail: document.getElementById('show-email').checked,
                 showStats: document.getElementById('show-stats').checked
-            };
-            
-            localStorage.setItem('profileSettings', JSON.stringify(settings));
+            }));
             showNotification('Settings saved!', 'success');
         }
 
-        // Show notification
+        function goToSettings() { window.location.href = 'dashboard.html?tab=settings'; }
+        function shareProfile() { navigator.clipboard.writeText(window.location.origin + '/profile.html?user=' + (currentUser?.id || 'demo')); showNotification('Profile link copied!', 'success'); }
+        function viewPublicProfile() { window.open('/profile.html?user=' + (currentUser?.id || 'demo') + '&view=public', '_blank'); }
+        function addPortfolioItem() { showNotification('Portfolio upload coming soon!', 'info'); }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function getPlatformIcon(platform) {
+            const icons = { twitter: '𝕏', instagram: '📷', tiktok: '🎵', youtube: '▶️', bluesky: '🦋', twitch: '🎮' };
+            return icons[platform.toLowerCase()] || '🔗';
+        }
+
         function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-                color: white;
-                padding: 1rem 1.5rem;
-                border-radius: 0.5rem;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                z-index: 10000;
-                animation: slideIn 0.3s ease;
-            `;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
+            const n = document.createElement('div');
+            n.style.cssText = `position:fixed;top:20px;right:20px;background:${type==='success'?'#10b981':type==='error'?'#ef4444':'#3b82f6'};color:white;padding:1rem 1.5rem;border-radius:0.5rem;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:10000;animation:slideIn 0.3s ease;`;
+            n.textContent = message;
+            document.body.appendChild(n);
+            setTimeout(() => { n.style.animation = 'slideOut 0.3s ease forwards'; setTimeout(() => n.remove(), 300); }, 3000);
         }
     </script>
 </body>
 </html>
-
