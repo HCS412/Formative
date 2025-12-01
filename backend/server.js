@@ -1458,6 +1458,301 @@ app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// MESSAGING ENDPOINTS
+// ============================================
+
+// Get all conversations for current user
+app.get('/api/messages/conversations', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get all conversations where user is a participant
+    const result = await pool.query(`
+      SELECT 
+        c.id,
+        c.created_at,
+        c.updated_at,
+        CASE 
+          WHEN c.user1_id = $1 THEN c.user2_id
+          ELSE c.user1_id
+        END as other_user_id,
+        CASE 
+          WHEN c.user1_id = $1 THEN u2.name
+          ELSE u1.name
+        END as other_user_name,
+        CASE 
+          WHEN c.user1_id = $1 THEN u2.user_type
+          ELSE u1.user_type
+        END as other_user_type,
+        CASE 
+          WHEN c.user1_id = $1 THEN u2.avatar_url
+          ELSE u1.avatar_url
+        END as other_user_avatar,
+        (
+          SELECT content FROM messages 
+          WHERE conversation_id = c.id 
+          ORDER BY created_at DESC LIMIT 1
+        ) as last_message_preview,
+        (
+          SELECT created_at FROM messages 
+          WHERE conversation_id = c.id 
+          ORDER BY created_at DESC LIMIT 1
+        ) as last_message_at,
+        (
+          SELECT COUNT(*) FROM messages 
+          WHERE conversation_id = c.id 
+            AND receiver_id = $1 
+            AND is_read = FALSE
+        )::int as unread_count
+      FROM conversations c
+      JOIN users u1 ON c.user1_id = u1.id
+      JOIN users u2 ON c.user2_id = u2.id
+      WHERE c.user1_id = $1 OR c.user2_id = $1
+      ORDER BY c.updated_at DESC
+    `, [userId]);
+    
+    // Transform to include unread boolean
+    const conversations = result.rows.map(conv => ({
+      ...conv,
+      unread: conv.unread_count > 0
+    }));
+    
+    res.json({ success: true, conversations });
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get messages for a specific conversation
+app.get('/api/messages/conversation/:conversationId', authenticateToken, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.userId;
+    
+    // Verify user is part of this conversation
+    const convCheck = await pool.query(
+      'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
+      [conversationId, userId]
+    );
+    
+    if (convCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied to this conversation' });
+    }
+    
+    // Get messages
+    const result = await pool.query(`
+      SELECT 
+        m.id,
+        m.sender_id,
+        m.receiver_id,
+        m.content,
+        m.is_read,
+        m.created_at,
+        u.name as sender_name
+      FROM messages m
+      JOIN users u ON m.sender_id = u.id
+      WHERE m.conversation_id = $1
+      ORDER BY m.created_at ASC
+    `, [conversationId]);
+    
+    // Mark messages as read
+    await pool.query(`
+      UPDATE messages 
+      SET is_read = TRUE, read_at = NOW() 
+      WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
+    `, [conversationId, userId]);
+    
+    res.json({ success: true, messages: result.rows });
+  } catch (error) {
+    console.error('Get messages error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Send a message
+app.post('/api/messages', authenticateToken, async (req, res) => {
+  try {
+    const { receiverId, content, conversationId } = req.body;
+    const senderId = req.user.userId;
+    
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ error: 'Message content is required' });
+    }
+    
+    if (!receiverId && !conversationId) {
+      return res.status(400).json({ error: 'Receiver ID or conversation ID is required' });
+    }
+    
+    let finalConversationId = conversationId;
+    let finalReceiverId = receiverId;
+    
+    // If conversationId provided, get receiver from conversation
+    if (conversationId && !receiverId) {
+      const convResult = await pool.query(
+        'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
+        [conversationId, senderId]
+      );
+      
+      if (convResult.rows.length === 0) {
+        return res.status(403).json({ error: 'Access denied to this conversation' });
+      }
+      
+      const conv = convResult.rows[0];
+      finalReceiverId = conv.user1_id === senderId ? conv.user2_id : conv.user1_id;
+    }
+    
+    // If no conversationId, find or create conversation
+    if (!finalConversationId) {
+      // Check for existing conversation
+      const existingConv = await pool.query(`
+        SELECT id FROM conversations 
+        WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
+      `, [senderId, finalReceiverId]);
+      
+      if (existingConv.rows.length > 0) {
+        finalConversationId = existingConv.rows[0].id;
+      } else {
+        // Create new conversation
+        const newConv = await pool.query(`
+          INSERT INTO conversations (user1_id, user2_id)
+          VALUES ($1, $2)
+          RETURNING id
+        `, [senderId, finalReceiverId]);
+        finalConversationId = newConv.rows[0].id;
+      }
+    }
+    
+    // Insert message
+    const result = await pool.query(`
+      INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [finalConversationId, senderId, finalReceiverId, content.trim()]);
+    
+    // Update conversation timestamp
+    await pool.query(
+      'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
+      [finalConversationId]
+    );
+    
+    // Create notification for receiver
+    await pool.query(`
+      INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
+      VALUES ($1, 'message', 'New Message', $2, $3, 'message')
+    `, [finalReceiverId, `You have a new message`, result.rows[0].id]);
+    
+    res.json({ 
+      success: true, 
+      message: result.rows[0],
+      conversationId: finalConversationId
+    });
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Start a new conversation (or get existing one)
+app.post('/api/messages/start-conversation', authenticateToken, async (req, res) => {
+  try {
+    const { userId: otherUserId, initialMessage } = req.body;
+    const currentUserId = req.user.userId;
+    
+    if (!otherUserId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (otherUserId === currentUserId) {
+      return res.status(400).json({ error: 'Cannot start conversation with yourself' });
+    }
+    
+    // Check if user exists
+    const userCheck = await pool.query('SELECT id, name FROM users WHERE id = $1', [otherUserId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Find or create conversation
+    let conversation;
+    const existingConv = await pool.query(`
+      SELECT * FROM conversations 
+      WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
+    `, [currentUserId, otherUserId]);
+    
+    if (existingConv.rows.length > 0) {
+      conversation = existingConv.rows[0];
+    } else {
+      const newConv = await pool.query(`
+        INSERT INTO conversations (user1_id, user2_id)
+        VALUES ($1, $2)
+        RETURNING *
+      `, [currentUserId, otherUserId]);
+      conversation = newConv.rows[0];
+    }
+    
+    // If initial message provided, send it
+    if (initialMessage && initialMessage.trim()) {
+      await pool.query(`
+        INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+        VALUES ($1, $2, $3, $4)
+      `, [conversation.id, currentUserId, otherUserId, initialMessage.trim()]);
+      
+      await pool.query(
+        'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
+        [conversation.id]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
+      conversationId: conversation.id,
+      otherUser: userCheck.rows[0]
+    });
+  } catch (error) {
+    console.error('Start conversation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get unread message count
+app.get('/api/messages/unread-count', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND is_read = FALSE',
+      [req.user.userId]
+    );
+    
+    res.json({ 
+      success: true, 
+      unreadCount: parseInt(result.rows[0].count)
+    });
+  } catch (error) {
+    console.error('Unread count error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Mark conversation messages as read
+app.put('/api/messages/conversation/:conversationId/read', authenticateToken, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.userId;
+    
+    await pool.query(`
+      UPDATE messages 
+      SET is_read = TRUE, read_at = NOW() 
+      WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
+    `, [conversationId, userId]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Mark messages read error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
 // STATIC FILE SERVING
 // ============================================
 
