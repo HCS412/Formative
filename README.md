@@ -1,163 +1,294 @@
-# Formative Platform
+# Formative
 
-A modern influencer marketing platform that connects brands, influencers, and freelancers in an integrated marketplace for collaboration and growth.
+A modern influencer marketing platform connecting brands, influencers, and freelancers for authentic collaborations.
 
-## 🚀 Quick Start
+**Live Demo**: [formative-production.up.railway.app](https://formative-production.up.railway.app)
 
-### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn
+## ✨ Features
 
-### Installation & Setup
+### Authentication & Profiles
+- User registration with role selection (Influencer, Brand, Freelancer)
+- JWT-based authentication
+- Editable user profiles with bio, location, and website
+- Avatar support
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/hcs412/Formative.git
-   cd Formative
-   ```
+### Social Media Integration
+- **OAuth Connections**: Twitter/X, Instagram, TikTok
+- **Simple Connect**: Bluesky (no OAuth required)
+- Real-time follower stats pulled from connected accounts
+- Verified account badges
+- Auto-refresh for stale statistics
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### Opportunities Marketplace
+- Browse and filter opportunities by type and industry
+- Detailed opportunity views with requirements
+- Budget ranges and deadlines
+- Application tracking
 
-3. **Start the development server**
-   ```bash
-   npm start
-   # or
-   npm run dev
-   ```
+### Brand Dashboard
+- Create and manage opportunities
+- Review incoming applications with applicant profiles
+- Accept/reject workflow with automatic notifications
+- Collaboration tracking (accepted → in progress → completed)
+- Dashboard stats: active opportunities, pending reviews, collaborations
 
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
+### Influencer Dashboard  
+- View real follower counts across platforms
+- Track submitted applications and their status
+- Manage active collaborations
+- Earnings overview
 
-### Alternative Development Servers
+### Messaging
+- Real-time conversation threads
+- Auto-created conversations when applications are accepted
+- Unread message indicators
+- Message history
 
-- **Live reload**: `npm run live` (uses live-server)
-- **Static serve**: `npm run serve` (uses serve)
+### Notifications
+- In-app notification center
+- Application status updates
+- Collaboration alerts
+- Mark as read functionality
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Backend | Node.js, Express.js |
+| Database | PostgreSQL |
+| Auth | JWT, bcrypt |
+| OAuth | Twitter API v2, Instagram Basic Display, TikTok API |
+| Hosting | Railway (backend), GitHub Pages (frontend) |
 
 ## 📁 Project Structure
 
 ```
 Formative/
-├── index.html              # Landing page
-├── dashboard.html          # Main dashboard
-├── onboarding.html         # User onboarding flow
+├── index.html                 # Landing page
+├── dashboard.html             # Main dashboard (role-based views)
+├── profile.html               # User profile/settings
+├── onboarding.html            # New user setup
 ├── css/
-│   ├── main.css           # Main styles and utilities
-│   └── mobile.css         # Mobile-specific styles
+│   ├── main.css              # Core styles
+│   └── mobile.css            # Responsive styles
 ├── js/
-│   ├── main.js           # Core functionality
-│   ├── mobile.js         # Mobile interactions
-│   └── features.js        # Enhanced features
-├── assets/
-│   └── images/           # Image assets
-├── package.json          # Project configuration
-├── start-dev.js         # Custom development server
-└── README.md            # This file
+│   ├── main.js               # Core functionality
+│   └── mobile.js             # Mobile interactions
+├── backend/
+│   └── server.js             # Express API server (44 endpoints)
+├── package.json
+└── README.md
 ```
 
-## 🎨 Features
+## 🚀 Getting Started
 
-### Current Features
-- **Responsive Design**: Mobile-first approach with tablet and desktop support
-- **Interactive Dashboard**: Task management, KPIs, and deal flow tracking
-- **User Onboarding**: Multi-step profile setup for different user types
-- **Opportunities Marketplace**: Browse and filter collaboration opportunities
-- **Media Kit Profiles**: Comprehensive influencer profiles with analytics
-- **Real-time Notifications**: Toast notifications and alerts
-- **Form Validation**: Client-side validation with visual feedback
-- **Search & Filtering**: Advanced search and filter capabilities
+### Prerequisites
+- Node.js v18+
+- PostgreSQL database
+- OAuth credentials (optional, for social connections)
 
-### User Types
-- **Influencers**: Content creators and social media personalities
-- **Brands**: Companies seeking influencer partnerships
-- **Freelancers**: Service providers (designers, editors, etc.)
+### Local Development
 
-## 🛠️ Technology Stack
+```bash
+# Clone the repository
+git clone https://github.com/HCS412/Formative.git
+cd Formative
 
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Styling**: CSS Variables, Grid, Flexbox
-- **Animations**: CSS Transitions and Keyframes
-- **Icons**: Unicode and SVG
-- **Development**: Custom Node.js server
+# Install dependencies
+npm install
 
-## 📱 Mobile Support
+# Set environment variables
+cp .env.example .env
+# Edit .env with your database URL and OAuth credentials
 
-The platform is fully responsive with:
-- Touch-optimized interactions
-- Mobile navigation menu
-- Swipe gestures
-- Optimized forms for mobile
-- Progressive enhancement
+# Start the server
+npm start
+```
 
-## 🎯 Development
+### Environment Variables
 
-### Adding New Features
+```env
+# Required
+DATABASE_URL=postgresql://user:pass@host:5432/formative
+JWT_SECRET=your-secret-key
 
-1. **CSS**: Add styles to `css/main.css` or create new CSS files
-2. **JavaScript**: Add functionality to `js/main.js` or create feature-specific files
-3. **Mobile**: Ensure mobile compatibility in `css/mobile.css` and `js/mobile.js`
+# Optional - OAuth (features work without these)
+TWITTER_CLIENT_ID=
+TWITTER_CLIENT_SECRET=
+INSTAGRAM_CLIENT_ID=
+INSTAGRAM_CLIENT_SECRET=
+TIKTOK_CLIENT_ID=
+TIKTOK_CLIENT_SECRET=
 
-### Code Organization
+# Production
+NODE_ENV=production
+OAUTH_REDIRECT_BASE=https://your-domain.com
+```
 
-- **CSS**: Modular approach with utility classes and component styles
-- **JavaScript**: Object-oriented approach with namespaced modules
-- **HTML**: Semantic markup with accessibility considerations
+## 📡 API Endpoints
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Create new account |
+| POST | `/api/auth/login` | Login and get JWT |
+
+### User & Profile
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/user/profile` | Get current user profile |
+| PUT | `/api/user/profile` | Update profile |
+| GET | `/api/user/social-accounts` | List connected accounts |
+
+### Social OAuth
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/oauth/:platform/authorize` | Start OAuth flow |
+| GET | `/api/oauth/:platform/callback` | OAuth callback |
+| POST | `/api/social/bluesky/connect` | Connect Bluesky |
+| GET | `/api/social/:platform/stats` | Fetch platform stats |
+| DELETE | `/api/social/disconnect/:platform` | Disconnect account |
+
+### Opportunities
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/opportunities` | List all opportunities |
+| GET | `/api/opportunities/:id` | Get single opportunity |
+| POST | `/api/opportunities` | Create opportunity |
+| POST | `/api/opportunities/:id/apply` | Apply to opportunity |
+
+### Brand Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/brand/stats` | Dashboard statistics |
+| GET | `/api/brand/opportunities` | Brand's opportunities |
+| PUT | `/api/brand/opportunities/:id` | Update opportunity |
+| DELETE | `/api/brand/opportunities/:id` | Delete opportunity |
+| GET | `/api/brand/applications` | View all applications |
+| GET | `/api/brand/applications/:id` | Application details |
+| POST | `/api/brand/applications/:id/accept` | Accept application |
+| POST | `/api/brand/applications/:id/reject` | Reject application |
+| GET | `/api/brand/collaborations` | Active collaborations |
+| PUT | `/api/brand/collaborations/:id` | Update collaboration |
+
+### Influencer
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/influencer/applications` | My applications |
+| GET | `/api/influencer/collaborations` | My collaborations |
+
+### Messaging
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/messages/conversations` | List conversations |
+| GET | `/api/messages/conversation/:id` | Get messages |
+| POST | `/api/messages` | Send message |
+| POST | `/api/messages/start-conversation` | New conversation |
+| GET | `/api/messages/unread-count` | Unread count |
+
+### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notifications` | List notifications |
+| PUT | `/api/notifications/:id/read` | Mark as read |
+| PUT | `/api/notifications/read-all` | Mark all read |
+
+## 🗄️ Database Schema
+
+```
+users
+├── id, email, password_hash, name
+├── user_type (influencer|brand|freelancer)
+├── avatar_url, bio, location, website
+└── created_at, updated_at
+
+social_accounts
+├── id, user_id, platform, username
+├── platform_user_id, is_verified
+├── stats (JSON), access_token, refresh_token
+└── last_synced_at, created_at
+
+opportunities
+├── id, title, description, type, industry
+├── budget_range, budget_min, budget_max
+├── requirements (JSON), platforms (JSON)
+├── status, deadline, created_by
+└── views_count, applications_count
+
+applications
+├── id, user_id, opportunity_id
+├── status (pending|accepted|rejected)
+├── message, proposed_rate, portfolio_links
+└── response_message, responded_at
+
+collaborations
+├── id, opportunity_id, brand_id, influencer_id
+├── application_id, status, agreed_rate
+├── notes, started_at, completed_at
+└── created_at, updated_at
+
+conversations
+├── id, user1_id, user2_id
+└── created_at, updated_at
+
+messages
+├── id, conversation_id, sender_id, receiver_id
+├── content, message_type, attachment_url
+├── is_read, read_at, created_at
+
+notifications
+├── id, user_id, type, title, message
+├── related_id, related_type
+├── is_read, read_at, created_at
+```
 
 ## 🚧 Roadmap
 
-### Phase 1 (Current)
-- [x] Basic platform structure
-- [x] Responsive design
-- [x] User onboarding
-- [x] Dashboard functionality
-- [x] Mobile optimization
+### Completed ✅
+- [x] User authentication (register/login)
+- [x] Role-based dashboards
+- [x] OAuth social connections (Twitter, Instagram, TikTok)
+- [x] Real follower stats integration
+- [x] Opportunities marketplace
+- [x] Application system
+- [x] Brand application review workflow
+- [x] Accept/reject with auto-notifications
+- [x] Collaborations tracking
+- [x] Real-time messaging
+- [x] Notification system
+- [x] Profile management
 
-### Phase 2 (Next)
-- [ ] Backend API integration
-- [ ] User authentication system
-- [ ] Real-time messaging
-- [ ] Payment processing
-- [ ] Analytics dashboard
+### Next Up 🎯
+- [ ] Influencer dashboard enhancements (application tracking UI)
+- [ ] Brand search/discovery for influencers
+- [ ] Public shareable media kit profiles
+- [ ] Email notifications
+- [ ] Payment integration (Stripe Connect)
 
-### Phase 3 (Future)
-- [ ] React.js conversion
-- [ ] Mobile app development
-- [ ] Advanced AI matching
-- [ ] Video conferencing integration
-- [ ] Blockchain integration
+### Future 🔮
+- [ ] Analytics dashboard with charts
+- [ ] Content calendar
+- [ ] Campaign performance tracking
+- [ ] Mobile app (React Native)
+- [ ] AI-powered matching
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
-## 👥 Team
+## 👤 Author
 
-- **Development**: Formative Team
-- **Design**: Modern SaaS-inspired UI/UX
-- **Backend**: Coming soon
-
-## 🌟 Acknowledgments
-
-- Design inspired by modern SaaS platforms
-- Built for the creator economy
-- Focus on user experience and accessibility
+Built by [@HCS412](https://github.com/HCS412)
 
 ---
 
-**Live Demo**: [Coming Soon]
-
-**Note**: This is a prototype/MVP version. Production features are under development.
-
-## 📞 Support
-
-For support, email support@formative.com or create an issue in this repository.
+**Questions?** Open an issue or reach out on the platform!
