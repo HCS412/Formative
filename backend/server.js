@@ -944,7 +944,7 @@ app.get('/api/oauth/twitter/callback', async (req, res) => {
 
     const tokens = await tokenResponse.json();
 
-    const userResponse = await fetch(`${OAUTH_CONFIG.twitter.userUrl}?user.fields=public_metrics,username`, {
+    const userResponse = await fetch(`${OAUTH_CONFIG.twitter.userUrl}?user.fields=public_metrics,username,name,profile_image_url,description`, {
       headers: {
         'Authorization': `Bearer ${tokens.access_token}`
       }
@@ -954,10 +954,26 @@ app.get('/api/oauth/twitter/callback', async (req, res) => {
     const username = '@' + userData.data.username;
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
     
+    // Extract and store public metrics (follower count, etc.)
+    const metrics = userData.data.public_metrics || {};
+    const engagementRate = metrics.followers_count > 0 
+      ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
+      : 0;
+    
+    const stats = {
+      followers: metrics.followers_count || 0,
+      following: metrics.following_count || 0,
+      tweets: metrics.tweet_count || 0,
+      engagementRate: parseFloat(engagementRate),
+      displayName: userData.data.name || username,
+      profileImage: userData.data.profile_image_url || null,
+      bio: userData.data.description || null
+    };
+    
     await pool.query(
       `INSERT INTO social_accounts 
-        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW(), NOW())
+        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW(), NOW())
        ON CONFLICT (user_id, platform) 
        DO UPDATE SET 
          username = $3,
@@ -966,11 +982,13 @@ app.get('/api/oauth/twitter/callback', async (req, res) => {
          refresh_token = $6,
          token_expires_at = $7,
          is_verified = TRUE,
+         stats = $8,
+         last_synced_at = NOW(),
          updated_at = NOW()`,
-      [stateData.userId, 'twitter', username, userData.data.id, tokens.access_token, tokens.refresh_token, expiresAt]
+      [stateData.userId, 'twitter', username, userData.data.id, tokens.access_token, tokens.refresh_token, expiresAt, JSON.stringify(stats)]
     );
 
-    console.log(`✅ Twitter connected for user ${stateData.userId}: ${username}`);
+    console.log(`✅ Twitter connected for user ${stateData.userId}: ${username} (${stats.followers} followers)`);
 
     res.redirect(`${FRONTEND_URL}/dashboard.html?oauth=success&platform=twitter`);
   } catch (error) {
