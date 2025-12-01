@@ -900,6 +900,7 @@
             <div class="nav-tabs">
                 <a class="nav-tab active" onclick="showPage('dashboard')">Dashboard</a>
                 <a class="nav-tab" onclick="showPage('opportunities')">Opportunities</a>
+                <a class="nav-tab brand-only-tab" onclick="showPage('applications')" style="display: none;">Applications</a>
                 <a class="nav-tab" onclick="showPage('messages')">Messages</a>
                 <a class="nav-tab" onclick="showPage('settings')">Settings</a>
             </div>
@@ -954,18 +955,67 @@
             </div>
 
             <div id="brand-content" class="user-type-content" style="display: none;">
-                <div class="brand-metrics" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <!-- Brand Stats -->
+                <div class="brand-metrics" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
                     <div class="stat-card">
-                        <div class="stat-value" id="campaigns-launched">0</div>
-                        <div class="stat-label">Campaigns Launched</div>
+                        <div class="stat-value" id="active-opportunities">0</div>
+                        <div class="stat-label">Active Opportunities</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="influencers-connected">0</div>
-                        <div class="stat-label">Influencers Connected</div>
+                        <div class="stat-value" id="pending-applications">0</div>
+                        <div class="stat-label">Pending Applications</div>
+                        <div class="stat-source" id="applications-alert" style="color: var(--accent-orange);"></div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="roi-percentage">0%</div>
-                        <div class="stat-label">Average ROI</div>
+                        <div class="stat-value" id="active-collabs">0</div>
+                        <div class="stat-label">Active Collaborations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="completed-collabs">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+
+                <!-- My Opportunities Section -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">My Opportunities</h3>
+                        <button class="btn btn-primary btn-sm" onclick="openCreateOpportunityModal()">
+                            ➕ Create New
+                        </button>
+                    </div>
+                    <div id="brand-opportunities-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading your opportunities...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Applications Section -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">📥 Pending Applications</h3>
+                        <button class="btn btn-ghost btn-sm" onclick="showPage('applications')">View All →</button>
+                    </div>
+                    <div id="brand-pending-applications">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading applications...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Collaborations Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🤝 Active Collaborations</h3>
+                    </div>
+                    <div id="brand-collaborations-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading collaborations...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1153,6 +1203,44 @@
                 </div>
             </div>
         </div>
+
+        <!-- Applications Page (Brand Only) -->
+        <div id="applications" class="page">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2>Applications</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <select class="form-select" id="app-filter-status" onchange="filterApplications()" style="width: auto;">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select class="form-select" id="app-filter-opportunity" onchange="filterApplications()" style="width: auto;">
+                        <option value="">All Opportunities</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="all-applications-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading applications...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Review Modal -->
+    <div class="modal" id="applicationReviewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3>Review Application</h3>
+                <button onclick="closeApplicationReviewModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="application-review-content" style="padding: 1.5rem;">
+                <!-- Content populated dynamically -->
+            </div>
+        </div>
     </div>
 
     <!-- Create Opportunity Modal -->
@@ -1309,6 +1397,11 @@
             if (userTypeContent) {
                 userTypeContent.style.display = 'block';
             }
+
+            // Show/hide brand-only nav tabs
+            document.querySelectorAll('.brand-only-tab').forEach(tab => {
+                tab.style.display = userType === 'brand' ? 'inline-block' : 'none';
+            });
         }
 
         // Get time of day for greeting
@@ -1478,10 +1571,506 @@
         }
 
         // Load brand metrics
+        // ============================================
+        // BRAND DASHBOARD FUNCTIONS
+        // ============================================
+
+        let brandOpportunities = [];
+        let brandApplications = [];
+        let brandCollaborations = [];
+
         async function loadBrandMetrics() {
-            animateValue('campaigns-launched', 0, 5, 1000, (val) => Math.round(val).toString());
-            animateValue('influencers-connected', 0, 12, 1200, (val) => Math.round(val).toString());
-            animateValue('roi-percentage', 0, 234, 1500, (val) => Math.round(val) + '%');
+            try {
+                // Load brand stats
+                const statsResponse = await fetch(`${API_BASE}/api/brand/stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (statsResponse.ok) {
+                    const data = await statsResponse.json();
+                    const stats = data.stats;
+                    
+                    animateValue('active-opportunities', 0, parseInt(stats.active_opportunities) || 0, 800, (val) => Math.round(val).toString());
+                    animateValue('pending-applications', 0, parseInt(stats.pending_applications) || 0, 800, (val) => Math.round(val).toString());
+                    animateValue('active-collabs', 0, parseInt(stats.active_collaborations) || 0, 800, (val) => Math.round(val).toString());
+                    animateValue('completed-collabs', 0, parseInt(stats.completed_collaborations) || 0, 800, (val) => Math.round(val).toString());
+                    
+                    // Show alert if pending applications
+                    if (parseInt(stats.pending_applications) > 0) {
+                        document.getElementById('applications-alert').textContent = '⚠️ Review needed';
+                    }
+                }
+                
+                // Load brand's opportunities
+                await loadBrandOpportunities();
+                
+                // Load pending applications
+                await loadBrandApplications();
+                
+                // Load collaborations
+                await loadBrandCollaborations();
+                
+            } catch (error) {
+                console.error('Error loading brand metrics:', error);
+            }
+        }
+
+        async function loadBrandOpportunities() {
+            const container = document.getElementById('brand-opportunities-list');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/opportunities`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    brandOpportunities = data.opportunities || [];
+                    
+                    if (brandOpportunities.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📝</div>
+                                <div class="empty-state-title">No opportunities yet</div>
+                                <div class="empty-state-description">Create your first opportunity to start finding influencers</div>
+                                <button class="btn btn-primary" onclick="openCreateOpportunityModal()" style="margin-top: 1rem;">
+                                    ➕ Create Opportunity
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Populate the filter dropdown
+                    const filterSelect = document.getElementById('app-filter-opportunity');
+                    if (filterSelect) {
+                        filterSelect.innerHTML = '<option value="">All Opportunities</option>' + 
+                            brandOpportunities.map(opp => `<option value="${opp.id}">${escapeHtml(opp.title)}</option>`).join('');
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="opportunities-grid">
+                            ${brandOpportunities.slice(0, 3).map(opp => `
+                                <div class="opportunity-card" style="cursor: default;">
+                                    <div class="opportunity-header">
+                                        <span class="opportunity-type ${opp.type}">${opp.type}</span>
+                                        <span class="status-badge ${opp.status === 'active' ? 'status-connected' : 'status-disconnected'}">
+                                            ${opp.status}
+                                        </span>
+                                    </div>
+                                    <div class="opportunity-title">${escapeHtml(opp.title)}</div>
+                                    <div class="opportunity-footer">
+                                        <span class="opportunity-budget">${opp.budget_range || 'Budget TBD'}</span>
+                                        <span>📝 ${opp.applications_count || 0} applications</span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                        <button class="btn btn-ghost btn-sm" onclick="editOpportunity(${opp.id})">Edit</button>
+                                        <button class="btn btn-ghost btn-sm" onclick="toggleOpportunityStatus(${opp.id}, '${opp.status}')">
+                                            ${opp.status === 'active' ? 'Pause' : 'Activate'}
+                                        </button>
+                                        ${opp.applications_count > 0 ? `
+                                            <button class="btn btn-primary btn-sm" onclick="viewOpportunityApplications(${opp.id})">
+                                                View Applications
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${brandOpportunities.length > 3 ? `
+                            <div style="text-align: center; margin-top: 1rem;">
+                                <button class="btn btn-ghost" onclick="showAllBrandOpportunities()">
+                                    View All ${brandOpportunities.length} Opportunities →
+                                </button>
+                            </div>
+                        ` : ''}
+                    `;
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-secondary);">Failed to load opportunities</p>';
+                }
+            } catch (error) {
+                console.error('Error loading brand opportunities:', error);
+                container.innerHTML = '<p style="color: var(--text-secondary);">Failed to load opportunities</p>';
+            }
+        }
+
+        async function loadBrandApplications(status = 'pending', opportunityId = null) {
+            const container = document.getElementById('brand-pending-applications');
+            const allContainer = document.getElementById('all-applications-list');
+            
+            try {
+                let url = `${API_BASE}/api/brand/applications?status=${status}`;
+                if (opportunityId) url += `&opportunityId=${opportunityId}`;
+                
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    brandApplications = data.applications || [];
+                    
+                    const html = brandApplications.length === 0 
+                        ? `<div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">No ${status} applications</div>
+                            <div class="empty-state-description">Applications will appear here when influencers apply</div>
+                           </div>`
+                        : `<div class="opportunities-grid">
+                            ${brandApplications.slice(0, 6).map(app => renderApplicationCard(app)).join('')}
+                           </div>`;
+                    
+                    if (container) container.innerHTML = html;
+                    if (allContainer) {
+                        allContainer.innerHTML = brandApplications.length === 0
+                            ? html
+                            : `<div class="opportunities-grid">
+                                ${brandApplications.map(app => renderApplicationCard(app)).join('')}
+                               </div>`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading brand applications:', error);
+            }
+        }
+
+        function renderApplicationCard(app) {
+            const socialAccounts = app.applicant_social_accounts || [];
+            const totalFollowers = socialAccounts.reduce((sum, acc) => {
+                const stats = typeof acc.stats === 'string' ? JSON.parse(acc.stats) : acc.stats;
+                return sum + (stats?.followers || 0);
+            }, 0);
+            
+            return `
+                <div class="opportunity-card" onclick="reviewApplication(${app.id})">
+                    <div class="opportunity-header">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div class="avatar" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                ${getInitials(app.applicant_name)}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">${escapeHtml(app.applicant_name)}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                    ${formatNumber(totalFollowers)} followers
+                                </div>
+                            </div>
+                        </div>
+                        <span class="status-badge ${app.status === 'pending' ? '' : app.status === 'accepted' ? 'status-connected' : 'status-disconnected'}">
+                            ${app.status}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin: 0.5rem 0;">
+                        Applied for: <strong>${escapeHtml(app.opportunity_title)}</strong>
+                    </div>
+                    ${app.message ? `
+                        <div class="opportunity-description">"${escapeHtml(app.message)}"</div>
+                    ` : ''}
+                    <div class="opportunity-footer">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                            ${formatTime(app.created_at)}
+                        </span>
+                        ${app.proposed_rate ? `
+                            <span class="opportunity-budget">$${app.proposed_rate}</span>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadBrandCollaborations() {
+            const container = document.getElementById('brand-collaborations-list');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/collaborations`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    brandCollaborations = data.collaborations || [];
+                    
+                    if (brandCollaborations.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🤝</div>
+                                <div class="empty-state-title">No collaborations yet</div>
+                                <div class="empty-state-description">Accept applications to start collaborating</div>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    const activeCollabs = brandCollaborations.filter(c => c.status !== 'completed' && c.status !== 'cancelled');
+                    
+                    container.innerHTML = `
+                        <div class="opportunities-grid">
+                            ${activeCollabs.slice(0, 3).map(collab => `
+                                <div class="opportunity-card">
+                                    <div class="opportunity-header">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div class="avatar" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                                ${getInitials(collab.influencer_name)}
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 600;">${escapeHtml(collab.influencer_name)}</div>
+                                            </div>
+                                        </div>
+                                        <span class="status-badge ${collab.status === 'in_progress' ? 'status-connected' : ''}">
+                                            ${collab.status.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin: 0.5rem 0;">
+                                        ${escapeHtml(collab.opportunity_title || 'Direct collaboration')}
+                                    </div>
+                                    <div class="opportunity-footer">
+                                        <span>Started ${formatTime(collab.created_at)}</span>
+                                        ${collab.agreed_rate ? `<span class="opportunity-budget">$${collab.agreed_rate}</span>` : ''}
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                        <button class="btn btn-ghost btn-sm" onclick="messageInfluencer(${collab.influencer_id})">
+                                            💬 Message
+                                        </button>
+                                        <button class="btn btn-primary btn-sm" onclick="updateCollaborationStatus(${collab.id}, 'completed')">
+                                            ✓ Mark Complete
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading collaborations:', error);
+            }
+        }
+
+        async function reviewApplication(applicationId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/applications/${applicationId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load application');
+                
+                const data = await response.json();
+                const app = data.application;
+                
+                const socialAccounts = app.applicant_social_accounts || [];
+                const totalFollowers = socialAccounts.reduce((sum, acc) => {
+                    const stats = typeof acc.stats === 'string' ? JSON.parse(acc.stats) : acc.stats;
+                    return sum + (stats?.followers || 0);
+                }, 0);
+                
+                const modal = document.getElementById('applicationReviewModal');
+                const content = document.getElementById('application-review-content');
+                
+                content.innerHTML = `
+                    <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="avatar" style="width: 80px; height: 80px; font-size: 2rem; flex-shrink: 0;">
+                            ${getInitials(app.applicant_name)}
+                        </div>
+                        <div style="flex: 1;">
+                            <h2 style="margin-bottom: 0.25rem;">${escapeHtml(app.applicant_name)}</h2>
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                ${app.applicant_location || 'Location not specified'}
+                            </p>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <span style="background: var(--bg-card); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem;">
+                                    👥 ${formatNumber(totalFollowers)} followers
+                                </span>
+                                ${socialAccounts.map(acc => `
+                                    <span style="background: var(--bg-card); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem;">
+                                        ${getPlatformIcon(acc.platform)} ${acc.username}
+                                        ${acc.is_verified ? '✓' : ''}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${app.applicant_bio ? `
+                        <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">About</h4>
+                            <p style="color: var(--text-secondary);">${escapeHtml(app.applicant_bio)}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 0.5rem;">Applied For</h4>
+                        <p style="font-weight: 600;">${escapeHtml(app.opportunity_title)}</p>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">${app.budget_range || 'Budget TBD'}</p>
+                    </div>
+                    
+                    ${app.message ? `
+                        <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">Application Message</h4>
+                            <p style="color: var(--text-secondary); line-height: 1.6;">"${escapeHtml(app.message)}"</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${app.proposed_rate ? `
+                        <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">Proposed Rate</h4>
+                            <p style="font-size: 1.5rem; font-weight: 600; color: var(--accent-green);">$${app.proposed_rate}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${app.status === 'pending' ? `
+                        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                            <button class="btn btn-primary" onclick="acceptApplication(${app.id})" style="flex: 1;">
+                                ✓ Accept Application
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectApplication(${app.id})" style="flex: 1;">
+                                ✕ Decline
+                            </button>
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 1rem; background: var(--bg-card); border-radius: 0.5rem;">
+                            <span class="status-badge ${app.status === 'accepted' ? 'status-connected' : 'status-disconnected'}" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                                ${app.status === 'accepted' ? '✓ Accepted' : '✕ Declined'}
+                            </span>
+                        </div>
+                    `}
+                `;
+                
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading application:', error);
+                showNotification('Failed to load application details', 'error');
+            }
+        }
+
+        async function acceptApplication(applicationId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/applications/${applicationId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                if (response.ok) {
+                    showNotification('Application accepted! A conversation has been started.', 'success');
+                    closeApplicationReviewModal();
+                    
+                    // Refresh all brand data
+                    await loadBrandMetrics();
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to accept application', 'error');
+                }
+            } catch (error) {
+                console.error('Accept error:', error);
+                showNotification('Failed to accept application', 'error');
+            }
+        }
+
+        async function rejectApplication(applicationId) {
+            const reason = prompt('Optional: Add a message for the applicant');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/applications/${applicationId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ responseMessage: reason })
+                });
+                
+                if (response.ok) {
+                    showNotification('Application declined', 'info');
+                    closeApplicationReviewModal();
+                    await loadBrandMetrics();
+                } else {
+                    showNotification('Failed to decline application', 'error');
+                }
+            } catch (error) {
+                console.error('Reject error:', error);
+                showNotification('Failed to decline application', 'error');
+            }
+        }
+
+        async function updateCollaborationStatus(collabId, status) {
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/collaborations/${collabId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Collaboration marked as ${status}!`, 'success');
+                    await loadBrandMetrics();
+                } else {
+                    showNotification('Failed to update collaboration', 'error');
+                }
+            } catch (error) {
+                console.error('Update collab error:', error);
+                showNotification('Failed to update collaboration', 'error');
+            }
+        }
+
+        async function toggleOpportunityStatus(oppId, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/opportunities/${oppId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Opportunity ${newStatus}`, 'success');
+                    await loadBrandOpportunities();
+                    await loadBrandMetrics();
+                } else {
+                    showNotification('Failed to update opportunity', 'error');
+                }
+            } catch (error) {
+                console.error('Toggle status error:', error);
+            }
+        }
+
+        function editOpportunity(oppId) {
+            // For now, just show notification - can implement full edit modal later
+            showNotification('Edit feature coming soon! Use delete and recreate for now.', 'info');
+        }
+
+        function viewOpportunityApplications(oppId) {
+            document.getElementById('app-filter-opportunity').value = oppId;
+            showPage('applications');
+            filterApplications();
+        }
+
+        function showAllBrandOpportunities() {
+            showPage('opportunities');
+        }
+
+        async function messageInfluencer(influencerId) {
+            // Find or create conversation and switch to messages
+            showPage('messages');
+            // Could auto-select the conversation here
+            showNotification('Opening conversation...', 'info');
+        }
+
+        function closeApplicationReviewModal() {
+            document.getElementById('applicationReviewModal').style.display = 'none';
+        }
+
+        function filterApplications() {
+            const status = document.getElementById('app-filter-status').value || '';
+            const oppId = document.getElementById('app-filter-opportunity').value || null;
+            loadBrandApplications(status || 'pending', oppId);
         }
 
         // Load freelancer data
@@ -2188,6 +2777,7 @@
             const pageNames = {
                 'dashboard': 'Formative',
                 'opportunities': 'Opportunities',
+                'applications': 'Applications',
                 'messages': 'Messages',
                 'settings': 'Settings'
             };
@@ -2198,6 +2788,8 @@
                 loadConnectedAccounts();
             } else if (pageId === 'messages') {
                 loadConversations();
+            } else if (pageId === 'applications' && userType === 'brand') {
+                loadBrandApplications();
             }
         }
 
