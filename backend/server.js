@@ -138,22 +138,34 @@ async function initializeDatabase() {
         description TEXT,
         type VARCHAR(50) NOT NULL,
         industry VARCHAR(100),
-        budget_min INTEGER,
-        budget_max INTEGER,
         budget_range VARCHAR(50),
-        requirements JSONB DEFAULT '[]',
-        platforms JSONB DEFAULT '[]',
-        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         status VARCHAR(50) DEFAULT 'active',
-        deadline TIMESTAMP,
-        location VARCHAR(255),
-        is_remote BOOLEAN DEFAULT TRUE,
         views_count INTEGER DEFAULT 0,
         applications_count INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Add missing columns to opportunities if they don't exist
+    const oppColumns = [
+      { name: 'budget_min', type: 'INTEGER' },
+      { name: 'budget_max', type: 'INTEGER' },
+      { name: 'requirements', type: "JSONB DEFAULT '[]'" },
+      { name: 'platforms', type: "JSONB DEFAULT '[]'" },
+      { name: 'created_by', type: 'INTEGER' },
+      { name: 'deadline', type: 'TIMESTAMP' },
+      { name: 'location', type: 'VARCHAR(255)' },
+      { name: 'is_remote', type: 'BOOLEAN DEFAULT TRUE' }
+    ];
+    
+    for (const col of oppColumns) {
+      try {
+        await client.query(`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
 
     // 4. APPLICATIONS TABLE
     await client.query(`
@@ -177,7 +189,7 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
-        conversation_id UUID,
+        conversation_id INTEGER,
         sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         content TEXT NOT NULL,
@@ -188,6 +200,13 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Add conversation_id column as INTEGER if it doesn't exist or is wrong type
+    try {
+      await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversation_id INTEGER`);
+    } catch (e) {
+      // Column might already exist
+    }
 
     // Create indexes for messages
     await client.query(`
@@ -201,16 +220,48 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS conversations (
         id SERIAL PRIMARY KEY,
-        conversation_id UUID UNIQUE,
-        participant_1 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        participant_2 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_message_preview TEXT,
-        opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
+        user1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(participant_1, participant_2)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user1_id, user2_id)
       )
     `);
+    
+    // Add missing columns to conversations if they don't exist
+    const convColumns = [
+      { name: 'user1_id', type: 'INTEGER' },
+      { name: 'user2_id', type: 'INTEGER' },
+      { name: 'updated_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' }
+    ];
+    
+    for (const col of convColumns) {
+      try {
+        await client.query(`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
+    
+    // If old schema exists with participant_1/participant_2, migrate data
+    try {
+      const hasOldSchema = await client.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'conversations' AND column_name = 'participant_1'
+      `);
+      
+      if (hasOldSchema.rows.length > 0) {
+        // Check if user1_id has data
+        const hasNewData = await client.query(`SELECT user1_id FROM conversations WHERE user1_id IS NOT NULL LIMIT 1`);
+        if (hasNewData.rows.length === 0) {
+          // Migrate data from old columns
+          await client.query(`UPDATE conversations SET user1_id = participant_1, user2_id = participant_2 WHERE user1_id IS NULL`);
+          console.log('📦 Migrated conversations from old schema');
+        }
+      }
+    } catch (e) {
+      // Old schema doesn't exist, that's fine
+    }
 
     // 7. NOTIFICATIONS TABLE
     await client.query(`
@@ -220,12 +271,30 @@ async function initializeDatabase() {
         type VARCHAR(50) NOT NULL,
         title VARCHAR(255) NOT NULL,
         content TEXT,
+        message TEXT,
         link VARCHAR(500),
+        related_id INTEGER,
+        related_type VARCHAR(50),
         is_read BOOLEAN DEFAULT FALSE,
         read_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Add missing columns to notifications if they don't exist
+    const notifColumns = [
+      { name: 'message', type: 'TEXT' },
+      { name: 'related_id', type: 'INTEGER' },
+      { name: 'related_type', type: 'VARCHAR(50)' }
+    ];
+    
+    for (const col of notifColumns) {
+      try {
+        await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column might already exist, ignore error
+      }
+    }
 
     // Create index for notifications
     await client.query(`
