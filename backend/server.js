@@ -28,7 +28,7 @@ const pool = new Pool({
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://hcs412.github.io', 'https://formative-production.up.railway.app']
+    ? ['https://formativeunites.us', 'https://www.formativeunites.us', 'https://hcs412.github.io', 'https://formative-production.up.railway.app']
     : '*',
   credentials: true
 }));
@@ -66,6 +66,14 @@ const OAUTH_CONFIG = {
     userUrl: 'https://open.tiktokapis.com/v2/user/info/',
     scopes: ['user.info.basic', 'user.info.stats', 'video.list'],
     redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/tiktok/callback`
+  },
+  youtube: {
+    clientId: process.env.YOUTUBE_CLIENT_ID,
+    clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    scopes: ['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/userinfo.profile'],
+    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/youtube/callback`
   }
 };
 
@@ -961,6 +969,35 @@ app.get('/api/oauth/tiktok/authorize', authenticateTokenFlexible, (req, res) => 
   res.redirect(`${OAUTH_CONFIG.tiktok.authUrl}?${params}`);
 });
 
+// YouTube OAuth - Authorize
+app.get('/api/oauth/youtube/authorize', authenticateTokenFlexible, (req, res) => {
+  if (!OAUTH_CONFIG.youtube.clientId) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=youtube`);
+  }
+
+  const state = generateOAuthState();
+  
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'youtube',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_id: OAUTH_CONFIG.youtube.clientId,
+    redirect_uri: OAUTH_CONFIG.youtube.redirectUri,
+    response_type: 'code',
+    scope: OAUTH_CONFIG.youtube.scopes.join(' '),
+    state: state,
+    access_type: 'offline',
+    prompt: 'consent'
+  });
+
+  res.redirect(`${OAUTH_CONFIG.youtube.authUrl}?${params}`);
+});
+
 // ============================================
 // OAUTH CALLBACK ENDPOINTS
 // ============================================
@@ -1192,6 +1229,95 @@ app.get('/api/oauth/tiktok/callback', async (req, res) => {
   }
 });
 
+// YouTube OAuth - Callback
+app.get('/api/oauth/youtube/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  
+  if (error) {
+    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_denied&platform=youtube`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'youtube') {
+    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(OAUTH_CONFIG.youtube.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: OAUTH_CONFIG.youtube.clientId,
+        client_secret: OAUTH_CONFIG.youtube.clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: OAUTH_CONFIG.youtube.redirectUri
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+
+    if (tokens.error) {
+      throw new Error(tokens.error_description || tokens.error);
+    }
+
+    // Get the user's YouTube channel info
+    const channelResponse = await fetch(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
+      {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`
+        }
+      }
+    );
+
+    const channelData = await channelResponse.json();
+    
+    if (!channelData.items || channelData.items.length === 0) {
+      throw new Error('No YouTube channel found for this account');
+    }
+
+    const channel = channelData.items[0];
+    const username = channel.snippet.title;
+    const channelId = channel.id;
+    const stats = {
+      subscribers: parseInt(channel.statistics.subscriberCount) || 0,
+      views: parseInt(channel.statistics.viewCount) || 0,
+      videos: parseInt(channel.statistics.videoCount) || 0,
+      hiddenSubscriberCount: channel.statistics.hiddenSubscriberCount || false
+    };
+
+    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+
+    await pool.query(
+      `INSERT INTO social_accounts 
+        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, stats, is_verified, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, NOW(), NOW())
+       ON CONFLICT (user_id, platform) 
+       DO UPDATE SET 
+         username = $3,
+         platform_user_id = $4,
+         access_token = $5,
+         refresh_token = $6,
+         token_expires_at = $7,
+         stats = $8,
+         is_verified = TRUE,
+         updated_at = NOW()`,
+      [stateData.userId, 'youtube', username, channelId, tokens.access_token, tokens.refresh_token, expiresAt, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ YouTube connected for user ${stateData.userId}: ${username} (${stats.subscribers} subscribers)`);
+
+    res.redirect(`${FRONTEND_URL}/dashboard.html?oauth=success&platform=youtube`);
+  } catch (error) {
+    console.error('YouTube OAuth error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_failed&platform=youtube&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
 // ============================================
 // BLUESKY (SIMPLE VERIFICATION - NO OAUTH)
 // ============================================
@@ -1390,6 +1516,66 @@ app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
     console.error('Twitter stats error:', error);
     res.status(500).json({ 
       error: 'Failed to fetch Twitter stats',
+      message: error.message 
+    });
+  }
+});
+
+// YouTube Stats - Refresh
+app.get('/api/social/youtube/stats', authenticateToken, async (req, res) => {
+  try {
+    const accessToken = await getValidAccessToken(req.user.userId, 'youtube');
+
+    const response = await fetch(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.items || data.items.length === 0) {
+      throw new Error('No YouTube channel found');
+    }
+
+    const channel = data.items[0];
+    const stats = {
+      subscribers: parseInt(channel.statistics.subscriberCount) || 0,
+      followers: parseInt(channel.statistics.subscriberCount) || 0, // Alias for consistency
+      views: parseInt(channel.statistics.viewCount) || 0,
+      videos: parseInt(channel.statistics.videoCount) || 0,
+      hiddenSubscriberCount: channel.statistics.hiddenSubscriberCount || false,
+      displayName: channel.snippet.title,
+      profileImage: channel.snippet.thumbnails?.default?.url,
+      description: channel.snippet.description
+    };
+
+    await pool.query(
+      `UPDATE social_accounts 
+       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
+       WHERE user_id = $2 AND platform = 'youtube'`,
+      [JSON.stringify(stats), req.user.userId]
+    );
+
+    res.json({
+      success: true,
+      platform: 'youtube',
+      username: channel.snippet.title,
+      stats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('YouTube stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch YouTube stats',
       message: error.message 
     });
   }
@@ -2456,6 +2642,7 @@ async function startServer() {
       console.log(`   Twitter:   ${OAUTH_CONFIG.twitter.clientId ? '✅ Configured' : '❌ Not configured'}`);
       console.log(`   Instagram: ${OAUTH_CONFIG.instagram.clientId ? '✅ Configured' : '❌ Not configured'}`);
       console.log(`   TikTok:    ${OAUTH_CONFIG.tiktok.clientId ? '✅ Configured' : '❌ Not configured'}`);
+      console.log(`   YouTube:   ${OAUTH_CONFIG.youtube.clientId ? '✅ Configured' : '❌ Not configured'}`);
       console.log(`   Bluesky:   ✅ Always available (no OAuth needed)`);
       console.log('');
       console.log('═══════════════════════════════════════════════════');
