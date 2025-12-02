@@ -1306,6 +1306,85 @@
         </div>
     </div>
 
+    <!-- Application Form Modal -->
+    <div class="modal" id="applicationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 550px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3>Apply to Opportunity</h3>
+                <button onclick="closeApplicationModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <form id="application-form" style="padding: 1.5rem;">
+                <input type="hidden" id="apply-opportunity-id">
+                
+                <!-- Opportunity Summary -->
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;" id="apply-opportunity-title"></div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;" id="apply-opportunity-budget"></div>
+                </div>
+                
+                <!-- Application Message -->
+                <div class="form-group">
+                    <label class="form-label">Why are you a great fit? *</label>
+                    <textarea 
+                        class="form-input" 
+                        id="apply-message" 
+                        rows="4" 
+                        required
+                        placeholder="Tell the brand about your experience, audience, and why you'd be perfect for this opportunity..."
+                        style="resize: vertical; min-height: 100px;"
+                    ></textarea>
+                </div>
+                
+                <!-- Proposed Rate -->
+                <div class="form-group">
+                    <label class="form-label">Your Proposed Rate ($)</label>
+                    <input 
+                        type="number" 
+                        class="form-input" 
+                        id="apply-rate" 
+                        placeholder="e.g., 500"
+                        min="0"
+                    >
+                    <small style="color: var(--text-secondary);">Optional - leave blank to negotiate later</small>
+                </div>
+                
+                <!-- Portfolio Links -->
+                <div class="form-group">
+                    <label class="form-label">Portfolio / Sample Work Links</label>
+                    <input 
+                        type="url" 
+                        class="form-input" 
+                        id="apply-portfolio-1" 
+                        placeholder="https://..."
+                        style="margin-bottom: 0.5rem;"
+                    >
+                    <input 
+                        type="url" 
+                        class="form-input" 
+                        id="apply-portfolio-2" 
+                        placeholder="https://... (optional)"
+                    >
+                    <small style="color: var(--text-secondary);">Add links to relevant past work, posts, or your media kit</small>
+                </div>
+                
+                <!-- Connected Accounts Preview -->
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Your connected accounts will be shared:</div>
+                    <div id="apply-connected-accounts" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        Submit Application
+                    </button>
+                    <button type="button" class="btn btn-ghost" onclick="closeApplicationModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let currentUser = null;
@@ -1317,7 +1396,7 @@
         let currentConversation = null;
 
         // API Base URL
-        const API_BASE = 'https://formative-production.up.railway.app';
+        const API_BASE = 'https://formativeunites.us';
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
@@ -2216,21 +2295,81 @@
         }
 
         async function applyToOpportunity(id) {
+            // Find the opportunity details
+            const opportunity = allOpportunities.find(o => o.id === id);
+            if (!opportunity) {
+                showNotification('Opportunity not found', 'error');
+                return;
+            }
+            
+            // Close the detail modal first
+            closeOpportunityDetailModal();
+            
+            // Populate the application modal
+            document.getElementById('apply-opportunity-id').value = id;
+            document.getElementById('apply-opportunity-title').textContent = opportunity.title;
+            document.getElementById('apply-opportunity-budget').textContent = opportunity.budget_range || 'Budget: Negotiable';
+            
+            // Show connected accounts
+            const accountsContainer = document.getElementById('apply-connected-accounts');
+            if (connectedAccounts && connectedAccounts.length > 0) {
+                accountsContainer.innerHTML = connectedAccounts.map(acc => `
+                    <span style="background: var(--bg-secondary); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">
+                        ${getPlatformIcon(acc.platform)} ${acc.username}
+                    </span>
+                `).join('');
+            } else {
+                accountsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.85rem;">No accounts connected - <a href="#" onclick="showPage(\'settings\')" style="color: var(--accent-teal);">connect now</a></span>';
+            }
+            
+            // Clear previous form data
+            document.getElementById('apply-message').value = '';
+            document.getElementById('apply-rate').value = '';
+            document.getElementById('apply-portfolio-1').value = '';
+            document.getElementById('apply-portfolio-2').value = '';
+            
+            // Show the application modal
+            document.getElementById('applicationModal').style.display = 'flex';
+        }
+
+        function closeApplicationModal() {
+            document.getElementById('applicationModal').style.display = 'none';
+        }
+
+        // Application form submission handler
+        document.getElementById('application-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const opportunityId = document.getElementById('apply-opportunity-id').value;
+            const message = document.getElementById('apply-message').value.trim();
+            const proposedRate = document.getElementById('apply-rate').value;
+            const portfolio1 = document.getElementById('apply-portfolio-1').value.trim();
+            const portfolio2 = document.getElementById('apply-portfolio-2').value.trim();
+            
+            const portfolioLinks = [portfolio1, portfolio2].filter(link => link);
+            
+            if (!message) {
+                showNotification('Please write a message about why you\'re a great fit', 'error');
+                return;
+            }
+            
             try {
-                const response = await fetch(`${API_BASE}/api/opportunities/${id}/apply`, {
+                const response = await fetch(`${API_BASE}/api/opportunities/${opportunityId}/apply`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: 'I am interested in this opportunity!'
+                        message,
+                        proposedRate: proposedRate ? parseInt(proposedRate) : null,
+                        portfolioLinks
                     })
                 });
                 
                 if (response.ok) {
-                    showNotification('Application submitted successfully!', 'success');
-                    closeOpportunityDetailModal();
+                    showNotification('🎉 Application submitted successfully!', 'success');
+                    closeApplicationModal();
                     loadOpportunities(); // Refresh to update counts
                 } else {
                     const error = await response.json();
@@ -2240,7 +2379,7 @@
                 console.error('Apply error:', error);
                 showNotification('Failed to submit application', 'error');
             }
-        }
+        });
 
         function openCreateOpportunityModal() {
             document.getElementById('createOpportunityModal').style.display = 'flex';
