@@ -4,107 +4,888 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formative - Dashboard</title>
-    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/mobile.css">
-    <!-- Critical navbar styles to ensure visibility -->
     <style>
-        .navbar {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            background: rgba(30, 41, 54, 0.98) !important;
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem !important;
-            position: sticky !important;
-            top: 0 !important;
-            z-index: 9999 !important;
-            border-bottom: 1px solid #374151;
-            min-height: 70px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .logo {
+
+        :root {
+            --bg-primary: #1e2936;
+            --bg-secondary: #2a3f5f;
+            --bg-card: #243447;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --accent-teal: #14b8a6;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --accent-yellow: #fbbf24;
+            --border-color: #374151;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e2936 0%, #2a3f5f 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+            display: inline-flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-teal);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, #0891b2 100%);
+            color: white !important;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(20, 184, 166, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white !important;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(30, 41, 54, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
             display: flex !important;
-            align-items: center !important;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+            min-height: 70px;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
             gap: 1rem;
             font-size: 1.5rem;
             font-weight: bold;
-            color: #ffffff !important;
+            color: var(--text-primary) !important;
         }
+
         .logo span {
-            color: #ffffff !important;
+            color: var(--text-primary) !important;
+            display: inline-block !important;
+            opacity: 1 !important;
         }
+
         .logo-icon {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #14b8a6, #f97316) !important;
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-orange) 100%);
             border-radius: 50%;
-        }
-        .nav-section {
-            display: flex !important;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
+
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: var(--bg-primary);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-30%, -50%);
+        }
+
+        .nav-section {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
         .nav-tabs {
-            display: flex !important;
-            gap: 1rem;
+            display: flex;
+            gap: 2rem;
         }
+
         .nav-tab {
-            color: #9ca3af !important;
+            color: var(--text-secondary) !important;
             text-decoration: none;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
-            cursor: pointer;
             transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-block !important;
+            opacity: 1 !important;
         }
+
         .nav-tab:hover, .nav-tab.active {
-            color: #ffffff !important;
-            background: rgba(42, 63, 95, 0.8);
+            color: var(--text-primary) !important;
+            background: var(--bg-card);
         }
+
         .user-section {
-            display: flex !important;
-            align-items: center !important;
+            display: flex;
+            align-items: center;
             gap: 1rem;
         }
+
         .greeting {
-            color: #9ca3af !important;
+            color: var(--text-secondary) !important;
             font-size: 0.9rem;
+            display: block !important;
+            opacity: 1 !important;
         }
+
         .icon-btn {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: #243447;
-            border: 1px solid #374151;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             display: flex !important;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            color: var(--text-primary) !important;
+            position: relative;
         }
+
+        .icon-btn:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
+        }
+
+        .icon-btn span {
+            display: block !important;
+            opacity: 1 !important;
+            font-size: 1.2rem;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--accent-red);
+            color: white;
+            font-size: 0.7rem;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
         .avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex !important;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            color: #ffffff !important;
             cursor: pointer;
+            color: white !important;
+            font-size: 1.1rem;
         }
-        .btn-ghost {
-            background: transparent;
-            color: #ffffff !important;
-            border: 1px solid #374151;
-            padding: 0.5rem 1rem;
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Welcome Section */
+        .welcome-section {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-orange) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .welcome-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        /* Stats */
+        .influencer-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-source {
+            color: var(--accent-teal);
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+
+        /* Settings Page Styles */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .connected-accounts {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .account-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .account-card.connected {
+            border-color: var(--accent-green);
+        }
+
+        .account-card.disconnected {
+            opacity: 0.6;
+        }
+
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .platform-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .status-disconnected {
+            background: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .account-details {
+            margin-bottom: 1rem;
+        }
+
+        .account-username {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .account-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .mini-stat {
+            background: var(--bg-secondary);
+            padding: 0.5rem;
             border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .mini-stat-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .mini-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .connect-form {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-teal);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-description {
+            margin-bottom: 1.5rem;
+        }
+
+        /* Opportunities */
+        .opportunities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .opportunity-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
             cursor: pointer;
         }
+
+        .opportunity-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-teal);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .opportunity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .opportunity-type {
+            background: var(--accent-teal);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .opportunity-type.freelancer {
+            background: var(--accent-orange);
+        }
+
+        .opportunity-type.brand {
+            background: #8b5cf6;
+        }
+
+        .opportunity-deadline {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .opportunity-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .opportunity-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .opportunity-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .opportunity-budget {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .opportunity-industry {
+            background: var(--bg-secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .opportunity-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Messages */
+        .messages-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1.5rem;
+            height: 500px;
+        }
+
+        .conversations-list {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .conversations-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .conversations-scroll {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .conversation-item:hover, .conversation-item.active {
+            background: var(--bg-secondary);
+        }
+
+        .conversation-item.unread {
+            background: rgba(20, 184, 166, 0.1);
+        }
+
+        .conversation-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .conversation-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .conversation-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+
+        .conversation-preview {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .unread-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-teal);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .chat-area {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            background: var(--accent-teal);
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message.received {
+            align-self: flex-start;
+            background: var(--bg-secondary);
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .chat-input-area {
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 1.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background: #0d9488;
+            transform: scale(1.05);
+        }
+
+        .no-chat-selected {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .no-chat-selected-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .navbar { flex-wrap: wrap; padding: 1rem !important; }
-            .nav-section { order: 3; width: 100%; margin-top: 1rem; }
-            .nav-tabs { width: 100%; justify-content: space-around; gap: 0.5rem; }
-            .nav-tab { font-size: 0.85rem; padding: 0.5rem; }
-            .greeting { display: none; }
+            .navbar {
+                flex-wrap: wrap;
+                padding: 1rem;
+            }
+            
+            .nav-section {
+                order: 3;
+                width: 100%;
+                margin-top: 1rem;
+            }
+            
+            .nav-tabs {
+                width: 100%;
+                justify-content: space-around;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            
+            .nav-tab {
+                font-size: 0.85rem;
+                padding: 0.5rem;
+            }
+            
+            .user-section {
+                gap: 0.5rem;
+            }
+            
+            .greeting {
+                display: none;
+            }
+            
+            .influencer-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .connected-accounts {
+                grid-template-columns: 1fr;
+            }
+
+            .messages-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .conversations-list {
+                max-height: 300px;
+            }
+
+            .chat-area {
+                min-height: 400px;
+            }
         }
     </style>
 </head>
@@ -119,20 +900,23 @@
             <div class="nav-tabs">
                 <a class="nav-tab active" onclick="showPage('dashboard')">Dashboard</a>
                 <a class="nav-tab" onclick="showPage('opportunities')">Opportunities</a>
+                <a class="nav-tab brand-only-tab" onclick="showPage('applications')" style="display: none;">Applications</a>
                 <a class="nav-tab" onclick="showPage('messages')">Messages</a>
-                <a class="nav-tab" href="profile.html">Profile</a>
+                <a class="nav-tab" onclick="showPage('settings')">Settings</a>
             </div>
         </div>
         <div class="user-section">
             <span class="greeting" id="user-greeting">Welcome back!</span>
-            <div class="icon-btn" onclick="showNotifications()">
+            <div class="icon-btn" onclick="showNotifications()" id="notifications-btn">
                 <span>🔔</span>
+                <span class="notification-badge" id="notification-count" style="display: none;">0</span>
             </div>
-            <div class="icon-btn" onclick="showMessages()">
+            <div class="icon-btn" onclick="showPage('messages')" id="messages-btn">
                 <span>💬</span>
+                <span class="notification-badge" id="unread-messages-count" style="display: none;">0</span>
             </div>
             <div class="avatar" id="user-avatar" onclick="goToProfile()" title="View Profile">U</div>
-            <button class="btn btn-ghost" onclick="logout()" style="margin-left: 1rem;">Logout</button>
+            <button class="btn btn-ghost btn-sm" onclick="logout()" style="margin-left: 1rem;">Logout</button>
         </div>
     </nav>
 
@@ -150,12 +934,14 @@
             <div id="influencer-content" class="user-type-content">
                 <div class="influencer-stats">
                     <div class="stat-card">
-                        <div class="stat-value" id="total-followers">0</div>
+                        <div class="stat-value" id="total-followers">Loading...</div>
                         <div class="stat-label">Total Followers</div>
+                        <div class="stat-source" id="followers-source"></div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="engagement-rate">0%</div>
+                        <div class="stat-value" id="engagement-rate">Loading...</div>
                         <div class="stat-label">Engagement Rate</div>
+                        <div class="stat-source" id="engagement-source"></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="active-campaigns">0</div>
@@ -168,34 +954,83 @@
                 </div>
             </div>
 
-            <div id="brand-content" class="user-type-content">
-                <div class="brand-metrics">
-                    <div class="metric-card">
-                        <div class="stat-value" id="campaigns-launched">0</div>
-                        <div class="stat-label">Campaigns Launched</div>
+            <div id="brand-content" class="user-type-content" style="display: none;">
+                <!-- Brand Stats -->
+                <div class="brand-metrics" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <div class="stat-value" id="active-opportunities">0</div>
+                        <div class="stat-label">Active Opportunities</div>
                     </div>
-                    <div class="metric-card">
-                        <div class="stat-value" id="influencers-connected">0</div>
-                        <div class="stat-label">Influencers Connected</div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pending-applications">0</div>
+                        <div class="stat-label">Pending Applications</div>
+                        <div class="stat-source" id="applications-alert" style="color: var(--accent-orange);"></div>
                     </div>
-                    <div class="metric-card">
-                        <div class="stat-value" id="roi-percentage">0%</div>
-                        <div class="stat-label">Average ROI</div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="active-collabs">0</div>
+                        <div class="stat-label">Active Collaborations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="completed-collabs">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+
+                <!-- My Opportunities Section -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">My Opportunities</h3>
+                        <button class="btn btn-primary btn-sm" onclick="openCreateOpportunityModal()">
+                            ➕ Create New
+                        </button>
+                    </div>
+                    <div id="brand-opportunities-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading your opportunities...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Applications Section -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">📥 Pending Applications</h3>
+                        <button class="btn btn-ghost btn-sm" onclick="showPage('applications')">View All →</button>
+                    </div>
+                    <div id="brand-pending-applications">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading applications...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Collaborations Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🤝 Active Collaborations</h3>
+                    </div>
+                    <div id="brand-collaborations-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading collaborations...
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="freelancer-content" class="user-type-content">
-                <div class="freelancer-portfolio">
-                    <div class="portfolio-item">
+            <div id="freelancer-content" class="user-type-content" style="display: none;">
+                <div class="freelancer-portfolio" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="stat-card">
                         <h3>Skills & Services</h3>
                         <p>Showcase your expertise and attract the right clients</p>
                     </div>
-                    <div class="portfolio-item">
+                    <div class="stat-card">
                         <h3>Active Projects</h3>
                         <p>Manage your current work and deadlines</p>
                     </div>
-                    <div class="portfolio-item">
+                    <div class="stat-card">
                         <h3>Client Reviews</h3>
                         <p>Build trust with verified testimonials</p>
                     </div>
@@ -206,51 +1041,23 @@
             <div class="card" style="margin-top: 2rem;">
                 <div class="card-header">
                     <h3 class="card-title">Recommended Opportunities</h3>
-                    <span>✨</span>
+                    <button class="btn btn-ghost btn-sm" onclick="showPage('opportunities')">View All →</button>
                 </div>
-                <div class="opportunities-grid" id="opportunities-grid">
+                <div class="opportunities-grid" id="dashboard-opportunities">
                     <div class="loading">
                         <div class="spinner"></div>
                         Loading opportunities...
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Opportunities Page -->
-        <div id="opportunities" class="page">
-            <div class="card">
+            <!-- Recent Messages Preview -->
+            <div class="card" style="margin-top: 2rem;">
                 <div class="card-header">
-                    <h3 class="card-title">All Opportunities</h3>
-                    <div style="display: flex; gap: 1rem;">
-                        <select style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; color: var(--text-primary);">
-                            <option>All Types</option>
-                            <option>Influencer</option>
-                            <option>Brand</option>
-                            <option>Freelancer</option>
-                        </select>
-                        <button style="background: var(--accent-teal); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
-                            Filter
-                        </button>
-                    </div>
+                    <h3 class="card-title">Recent Messages</h3>
+                    <button class="btn btn-ghost btn-sm" onclick="showPage('messages')">View All →</button>
                 </div>
-                <div class="opportunities-grid" id="all-opportunities">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading all opportunities...
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Messages Page -->
-        <div id="messages" class="page">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Messages</h3>
-                    <span id="message-count">0</span>
-                </div>
-                <div class="messages-list" id="messages-list">
+                <div id="dashboard-messages">
                     <div class="loading">
                         <div class="spinner"></div>
                         Loading messages...
@@ -259,22 +1066,328 @@
             </div>
         </div>
 
-        <!-- Profile Page -->
-        <div id="profile" class="page">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Your Profile</h3>
-                    <button style="background: var(--accent-teal); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
-                        Edit Profile
-                    </button>
+        <!-- Opportunities Page -->
+        <div id="opportunities" class="page">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2>Opportunities</h2>
+                <button class="btn btn-primary" onclick="openCreateOpportunityModal()">
+                    ➕ Create Opportunity
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <select class="form-select" id="filter-type" onchange="filterOpportunities()" style="width: auto;">
+                        <option value="">All Types</option>
+                        <option value="influencer">Influencer</option>
+                        <option value="freelancer">Freelancer</option>
+                        <option value="brand">Brand</option>
+                    </select>
+                    <select class="form-select" id="filter-industry" onchange="filterOpportunities()" style="width: auto;">
+                        <option value="">All Industries</option>
+                        <option value="technology">Technology</option>
+                        <option value="fashion">Fashion</option>
+                        <option value="beauty">Beauty</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="sports">Sports</option>
+                        <option value="food">Food & Beverage</option>
+                    </select>
+                    <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear Filters</button>
                 </div>
-                <div id="profile-content">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading profile...
+            </div>
+
+            <div class="opportunities-grid" id="all-opportunities">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading opportunities...
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Page -->
+        <div id="messages" class="page">
+            <h2 style="margin-bottom: 1.5rem;">Messages</h2>
+            <div class="messages-container">
+                <div class="conversations-list">
+                    <div class="conversations-header">
+                        Conversations
+                    </div>
+                    <div class="conversations-scroll" id="conversations-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-area" id="chat-area">
+                    <div class="no-chat-selected">
+                        <div class="no-chat-selected-icon">💬</div>
+                        <p>Select a conversation to start messaging</p>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="settings" class="page">
+            <h2 style="margin-bottom: 2rem;">Settings</h2>
+            
+            <div class="settings-grid">
+                <!-- Connected Social Accounts -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Connected Social Accounts</h3>
+                        <button class="btn btn-primary btn-sm" onclick="refreshAllStats()">
+                            🔄 Refresh All Stats
+                        </button>
+                    </div>
+                    <div class="connected-accounts" id="connected-accounts">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading connected accounts...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connect New Account -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Connect New Account</h3>
+                    </div>
+                    <div class="connect-form">
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Connect your social media accounts securely. This verifies account ownership and displays your real stats.
+                        </p>
+                        
+                        <div style="display: grid; gap: 1rem;">
+                            <!-- Twitter OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('twitter')" style="justify-content: center; width: 100%;">
+                                <span style="font-size: 1.2rem;">𝕏</span>
+                                Connect Twitter / X
+                            </button>
+                            
+                            <!-- Instagram OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('instagram')" style="justify-content: center; width: 100%; background: linear-gradient(135deg, #f58529 0%, #dd2a7b 50%, #8134af 100%);">
+                                <span style="font-size: 1.2rem;">📷</span>
+                                Connect Instagram
+                            </button>
+                            
+                            <!-- TikTok OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('tiktok')" style="justify-content: center; width: 100%; background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);">
+                                <span style="font-size: 1.2rem;">🎵</span>
+                                Connect TikTok
+                            </button>
+                            
+                            <!-- YouTube OAuth Button -->
+                            <button class="btn btn-primary" onclick="initiateOAuth('youtube')" style="justify-content: center; width: 100%; background: linear-gradient(135deg, #FF0000 0%, #cc0000 100%);">
+                                <span style="font-size: 1.2rem;">▶️</span>
+                                Connect YouTube
+                            </button>
+                            
+                            <!-- Bluesky Simple Connect -->
+                            <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+                                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                    <strong>Simple Connection (No OAuth Required):</strong>
+                                </p>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input 
+                                        type="text" 
+                                        id="bluesky-handle" 
+                                        class="form-input" 
+                                        placeholder="@yourusername.bsky.social"
+                                        style="flex: 1;"
+                                    >
+                                    <button class="btn btn-primary" onclick="connectBluesky()" style="background: linear-gradient(135deg, #0085ff 0%, #00a8ff 100%); white-space: nowrap;">
+                                        <span style="font-size: 1.2rem;">🦋</span>
+                                        Connect
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Applications Page (Brand Only) -->
+        <div id="applications" class="page">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2>Applications</h2>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <select class="form-select" id="app-filter-status" onchange="filterApplications()" style="width: auto;">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select class="form-select" id="app-filter-opportunity" onchange="filterApplications()" style="width: auto;">
+                        <option value="">All Opportunities</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="all-applications-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading applications...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Review Modal -->
+    <div class="modal" id="applicationReviewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3>Review Application</h3>
+                <button onclick="closeApplicationReviewModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="application-review-content" style="padding: 1.5rem;">
+                <!-- Content populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Opportunity Modal -->
+    <div class="modal" id="createOpportunityModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3>Create New Opportunity</h3>
+                <button onclick="closeCreateOpportunityModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <form id="create-opportunity-form" style="padding: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" class="form-input" id="opp-title" required placeholder="e.g., Social Media Campaign for Tech Startup">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input" id="opp-description" rows="4" placeholder="Describe the opportunity, requirements, and what you're looking for..."></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Type *</label>
+                        <select class="form-select" id="opp-type" required>
+                            <option value="influencer">Influencer</option>
+                            <option value="freelancer">Freelancer</option>
+                            <option value="brand">Brand</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Industry</label>
+                        <select class="form-select" id="opp-industry">
+                            <option value="">Select Industry</option>
+                            <option value="technology">Technology</option>
+                            <option value="fashion">Fashion</option>
+                            <option value="beauty">Beauty</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="sports">Sports</option>
+                            <option value="food">Food & Beverage</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Budget Range</label>
+                    <input type="text" class="form-input" id="opp-budget" placeholder="e.g., $500-$2000">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Create Opportunity</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeCreateOpportunityModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Opportunity Detail Modal -->
+    <div class="modal" id="opportunityDetailModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="detail-title">Opportunity Details</h3>
+                <button onclick="closeOpportunityDetailModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <div id="opportunity-detail-content" style="padding: 1.5rem;">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Form Modal -->
+    <div class="modal" id="applicationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border-radius: 1rem; width: 90%; max-width: 550px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3>Apply to Opportunity</h3>
+                <button onclick="closeApplicationModal()" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;">×</button>
+            </div>
+            <form id="application-form" style="padding: 1.5rem;">
+                <input type="hidden" id="apply-opportunity-id">
+                
+                <!-- Opportunity Summary -->
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;" id="apply-opportunity-title"></div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;" id="apply-opportunity-budget"></div>
+                </div>
+                
+                <!-- Application Message -->
+                <div class="form-group">
+                    <label class="form-label">Why are you a great fit? *</label>
+                    <textarea 
+                        class="form-input" 
+                        id="apply-message" 
+                        rows="4" 
+                        required
+                        placeholder="Tell the brand about your experience, audience, and why you'd be perfect for this opportunity..."
+                        style="resize: vertical; min-height: 100px;"
+                    ></textarea>
+                </div>
+                
+                <!-- Proposed Rate -->
+                <div class="form-group">
+                    <label class="form-label">Your Proposed Rate ($)</label>
+                    <input 
+                        type="number" 
+                        class="form-input" 
+                        id="apply-rate" 
+                        placeholder="e.g., 500"
+                        min="0"
+                    >
+                    <small style="color: var(--text-secondary);">Optional - leave blank to negotiate later</small>
+                </div>
+                
+                <!-- Portfolio Links -->
+                <div class="form-group">
+                    <label class="form-label">Portfolio / Sample Work Links</label>
+                    <input 
+                        type="url" 
+                        class="form-input" 
+                        id="apply-portfolio-1" 
+                        placeholder="https://..."
+                        style="margin-bottom: 0.5rem;"
+                    >
+                    <input 
+                        type="url" 
+                        class="form-input" 
+                        id="apply-portfolio-2" 
+                        placeholder="https://... (optional)"
+                    >
+                    <small style="color: var(--text-secondary);">Add links to relevant past work, posts, or your media kit</small>
+                </div>
+                
+                <!-- Connected Accounts Preview -->
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Your connected accounts will be shared:</div>
+                    <div id="apply-connected-accounts" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        Submit Application
+                    </button>
+                    <button type="button" class="btn btn-ghost" onclick="closeApplicationModal()">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -283,55 +1396,52 @@
         let currentUser = null;
         let userType = null;
         let authToken = null;
+        let connectedAccounts = [];
+        let allOpportunities = [];
+        let conversations = [];
+        let currentConversation = null;
+
+        // API Base URL
+        const API_BASE = 'https://formative-production.up.railway.app';
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
-            await initializeDashboard();
+            try {
+                await initializeDashboard();
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                showNotification('Dashboard loaded with errors. Please try logging in again.', 'error');
+            }
         });
 
         // Initialize dashboard with real user data
         async function initializeDashboard() {
             try {
-                // Get user data from localStorage
+                // Check for OAuth callback first
+                checkOAuthCallback();
+                
+                // Get user data from storage
                 const userData = localStorage.getItem('userData');
                 const token = localStorage.getItem('authToken');
                 const type = localStorage.getItem('userType');
-
-                if (!userData && !type) {
-                    // Only redirect if completely no data
-                    console.log('No user data found, redirecting to home...');
-                    setTimeout(() => {
-                        window.location.href = 'index.html';
-                    }, 2000);
+                
+                if (!userData || !token) {
+                    console.log('No auth data found, redirecting to login');
+                    window.location.href = 'index.html';
                     return;
                 }
 
-                // Parse user data or create demo user
-                if (userData) {
-                    currentUser = JSON.parse(userData);
-                } else {
-                    // Create demo user if no data
-                    currentUser = {
-                        name: 'Demo User',
-                        email: 'demo@formative.com',
-                        userType: type || 'influencer'
-                    };
-                }
-                
+                currentUser = JSON.parse(userData);
                 userType = type || currentUser.userType || 'influencer';
-                authToken = token || 'demo-token';
+                authToken = token;
 
-                // Update UI with user data
                 updateUserInterface();
-                
-                // Load dashboard content based on user type
-                await loadDashboardContent();
-                
-                // Load opportunities
-                await loadOpportunities();
-                
-                // Load messages
-                await loadMessages();
+                await Promise.all([
+                    loadDashboardContent(),
+                    loadOpportunities(),
+                    loadConversations(),
+                    loadNotifications()
+                ]);
 
             } catch (error) {
                 console.error('Dashboard initialization error:', error);
@@ -341,16 +1451,12 @@
 
         // Update UI with user data
         function updateUserInterface() {
-            // Get user name safely
-            const userName = currentUser?.name || 'there';
-            const userEmail = currentUser?.email || '';
+            const userName = currentUser?.name || 'User';
             
-            // Update greeting
             const greeting = document.getElementById('user-greeting');
             const timeOfDay = getTimeOfDay();
             greeting.textContent = `${timeOfDay}, ${userName}!`;
 
-            // Update welcome section
             const welcomeTitle = document.getElementById('welcome-title');
             const welcomeSubtitle = document.getElementById('welcome-subtitle');
             
@@ -362,30 +1468,25 @@
                 welcomeSubtitle.textContent = 'Find perfect influencers, launch campaigns, and track your ROI in real-time.';
             } else if (userType === 'freelancer') {
                 welcomeSubtitle.textContent = 'Your next big project awaits. Showcase your talent and connect with clients.';
-            } else {
-                welcomeSubtitle.textContent = 'Let\'s start building your success story together.';
             }
 
-            // Update avatar
             const avatar = document.getElementById('user-avatar');
-            if (userName && userName !== 'there') {
-                avatar.textContent = userName.charAt(0).toUpperCase();
-            } else {
-                avatar.textContent = '👤';
-            }
+            avatar.textContent = userName.charAt(0).toUpperCase();
 
-            // Show appropriate content based on user type
+            // Show correct user type content
             document.querySelectorAll('.user-type-content').forEach(content => {
-                content.classList.remove('active');
+                content.style.display = 'none';
             });
             
             const userTypeContent = document.getElementById(`${userType}-content`);
             if (userTypeContent) {
-                userTypeContent.classList.add('active');
-            } else {
-                // Default to influencer if type not found
-                document.getElementById('influencer-content').classList.add('active');
+                userTypeContent.style.display = 'block';
             }
+
+            // Show/hide brand-only nav tabs
+            document.querySelectorAll('.brand-only-tab').forEach(tab => {
+                tab.style.display = userType === 'brand' ? 'inline-block' : 'none';
+            });
         }
 
         // Get time of day for greeting
@@ -411,39 +1512,124 @@
             }
         }
 
-        // Load influencer statistics with animation
+        // Load influencer statistics
         async function loadInfluencerStats() {
-            // Set demo data immediately for instant display
-            animateValue('total-followers', 0, 12500, 1500, (val) => {
-                if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
-                return val.toString();
-            });
-            
-            animateValue('engagement-rate', 0, 8.7, 1200, (val) => val.toFixed(1) + '%');
-            animateValue('active-campaigns', 0, 3, 800, (val) => val.toString());
-            animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + val.toLocaleString());
-            
-            // Try to fetch real data in background
             try {
-                const response = await fetch('/api/user/stats', {
+                const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
                 });
-
+                
                 if (response.ok) {
-                    const stats = await response.json();
-                    if (stats.stats) {
-                        // Update with real data if available
-                        document.getElementById('total-followers').textContent = stats.stats.totalFollowers || '12.5K';
-                        document.getElementById('engagement-rate').textContent = (stats.stats.engagementRate || 8.7) + '%';
-                        document.getElementById('active-campaigns').textContent = stats.stats.activeCampaigns || 3;
-                        document.getElementById('monthly-earnings').textContent = '$' + (stats.stats.monthlyEarnings || 2500);
+                    const data = await response.json();
+                    console.log('Social accounts response:', data);
+                    
+                    if (data.success && data.accounts && data.accounts.length > 0) {
+                        connectedAccounts = data.accounts;
+                        
+                        // Calculate total followers from all accounts
+                        let totalFollowers = 0;
+                        let totalEngagement = 0;
+                        let accountCount = 0;
+                        let primaryPlatform = null;
+                        let accountsNeedingRefresh = [];
+                        
+                        data.accounts.forEach(account => {
+                            // Parse stats if it's a string
+                            let stats = account.stats;
+                            if (typeof stats === 'string') {
+                                try {
+                                    stats = JSON.parse(stats);
+                                } catch (e) {
+                                    console.error('Failed to parse stats:', e);
+                                    stats = null;
+                                }
+                            }
+                            
+                            console.log(`Account ${account.platform} stats:`, stats);
+                            
+                            if (stats && stats.followers) {
+                                totalFollowers += stats.followers;
+                                if (stats.engagementRate) {
+                                    totalEngagement += parseFloat(stats.engagementRate);
+                                    accountCount++;
+                                }
+                                if (!primaryPlatform) {
+                                    primaryPlatform = account;
+                                }
+                            } else {
+                                // Stats missing - need to refresh
+                                accountsNeedingRefresh.push(account.platform);
+                            }
+                        });
+                        
+                        // If any accounts need stats refreshed, do it automatically
+                        if (accountsNeedingRefresh.length > 0) {
+                            console.log('Accounts needing stats refresh:', accountsNeedingRefresh);
+                            for (const platform of accountsNeedingRefresh) {
+                                try {
+                                    const statsResponse = await fetch(`${API_BASE}/api/social/${platform}/stats`, {
+                                        headers: { 'Authorization': `Bearer ${authToken}` }
+                                    });
+                                    if (statsResponse.ok) {
+                                        const statsData = await statsResponse.json();
+                                        console.log(`Refreshed ${platform} stats:`, statsData);
+                                        if (statsData.stats && statsData.stats.followers) {
+                                            totalFollowers += statsData.stats.followers;
+                                            if (statsData.stats.engagementRate) {
+                                                totalEngagement += parseFloat(statsData.stats.engagementRate);
+                                                accountCount++;
+                                            }
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.error(`Failed to refresh ${platform} stats:`, err);
+                                }
+                            }
+                        }
+                        
+                        const avgEngagement = accountCount > 0 ? (totalEngagement / accountCount).toFixed(1) : 0;
+                        
+                        // Update UI
+                        document.getElementById('total-followers').textContent = formatNumber(totalFollowers);
+                        document.getElementById('engagement-rate').textContent = avgEngagement + '%';
+                        
+                        const platformNames = data.accounts.map(a => a.platform).join(', ');
+                        document.getElementById('followers-source').innerHTML = `✓ From ${platformNames}`;
+                        document.getElementById('engagement-source').innerHTML = '✓ Live data';
+                        
+                        animateValue('active-campaigns', 0, 3, 800, (val) => Math.round(val).toString());
+                        animateValue('monthly-earnings', 0, 2500, 1500, (val) => '$' + Math.round(val).toLocaleString());
+                    } else {
+                        showDemoStats();
                     }
+                } else {
+                    showDemoStats();
                 }
+                
             } catch (error) {
-                console.log('Using demo stats (API not available)');
+                console.error('Error loading influencer stats:', error);
+                showDemoStats();
             }
+        }
+
+        // Format number (e.g., 1000 -> 1K)
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Show demo stats as fallback
+        function showDemoStats() {
+            animateValue('total-followers', 0, 0, 500, () => '—');
+            animateValue('engagement-rate', 0, 0, 500, () => '—');
+            animateValue('active-campaigns', 0, 0, 500, () => '0');
+            animateValue('monthly-earnings', 0, 0, 500, () => '$0');
+            
+            document.getElementById('followers-source').innerHTML = '📊 Connect accounts in Settings';
+            document.getElementById('engagement-source').innerHTML = '';
         }
         
         // Animate number values
@@ -452,12 +1638,11 @@
             if (!element) return;
             
             const startTime = Date.now();
-            const endTime = startTime + duration;
             
             function update() {
                 const now = Date.now();
                 const progress = Math.min((now - startTime) / duration, 1);
-                const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
                 const current = start + (end - start) * easeProgress;
                 
                 element.textContent = formatter(current);
@@ -470,491 +1655,1328 @@
             update();
         }
 
-        // Load brand metrics with animation
-        async function loadBrandMetrics() {
-            // Set demo data immediately with animation
-            animateValue('campaigns-launched', 0, 5, 1000, (val) => Math.round(val).toString());
-            animateValue('influencers-connected', 0, 12, 1200, (val) => Math.round(val).toString());
-            animateValue('roi-percentage', 0, 234, 1500, (val) => Math.round(val) + '%');
-            
-            // Try to fetch real data in background
-            try {
-                const response = await fetch('/api/brand/metrics', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
+        // Load brand metrics
+        // ============================================
+        // BRAND DASHBOARD FUNCTIONS
+        // ============================================
 
+        let brandOpportunities = [];
+        let brandApplications = [];
+        let brandCollaborations = [];
+
+        async function loadBrandMetrics() {
+            try {
+                // Load brand stats
+                const statsResponse = await fetch(`${API_BASE}/api/brand/stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (statsResponse.ok) {
+                    const data = await statsResponse.json();
+                    const stats = data.stats;
+                    
+                    animateValue('active-opportunities', 0, parseInt(stats.active_opportunities) || 0, 800, (val) => Math.round(val).toString());
+                    animateValue('pending-applications', 0, parseInt(stats.pending_applications) || 0, 800, (val) => Math.round(val).toString());
+                    animateValue('active-collabs', 0, parseInt(stats.active_collaborations) || 0, 800, (val) => Math.round(val).toString());
+                    animateValue('completed-collabs', 0, parseInt(stats.completed_collaborations) || 0, 800, (val) => Math.round(val).toString());
+                    
+                    // Show alert if pending applications
+                    if (parseInt(stats.pending_applications) > 0) {
+                        document.getElementById('applications-alert').textContent = '⚠️ Review needed';
+                    }
+                }
+                
+                // Load brand's opportunities
+                await loadBrandOpportunities();
+                
+                // Load pending applications
+                await loadBrandApplications();
+                
+                // Load collaborations
+                await loadBrandCollaborations();
+                
+            } catch (error) {
+                console.error('Error loading brand metrics:', error);
+            }
+        }
+
+        async function loadBrandOpportunities() {
+            const container = document.getElementById('brand-opportunities-list');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/opportunities`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
                 if (response.ok) {
-                    const metrics = await response.json();
-                    if (metrics.stats) {
-                        document.getElementById('campaigns-launched').textContent = metrics.stats.campaignsLaunched || 5;
-                        document.getElementById('influencers-connected').textContent = metrics.stats.influencersConnected || 12;
-                        document.getElementById('roi-percentage').textContent = (metrics.stats.averageROI || 234) + '%';
+                    const data = await response.json();
+                    brandOpportunities = data.opportunities || [];
+                    
+                    if (brandOpportunities.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📝</div>
+                                <div class="empty-state-title">No opportunities yet</div>
+                                <div class="empty-state-description">Create your first opportunity to start finding influencers</div>
+                                <button class="btn btn-primary" onclick="openCreateOpportunityModal()" style="margin-top: 1rem;">
+                                    ➕ Create Opportunity
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Populate the filter dropdown
+                    const filterSelect = document.getElementById('app-filter-opportunity');
+                    if (filterSelect) {
+                        filterSelect.innerHTML = '<option value="">All Opportunities</option>' + 
+                            brandOpportunities.map(opp => `<option value="${opp.id}">${escapeHtml(opp.title)}</option>`).join('');
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="opportunities-grid">
+                            ${brandOpportunities.slice(0, 3).map(opp => `
+                                <div class="opportunity-card" style="cursor: default;">
+                                    <div class="opportunity-header">
+                                        <span class="opportunity-type ${opp.type}">${opp.type}</span>
+                                        <span class="status-badge ${opp.status === 'active' ? 'status-connected' : 'status-disconnected'}">
+                                            ${opp.status}
+                                        </span>
+                                    </div>
+                                    <div class="opportunity-title">${escapeHtml(opp.title)}</div>
+                                    <div class="opportunity-footer">
+                                        <span class="opportunity-budget">${opp.budget_range || 'Budget TBD'}</span>
+                                        <span>📝 ${opp.applications_count || 0} applications</span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                        <button class="btn btn-ghost btn-sm" onclick="editOpportunity(${opp.id})">Edit</button>
+                                        <button class="btn btn-ghost btn-sm" onclick="toggleOpportunityStatus(${opp.id}, '${opp.status}')">
+                                            ${opp.status === 'active' ? 'Pause' : 'Activate'}
+                                        </button>
+                                        ${opp.applications_count > 0 ? `
+                                            <button class="btn btn-primary btn-sm" onclick="viewOpportunityApplications(${opp.id})">
+                                                View Applications
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${brandOpportunities.length > 3 ? `
+                            <div style="text-align: center; margin-top: 1rem;">
+                                <button class="btn btn-ghost" onclick="showAllBrandOpportunities()">
+                                    View All ${brandOpportunities.length} Opportunities →
+                                </button>
+                            </div>
+                        ` : ''}
+                    `;
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-secondary);">Failed to load opportunities</p>';
+                }
+            } catch (error) {
+                console.error('Error loading brand opportunities:', error);
+                container.innerHTML = '<p style="color: var(--text-secondary);">Failed to load opportunities</p>';
+            }
+        }
+
+        async function loadBrandApplications(status = 'pending', opportunityId = null) {
+            const container = document.getElementById('brand-pending-applications');
+            const allContainer = document.getElementById('all-applications-list');
+            
+            try {
+                let url = `${API_BASE}/api/brand/applications?status=${status}`;
+                if (opportunityId) url += `&opportunityId=${opportunityId}`;
+                
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    brandApplications = data.applications || [];
+                    
+                    const html = brandApplications.length === 0 
+                        ? `<div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">No ${status} applications</div>
+                            <div class="empty-state-description">Applications will appear here when influencers apply</div>
+                           </div>`
+                        : `<div class="opportunities-grid">
+                            ${brandApplications.slice(0, 6).map(app => renderApplicationCard(app)).join('')}
+                           </div>`;
+                    
+                    if (container) container.innerHTML = html;
+                    if (allContainer) {
+                        allContainer.innerHTML = brandApplications.length === 0
+                            ? html
+                            : `<div class="opportunities-grid">
+                                ${brandApplications.map(app => renderApplicationCard(app)).join('')}
+                               </div>`;
                     }
                 }
             } catch (error) {
-                console.log('Using demo metrics (API not available)');
+                console.error('Error loading brand applications:', error);
             }
+        }
+
+        function renderApplicationCard(app) {
+            const socialAccounts = app.applicant_social_accounts || [];
+            const totalFollowers = socialAccounts.reduce((sum, acc) => {
+                const stats = typeof acc.stats === 'string' ? JSON.parse(acc.stats) : acc.stats;
+                return sum + (stats?.followers || 0);
+            }, 0);
+            
+            return `
+                <div class="opportunity-card" onclick="reviewApplication(${app.id})">
+                    <div class="opportunity-header">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div class="avatar" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                ${getInitials(app.applicant_name)}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">${escapeHtml(app.applicant_name)}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                    ${formatNumber(totalFollowers)} followers
+                                </div>
+                            </div>
+                        </div>
+                        <span class="status-badge ${app.status === 'pending' ? '' : app.status === 'accepted' ? 'status-connected' : 'status-disconnected'}">
+                            ${app.status}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin: 0.5rem 0;">
+                        Applied for: <strong>${escapeHtml(app.opportunity_title)}</strong>
+                    </div>
+                    ${app.message ? `
+                        <div class="opportunity-description">"${escapeHtml(app.message)}"</div>
+                    ` : ''}
+                    <div class="opportunity-footer">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                            ${formatTime(app.created_at)}
+                        </span>
+                        ${app.proposed_rate ? `
+                            <span class="opportunity-budget">$${app.proposed_rate}</span>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadBrandCollaborations() {
+            const container = document.getElementById('brand-collaborations-list');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/collaborations`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    brandCollaborations = data.collaborations || [];
+                    
+                    if (brandCollaborations.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🤝</div>
+                                <div class="empty-state-title">No collaborations yet</div>
+                                <div class="empty-state-description">Accept applications to start collaborating</div>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    const activeCollabs = brandCollaborations.filter(c => c.status !== 'completed' && c.status !== 'cancelled');
+                    
+                    container.innerHTML = `
+                        <div class="opportunities-grid">
+                            ${activeCollabs.slice(0, 3).map(collab => `
+                                <div class="opportunity-card">
+                                    <div class="opportunity-header">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div class="avatar" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                                ${getInitials(collab.influencer_name)}
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 600;">${escapeHtml(collab.influencer_name)}</div>
+                                            </div>
+                                        </div>
+                                        <span class="status-badge ${collab.status === 'in_progress' ? 'status-connected' : ''}">
+                                            ${collab.status.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin: 0.5rem 0;">
+                                        ${escapeHtml(collab.opportunity_title || 'Direct collaboration')}
+                                    </div>
+                                    <div class="opportunity-footer">
+                                        <span>Started ${formatTime(collab.created_at)}</span>
+                                        ${collab.agreed_rate ? `<span class="opportunity-budget">$${collab.agreed_rate}</span>` : ''}
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                        <button class="btn btn-ghost btn-sm" onclick="messageInfluencer(${collab.influencer_id})">
+                                            💬 Message
+                                        </button>
+                                        <button class="btn btn-primary btn-sm" onclick="updateCollaborationStatus(${collab.id}, 'completed')">
+                                            ✓ Mark Complete
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading collaborations:', error);
+            }
+        }
+
+        async function reviewApplication(applicationId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/applications/${applicationId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load application');
+                
+                const data = await response.json();
+                const app = data.application;
+                
+                const socialAccounts = app.applicant_social_accounts || [];
+                const totalFollowers = socialAccounts.reduce((sum, acc) => {
+                    const stats = typeof acc.stats === 'string' ? JSON.parse(acc.stats) : acc.stats;
+                    return sum + (stats?.followers || 0);
+                }, 0);
+                
+                const modal = document.getElementById('applicationReviewModal');
+                const content = document.getElementById('application-review-content');
+                
+                content.innerHTML = `
+                    <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="avatar" style="width: 80px; height: 80px; font-size: 2rem; flex-shrink: 0;">
+                            ${getInitials(app.applicant_name)}
+                        </div>
+                        <div style="flex: 1;">
+                            <h2 style="margin-bottom: 0.25rem;">${escapeHtml(app.applicant_name)}</h2>
+                            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                ${app.applicant_location || 'Location not specified'}
+                            </p>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <span style="background: var(--bg-card); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem;">
+                                    👥 ${formatNumber(totalFollowers)} followers
+                                </span>
+                                ${socialAccounts.map(acc => `
+                                    <span style="background: var(--bg-card); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem;">
+                                        ${getPlatformIcon(acc.platform)} ${acc.username}
+                                        ${acc.is_verified ? '✓' : ''}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${app.applicant_bio ? `
+                        <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">About</h4>
+                            <p style="color: var(--text-secondary);">${escapeHtml(app.applicant_bio)}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 0.5rem;">Applied For</h4>
+                        <p style="font-weight: 600;">${escapeHtml(app.opportunity_title)}</p>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">${app.budget_range || 'Budget TBD'}</p>
+                    </div>
+                    
+                    ${app.message ? `
+                        <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">Application Message</h4>
+                            <p style="color: var(--text-secondary); line-height: 1.6;">"${escapeHtml(app.message)}"</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${app.proposed_rate ? `
+                        <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h4 style="margin-bottom: 0.5rem;">Proposed Rate</h4>
+                            <p style="font-size: 1.5rem; font-weight: 600; color: var(--accent-green);">$${app.proposed_rate}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${app.status === 'pending' ? `
+                        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                            <button class="btn btn-primary" onclick="acceptApplication(${app.id})" style="flex: 1;">
+                                ✓ Accept Application
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectApplication(${app.id})" style="flex: 1;">
+                                ✕ Decline
+                            </button>
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 1rem; background: var(--bg-card); border-radius: 0.5rem;">
+                            <span class="status-badge ${app.status === 'accepted' ? 'status-connected' : 'status-disconnected'}" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                                ${app.status === 'accepted' ? '✓ Accepted' : '✕ Declined'}
+                            </span>
+                        </div>
+                    `}
+                `;
+                
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading application:', error);
+                showNotification('Failed to load application details', 'error');
+            }
+        }
+
+        async function acceptApplication(applicationId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/applications/${applicationId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                if (response.ok) {
+                    showNotification('Application accepted! A conversation has been started.', 'success');
+                    closeApplicationReviewModal();
+                    
+                    // Refresh all brand data
+                    await loadBrandMetrics();
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to accept application', 'error');
+                }
+            } catch (error) {
+                console.error('Accept error:', error);
+                showNotification('Failed to accept application', 'error');
+            }
+        }
+
+        async function rejectApplication(applicationId) {
+            const reason = prompt('Optional: Add a message for the applicant');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/applications/${applicationId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ responseMessage: reason })
+                });
+                
+                if (response.ok) {
+                    showNotification('Application declined', 'info');
+                    closeApplicationReviewModal();
+                    await loadBrandMetrics();
+                } else {
+                    showNotification('Failed to decline application', 'error');
+                }
+            } catch (error) {
+                console.error('Reject error:', error);
+                showNotification('Failed to decline application', 'error');
+            }
+        }
+
+        async function updateCollaborationStatus(collabId, status) {
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/collaborations/${collabId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Collaboration marked as ${status}!`, 'success');
+                    await loadBrandMetrics();
+                } else {
+                    showNotification('Failed to update collaboration', 'error');
+                }
+            } catch (error) {
+                console.error('Update collab error:', error);
+                showNotification('Failed to update collaboration', 'error');
+            }
+        }
+
+        async function toggleOpportunityStatus(oppId, currentStatus) {
+            const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/brand/opportunities/${oppId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Opportunity ${newStatus}`, 'success');
+                    await loadBrandOpportunities();
+                    await loadBrandMetrics();
+                } else {
+                    showNotification('Failed to update opportunity', 'error');
+                }
+            } catch (error) {
+                console.error('Toggle status error:', error);
+            }
+        }
+
+        function editOpportunity(oppId) {
+            // For now, just show notification - can implement full edit modal later
+            showNotification('Edit feature coming soon! Use delete and recreate for now.', 'info');
+        }
+
+        function viewOpportunityApplications(oppId) {
+            document.getElementById('app-filter-opportunity').value = oppId;
+            showPage('applications');
+            filterApplications();
+        }
+
+        function showAllBrandOpportunities() {
+            showPage('opportunities');
+        }
+
+        async function messageInfluencer(influencerId) {
+            // Find or create conversation and switch to messages
+            showPage('messages');
+            // Could auto-select the conversation here
+            showNotification('Opening conversation...', 'info');
+        }
+
+        function closeApplicationReviewModal() {
+            document.getElementById('applicationReviewModal').style.display = 'none';
+        }
+
+        function filterApplications() {
+            const status = document.getElementById('app-filter-status').value || '';
+            const oppId = document.getElementById('app-filter-opportunity').value || null;
+            loadBrandApplications(status || 'pending', oppId);
         }
 
         // Load freelancer data
         async function loadFreelancerData() {
-            // Freelancer-specific data loading
             console.log('Loading freelancer data...');
         }
 
-        // Load opportunities
-        async function loadOpportunities() {
-            try {
-                const response = await fetch('/api/opportunities', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
+        // ============================================
+        // OPPORTUNITIES - REAL API INTEGRATION
+        // ============================================
 
+        async function loadOpportunities() {
+            const dashboardGrid = document.getElementById('dashboard-opportunities');
+            const allGrid = document.getElementById('all-opportunities');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/opportunities`);
+                
                 if (response.ok) {
-                    const opportunities = await response.json();
-                    displayOpportunities(opportunities, 'opportunities-grid');
+                    const data = await response.json();
+                    allOpportunities = data.opportunities || [];
+                    
+                    if (allOpportunities.length > 0) {
+                        // Show first 3 on dashboard
+                        displayOpportunities(allOpportunities.slice(0, 3), 'dashboard-opportunities');
+                        // Show all on opportunities page
+                        displayOpportunities(allOpportunities, 'all-opportunities');
+                    } else {
+                        showEmptyOpportunities(dashboardGrid);
+                        showEmptyOpportunities(allGrid);
+                    }
                 } else {
-                    // Use demo opportunities
-                    displayDemoOpportunities();
+                    throw new Error('Failed to fetch opportunities');
                 }
             } catch (error) {
                 console.error('Error loading opportunities:', error);
-                displayDemoOpportunities();
+                showEmptyOpportunities(dashboardGrid);
+                showEmptyOpportunities(allGrid);
             }
         }
 
-        // Display demo opportunities based on user type
-        function displayDemoOpportunities() {
-            let opportunities = [];
-            
-            if (userType === 'influencer') {
-                opportunities = [
-                    {
-                        id: 1,
-                        type: 'Brand Campaign',
-                        title: 'Sustainable Fashion Partnership',
-                        description: 'Partner with leading eco-friendly fashion brand for 3-month campaign. Looking for authentic lifestyle content creators.',
-                        company: 'EcoWear',
-                        budget: '$3,500 - $6,000',
-                        deadline: '2 weeks',
-                        requirements: '10K+ followers'
-                    },
-                    {
-                        id: 2,
-                        type: 'Product Launch',
-                        title: 'Tech Product Unboxing Series',
-                        description: 'Create engaging unboxing and review content for new smart home devices launching this quarter.',
-                        company: 'SmartHome Inc',
-                        budget: '$2,000 - $4,500',
-                        deadline: '1 week',
-                        requirements: 'Tech niche'
-                    },
-                    {
-                        id: 3,
-                        type: 'Sponsored Content',
-                        title: 'Fitness App Promotion',
-                        description: 'Showcase our AI-powered fitness app in your wellness content. Multiple posts + stories package.',
-                        company: 'FitAI',
-                        budget: '$1,800 - $3,200',
-                        deadline: '10 days',
-                        requirements: 'Health & Fitness'
-                    },
-                    {
-                        id: 4,
-                        type: 'Brand Ambassador',
-                        title: 'Long-term Coffee Brand Ambassador',
-                        description: 'Become the face of our artisan coffee brand. 6-month partnership with monthly content deliverables.',
-                        company: 'Brew & Co',
-                        budget: '$5,000 - $8,000',
-                        deadline: '3 weeks',
-                        requirements: '15K+ followers'
-                    },
-                    {
-                        id: 5,
-                        type: 'Event Coverage',
-                        title: 'Music Festival Coverage',
-                        description: 'Document and create engaging content from our summer music festival. All expenses covered + payment.',
-                        company: 'SoundWave Fest',
-                        budget: '$2,500 - $4,000',
-                        deadline: '5 days',
-                        requirements: 'Entertainment niche'
-                    },
-                    {
-                        id: 6,
-                        type: 'Affiliate Program',
-                        title: 'Travel Gear Affiliate Partnership',
-                        description: 'Join our exclusive affiliate program for travel creators. Earn 15% commission + bonuses.',
-                        company: 'Wanderlust Gear',
-                        budget: '$1,000 - $5,000',
-                        deadline: 'Ongoing',
-                        requirements: 'Travel content'
-                    }
-                ];
-            } else if (userType === 'brand') {
-                opportunities = [
-                    {
-                        id: 1,
-                        type: 'Top Influencer',
-                        title: 'Sarah Chen - Lifestyle Creator',
-                        description: '125K engaged followers, 8.5% engagement rate. Specializes in sustainable living and wellness content.',
-                        company: '@sarahchen',
-                        budget: '$3,000 - $5,000',
-                        deadline: 'Available now',
-                        requirements: '125K followers'
-                    },
-                    {
-                        id: 2,
-                        type: 'Rising Star',
-                        title: 'Alex Rivera - Tech Reviewer',
-                        description: '45K tech-savvy audience, known for honest reviews. Perfect for product launches.',
-                        company: '@alextech',
-                        budget: '$1,500 - $3,000',
-                        deadline: 'Available now',
-                        requirements: '45K followers'
-                    },
-                    {
-                        id: 3,
-                        type: 'Micro Influencer',
-                        title: 'Emma Davis - Fashion Blogger',
-                        description: '28K highly engaged fashion enthusiasts. 12% engagement rate, excellent for niche campaigns.',
-                        company: '@emmastyle',
-                        budget: '$800 - $1,500',
-                        deadline: 'Available now',
-                        requirements: '28K followers'
-                    },
-                    {
-                        id: 4,
-                        type: 'Content Creator',
-                        title: 'Mike Johnson - Fitness Coach',
-                        description: '89K fitness enthusiasts. Creates workout routines and nutrition content.',
-                        company: '@mikefitness',
-                        budget: '$2,200 - $4,000',
-                        deadline: 'Available now',
-                        requirements: '89K followers'
-                    }
-                ];
-            } else {
-                // Freelancer opportunities
-                opportunities = [
-                    {
-                        id: 1,
-                        type: 'Video Editing',
-                        title: 'YouTube Channel Video Editor',
-                        description: 'Edit 4 videos per month for growing lifestyle channel. Ongoing monthly contract.',
-                        company: 'Lifestyle Creators',
-                        budget: '$800 - $1,200',
-                        deadline: '1 week',
-                        requirements: 'Adobe Premiere'
-                    },
-                    {
-                        id: 2,
-                        type: 'Graphic Design',
-                        title: 'Social Media Graphics Package',
-                        description: 'Design Instagram posts, stories, and carousel templates for fashion brand.',
-                        company: 'StyleCo',
-                        budget: '$500 - $900',
-                        deadline: '5 days',
-                        requirements: 'Figma, Canva'
-                    },
-                    {
-                        id: 3,
-                        type: 'Content Writing',
-                        title: 'Blog Post Writer - Tech Niche',
-                        description: 'Write 10 SEO-optimized blog posts about emerging technologies and AI.',
-                        company: 'TechInsight',
-                        budget: '$600 - $1,000',
-                        deadline: '2 weeks',
-                        requirements: 'SEO knowledge'
-                    },
-                    {
-                        id: 4,
-                        type: 'Photography',
-                        title: 'Product Photography Session',
-                        description: 'Professional product photos for new skincare line. Studio session + editing.',
-                        company: 'GlowSkin',
-                        budget: '$1,200 - $2,000',
-                        deadline: '1 week',
-                        requirements: 'Portfolio required'
-                    }
-                ];
-            }
-
-            displayOpportunities(opportunities, 'opportunities-grid');
-        }
-
-        // Display opportunities in grid
         function displayOpportunities(opportunities, containerId) {
             const container = document.getElementById(containerId);
-            container.innerHTML = '';
+            if (!container) return;
+            
+            if (opportunities.length === 0) {
+                showEmptyOpportunities(container);
+                return;
+            }
 
-            opportunities.forEach(opportunity => {
-                const card = document.createElement('div');
-                card.className = 'opportunity-card';
-                card.innerHTML = `
+            container.innerHTML = opportunities.map(opp => `
+                <div class="opportunity-card" onclick="viewOpportunity(${opp.id})">
                     <div class="opportunity-header">
-                        <span class="opportunity-type">${opportunity.type}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.8rem;">${opportunity.deadline}</span>
+                        <span class="opportunity-type ${opp.type}">${opp.type}</span>
+                        ${opp.industry ? `<span class="opportunity-industry">${opp.industry}</span>` : ''}
                     </div>
-                    <div class="opportunity-title">${opportunity.title}</div>
-                    <div class="opportunity-description">${opportunity.description}</div>
-                    <div class="opportunity-meta">
-                        <span>${opportunity.company}</span>
-                        <span style="color: var(--accent-green); font-weight: 600;">${opportunity.budget}</span>
+                    <div class="opportunity-title">${escapeHtml(opp.title)}</div>
+                    <div class="opportunity-description">${escapeHtml(opp.description || 'No description provided')}</div>
+                    <div class="opportunity-footer">
+                        <span class="opportunity-budget">${opp.budget_range || 'Budget TBD'}</span>
+                        <div class="opportunity-stats">
+                            <span>👁️ ${opp.views_count || 0}</span>
+                            <span>📝 ${opp.applications_count || 0}</span>
+                        </div>
                     </div>
-                `;
-                
-                card.addEventListener('click', () => {
-                    showOpportunityDetails(opportunity);
-                });
-                
-                container.appendChild(card);
-            });
+                </div>
+            `).join('');
         }
 
-        // Load messages
-        async function loadMessages() {
+        function showEmptyOpportunities(container) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">No opportunities yet</div>
+                    <div class="empty-state-description">Be the first to create an opportunity!</div>
+                    <button class="btn btn-primary" onclick="openCreateOpportunityModal()">
+                        ➕ Create Opportunity
+                    </button>
+                </div>
+            `;
+        }
+
+        function filterOpportunities() {
+            const typeFilter = document.getElementById('filter-type').value;
+            const industryFilter = document.getElementById('filter-industry').value;
+            
+            let filtered = allOpportunities;
+            
+            if (typeFilter) {
+                filtered = filtered.filter(opp => opp.type === typeFilter);
+            }
+            
+            if (industryFilter) {
+                filtered = filtered.filter(opp => opp.industry === industryFilter);
+            }
+            
+            displayOpportunities(filtered, 'all-opportunities');
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-industry').value = '';
+            displayOpportunities(allOpportunities, 'all-opportunities');
+        }
+
+        async function viewOpportunity(id) {
+            const opp = allOpportunities.find(o => o.id === id);
+            if (!opp) return;
+            
+            const modal = document.getElementById('opportunityDetailModal');
+            const content = document.getElementById('opportunity-detail-content');
+            
+            content.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <span class="opportunity-type ${opp.type}" style="margin-bottom: 0.5rem; display: inline-block;">${opp.type}</span>
+                    ${opp.industry ? `<span class="opportunity-industry" style="margin-left: 0.5rem;">${opp.industry}</span>` : ''}
+                </div>
+                <h2 style="margin-bottom: 1rem;">${escapeHtml(opp.title)}</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
+                    ${escapeHtml(opp.description || 'No description provided')}
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">Budget</div>
+                        <div style="font-weight: 600; color: var(--accent-green);">${opp.budget_range || 'TBD'}</div>
+                    </div>
+                    <div style="background: var(--bg-card); padding: 1rem; border-radius: 0.5rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">Applications</div>
+                        <div style="font-weight: 600;">${opp.applications_count || 0}</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" onclick="applyToOpportunity(${opp.id})" style="flex: 1;">
+                        Apply Now
+                    </button>
+                    <button class="btn btn-ghost" onclick="closeOpportunityDetailModal()">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        async function applyToOpportunity(id) {
+            // Find the opportunity details
+            const opportunity = allOpportunities.find(o => o.id === id);
+            if (!opportunity) {
+                showNotification('Opportunity not found', 'error');
+                return;
+            }
+            
+            // Close the detail modal first
+            closeOpportunityDetailModal();
+            
+            // Populate the application modal
+            document.getElementById('apply-opportunity-id').value = id;
+            document.getElementById('apply-opportunity-title').textContent = opportunity.title;
+            document.getElementById('apply-opportunity-budget').textContent = opportunity.budget_range || 'Budget: Negotiable';
+            
+            // Show connected accounts
+            const accountsContainer = document.getElementById('apply-connected-accounts');
+            if (connectedAccounts && connectedAccounts.length > 0) {
+                accountsContainer.innerHTML = connectedAccounts.map(acc => `
+                    <span style="background: var(--bg-secondary); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">
+                        ${getPlatformIcon(acc.platform)} ${acc.username}
+                    </span>
+                `).join('');
+            } else {
+                accountsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.85rem;">No accounts connected - <a href="#" onclick="showPage(\'settings\')" style="color: var(--accent-teal);">connect now</a></span>';
+            }
+            
+            // Clear previous form data
+            document.getElementById('apply-message').value = '';
+            document.getElementById('apply-rate').value = '';
+            document.getElementById('apply-portfolio-1').value = '';
+            document.getElementById('apply-portfolio-2').value = '';
+            
+            // Show the application modal
+            document.getElementById('applicationModal').style.display = 'flex';
+        }
+
+        function closeApplicationModal() {
+            document.getElementById('applicationModal').style.display = 'none';
+        }
+
+        // Application form submission handler
+        document.getElementById('application-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const opportunityId = document.getElementById('apply-opportunity-id').value;
+            const message = document.getElementById('apply-message').value.trim();
+            const proposedRate = document.getElementById('apply-rate').value;
+            const portfolio1 = document.getElementById('apply-portfolio-1').value.trim();
+            const portfolio2 = document.getElementById('apply-portfolio-2').value.trim();
+            
+            const portfolioLinks = [portfolio1, portfolio2].filter(link => link);
+            
+            if (!message) {
+                showNotification('Please write a message about why you\'re a great fit', 'error');
+                return;
+            }
+            
             try {
-                const response = await fetch('/api/messages', {
+                const response = await fetch(`${API_BASE}/api/opportunities/${opportunityId}/apply`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message,
+                        proposedRate: proposedRate ? parseInt(proposedRate) : null,
+                        portfolioLinks
+                    })
+                });
+                
+                if (response.ok) {
+                    showNotification('🎉 Application submitted successfully!', 'success');
+                    closeApplicationModal();
+                    loadOpportunities(); // Refresh to update counts
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to apply', 'error');
+                }
+            } catch (error) {
+                console.error('Apply error:', error);
+                showNotification('Failed to submit application', 'error');
+            }
+        });
+
+        function openCreateOpportunityModal() {
+            document.getElementById('createOpportunityModal').style.display = 'flex';
+        }
+
+        function closeCreateOpportunityModal() {
+            document.getElementById('createOpportunityModal').style.display = 'none';
+            document.getElementById('create-opportunity-form').reset();
+        }
+
+        function closeOpportunityDetailModal() {
+            document.getElementById('opportunityDetailModal').style.display = 'none';
+        }
+
+        // Create opportunity form handler
+        document.getElementById('create-opportunity-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const opportunity = {
+                title: document.getElementById('opp-title').value,
+                description: document.getElementById('opp-description').value,
+                type: document.getElementById('opp-type').value,
+                industry: document.getElementById('opp-industry').value,
+                budgetRange: document.getElementById('opp-budget').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/opportunities`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(opportunity)
+                });
+                
+                if (response.ok) {
+                    showNotification('Opportunity created successfully!', 'success');
+                    closeCreateOpportunityModal();
+                    loadOpportunities();
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to create opportunity', 'error');
+                }
+            } catch (error) {
+                console.error('Create opportunity error:', error);
+                showNotification('Failed to create opportunity', 'error');
+            }
+        });
+
+        // ============================================
+        // MESSAGES - REAL API INTEGRATION
+        // ============================================
+
+        async function loadConversations() {
+            const container = document.getElementById('conversations-list');
+            const dashboardMessages = document.getElementById('dashboard-messages');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages/conversations`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
                 });
-
+                
                 if (response.ok) {
-                    const messages = await response.json();
-                    displayMessages(messages);
+                    const data = await response.json();
+                    conversations = data.conversations || [];
+                    
+                    if (conversations.length > 0) {
+                        displayConversations(conversations);
+                        displayDashboardMessages(conversations.slice(0, 3));
+                        updateUnreadCount();
+                    } else {
+                        showEmptyConversations(container);
+                        showEmptyDashboardMessages(dashboardMessages);
+                    }
                 } else {
-                    displayDemoMessages();
+                    // API might not exist yet, show empty state
+                    showEmptyConversations(container);
+                    showEmptyDashboardMessages(dashboardMessages);
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                showEmptyConversations(container);
+                showEmptyDashboardMessages(dashboardMessages);
+            }
+        }
+
+        function displayConversations(convos) {
+            const container = document.getElementById('conversations-list');
+            
+            container.innerHTML = convos.map(convo => `
+                <div class="conversation-item ${convo.unread ? 'unread' : ''} ${currentConversation?.id === convo.id ? 'active' : ''}" 
+                     onclick="selectConversation(${convo.id})">
+                    <div class="conversation-avatar">${getInitials(convo.other_user_name)}</div>
+                    <div class="conversation-info">
+                        <div class="conversation-name">
+                            ${escapeHtml(convo.other_user_name)}
+                            <span class="conversation-time">${formatTime(convo.last_message_at)}</span>
+                        </div>
+                        <div class="conversation-preview">${escapeHtml(convo.last_message_preview || 'No messages yet')}</div>
+                    </div>
+                    ${convo.unread ? '<div class="unread-dot"></div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function displayDashboardMessages(convos) {
+            const container = document.getElementById('dashboard-messages');
+            
+            if (convos.length === 0) {
+                showEmptyDashboardMessages(container);
+                return;
+            }
+            
+            container.innerHTML = convos.map(convo => `
+                <div class="conversation-item" onclick="showPage('messages'); selectConversation(${convo.id})">
+                    <div class="conversation-avatar">${getInitials(convo.other_user_name)}</div>
+                    <div class="conversation-info">
+                        <div class="conversation-name">
+                            ${escapeHtml(convo.other_user_name)}
+                            <span class="conversation-time">${formatTime(convo.last_message_at)}</span>
+                        </div>
+                        <div class="conversation-preview">${escapeHtml(convo.last_message_preview || 'No messages yet')}</div>
+                    </div>
+                    ${convo.unread ? '<div class="unread-dot"></div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function showEmptyConversations(container) {
+            container.innerHTML = `
+                <div class="empty-state" style="padding: 2rem;">
+                    <div class="empty-state-icon">💬</div>
+                    <div class="empty-state-title">No conversations</div>
+                    <div class="empty-state-description">Start a conversation by applying to an opportunity</div>
+                </div>
+            `;
+        }
+
+        function showEmptyDashboardMessages(container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <div class="empty-state-title">No messages yet</div>
+                    <div class="empty-state-description">Your conversations will appear here</div>
+                </div>
+            `;
+        }
+
+        async function selectConversation(conversationId) {
+            currentConversation = conversations.find(c => c.id === conversationId);
+            if (!currentConversation) return;
+            
+            // Update UI to show active conversation
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            event.currentTarget.classList.remove('unread');
+            
+            // Load messages for this conversation
+            await loadMessages(conversationId);
+        }
+
+        async function loadMessages(conversationId) {
+            const chatArea = document.getElementById('chat-area');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages/conversation/${conversationId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayChatArea(data.messages || []);
+                } else {
+                    displayChatArea([]);
                 }
             } catch (error) {
                 console.error('Error loading messages:', error);
-                displayDemoMessages();
+                displayChatArea([]);
             }
         }
 
-        // Display demo messages based on user type
-        function displayDemoMessages() {
-            let messages = [];
+        function displayChatArea(messages) {
+            const chatArea = document.getElementById('chat-area');
             
-            if (userType === 'influencer') {
-                messages = [
-                    {
-                        id: 1,
-                        sender: 'EcoWear Team',
-                        text: 'We loved your latest sustainable fashion post! Would you be interested in partnering with us?',
-                        time: '2 hours ago',
-                        avatar: 'EW'
-                    },
-                    {
-                        id: 2,
-                        sender: 'SmartHome Inc',
-                        text: 'Your tech reviews are amazing! We have a product launch opportunity for you.',
-                        time: '5 hours ago',
-                        avatar: 'SH'
-                    },
-                    {
-                        id: 3,
-                        sender: 'FitAI Marketing',
-                        text: 'Hi! Congratulations on reaching 50K followers! We\'d love to discuss a partnership.',
-                        time: '1 day ago',
-                        avatar: 'FA'
-                    },
-                    {
-                        id: 4,
-                        sender: 'Brew & Co',
-                        text: 'Are you available for a brand ambassador role? Let\'s chat!',
-                        time: '2 days ago',
-                        avatar: 'BC'
-                    },
-                    {
-                        id: 5,
-                        sender: 'Content Manager',
-                        text: 'Just sent over the campaign brief. Let me know if you have any questions!',
-                        time: '3 days ago',
-                        avatar: 'CM'
-                    }
-                ];
-            } else if (userType === 'brand') {
-                messages = [
-                    {
-                        id: 1,
-                        sender: 'Sarah Chen',
-                        text: 'I\'m very interested in your sustainable fashion campaign! My audience would love this.',
-                        time: '1 hour ago',
-                        avatar: 'SC'
-                    },
-                    {
-                        id: 2,
-                        sender: 'Alex Rivera',
-                        text: 'Thanks for reaching out! I\'d be happy to review your new tech product.',
-                        time: '3 hours ago',
-                        avatar: 'AR'
-                    },
-                    {
-                        id: 3,
-                        sender: 'Emma Davis',
-                        text: 'Your brand aligns perfectly with my content. When can we schedule a call?',
-                        time: '6 hours ago',
-                        avatar: 'ED'
-                    },
-                    {
-                        id: 4,
-                        sender: 'Mike Johnson',
-                        text: 'Just finished the content for your campaign. Want to review before posting?',
-                        time: '1 day ago',
-                        avatar: 'MJ'
-                    }
-                ];
-            } else {
-                // Freelancer messages
-                messages = [
-                    {
-                        id: 1,
-                        sender: 'Lifestyle Creators',
-                        text: 'Your portfolio is impressive! Are you available for an ongoing video editing project?',
-                        time: '3 hours ago',
-                        avatar: 'LC'
-                    },
-                    {
-                        id: 2,
-                        sender: 'StyleCo',
-                        text: 'We need social media graphics ASAP. Can you help?',
-                        time: '5 hours ago',
-                        avatar: 'SC'
-                    },
-                    {
-                        id: 3,
-                        sender: 'TechInsight',
-                        text: 'Love your writing samples! Let\'s discuss the blog post project.',
-                        time: '1 day ago',
-                        avatar: 'TI'
-                    },
-                    {
-                        id: 4,
-                        sender: 'Project Manager',
-                        text: 'The client loved your work! They want to book you for another project.',
-                        time: '2 days ago',
-                        avatar: 'PM'
-                    }
-                ];
-            }
-
-            displayMessages(messages);
-        }
-
-        // Display messages
-        function displayMessages(messages) {
-            const container = document.getElementById('messages-list');
-            const countElement = document.getElementById('message-count');
-            
-            container.innerHTML = '';
-            countElement.textContent = messages.length;
-
-            messages.forEach(message => {
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message-item';
-                messageElement.innerHTML = `
-                    <div class="message-avatar">${message.avatar}</div>
-                    <div class="message-content">
-                        <div class="message-sender">${message.sender}</div>
-                        <div class="message-text">${message.text}</div>
+            chatArea.innerHTML = `
+                <div class="chat-header">
+                    <div class="conversation-avatar">${getInitials(currentConversation.other_user_name)}</div>
+                    <div>
+                        <div style="font-weight: 600;">${escapeHtml(currentConversation.other_user_name)}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">${currentConversation.other_user_type || 'User'}</div>
                     </div>
-                    <div class="message-time">${message.time}</div>
-                `;
-                
-                messageElement.addEventListener('click', () => {
-                    showMessageDetails(message);
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    ${messages.length > 0 ? messages.map(msg => `
+                        <div class="message ${msg.sender_id === currentUser.id ? 'sent' : 'received'}">
+                            ${escapeHtml(msg.content)}
+                            <div class="message-time">${formatTime(msg.created_at)}</div>
+                        </div>
+                    `).join('') : `
+                        <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                            No messages yet. Say hello! 👋
+                        </div>
+                    `}
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" id="message-input" placeholder="Type a message..." onkeypress="handleMessageKeypress(event)">
+                    <button class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+            `;
+            
+            // Scroll to bottom
+            const messagesContainer = document.getElementById('chat-messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleMessageKeypress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            
+            if (!content || !currentConversation) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        receiverId: currentConversation.other_user_id,
+                        content: content
+                    })
                 });
                 
-                container.appendChild(messageElement);
-            });
-        }
-
-        // Page navigation
-        function showPage(pageId) {
-            // Hide all pages
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            
-            // Remove active class from all tabs
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show selected page
-            document.getElementById(pageId).classList.add('active');
-            
-            // Add active class to clicked tab
-            event.target.classList.add('active');
-
-            // Update logo text based on page
-            const logoText = document.getElementById('logo-text');
-            if (pageId === 'opportunities') {
-                logoText.textContent = 'Opportunities';
-            } else if (pageId === 'messages') {
-                logoText.textContent = 'Messages';
-            } else if (pageId === 'profile') {
-                logoText.textContent = 'Profile';
-            } else {
-                logoText.textContent = 'Formative';
+                if (response.ok) {
+                    input.value = '';
+                    // Reload messages to show the new one
+                    await loadMessages(currentConversation.id);
+                } else {
+                    showNotification('Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Send message error:', error);
+                showNotification('Failed to send message', 'error');
             }
         }
 
-        // Show opportunity details
-        function showOpportunityDetails(opportunity) {
-            alert(`Opportunity: ${opportunity.title}\nCompany: ${opportunity.company}\nBudget: ${opportunity.budget}\nDeadline: ${opportunity.deadline}`);
+        function updateUnreadCount() {
+            const unreadCount = conversations.filter(c => c.unread).length;
+            const badge = document.getElementById('unread-messages-count');
+            
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
         }
 
-        // Show message details
-        function showMessageDetails(message) {
-            alert(`From: ${message.sender}\nMessage: ${message.text}\nTime: ${message.time}`);
+        // ============================================
+        // NOTIFICATIONS
+        // ============================================
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch(`${API_BASE}/api/notifications`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const unreadCount = data.unreadCount || 0;
+                    
+                    const badge = document.getElementById('notification-count');
+                    if (unreadCount > 0) {
+                        badge.textContent = unreadCount;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
         }
 
-        // Show notifications
         function showNotifications() {
-            alert('You have 3 new notifications');
+            showNotification('Notifications panel coming soon!', 'info');
         }
 
-        // Show messages
-        function showMessages() {
-            showPage('messages');
+        // ============================================
+        // SETTINGS & SOCIAL ACCOUNTS
+        // ============================================
+
+        function initiateOAuth(platform) {
+            sessionStorage.setItem('oauthReturn', 'settings');
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                showNotification('Please log in first', 'error');
+                return;
+            }
+            
+            window.location.href = `${API_BASE}/api/oauth/${platform}/authorize?token=${encodeURIComponent(token)}`;
         }
 
-        // Go to profile
+        async function connectBluesky() {
+            const handleInput = document.getElementById('bluesky-handle');
+            const handle = handleInput.value.trim();
+            
+            if (!handle) {
+                showNotification('Please enter your Bluesky handle', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('Connecting Bluesky account...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/social/bluesky/connect`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ handle })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`✅ Bluesky account ${data.username} connected!`, 'success');
+                    handleInput.value = '';
+                    await loadConnectedAccounts();
+                    await loadInfluencerStats();
+                } else {
+                    showNotification(data.error || 'Failed to connect Bluesky account', 'error');
+                }
+            } catch (error) {
+                console.error('Error connecting Bluesky:', error);
+                showNotification('Failed to connect Bluesky account', 'error');
+            }
+        }
+
+        function checkOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const oauthStatus = urlParams.get('oauth');
+            const oauthError = urlParams.get('error');
+            const oauthPlatform = urlParams.get('platform');
+            
+            if (oauthStatus === 'success' && oauthPlatform) {
+                showNotification(`✅ ${oauthPlatform.charAt(0).toUpperCase() + oauthPlatform.slice(1)} connected successfully!`, 'success');
+                showPage('settings');
+                window.history.replaceState({}, document.title, window.location.pathname);
+                setTimeout(() => {
+                    loadConnectedAccounts();
+                    loadInfluencerStats();
+                }, 1000);
+            } else if (oauthError) {
+                let errorMessage = 'OAuth connection failed';
+                if (oauthError === 'oauth_denied') errorMessage = 'You cancelled the authorization';
+                else if (oauthError === 'invalid_state') errorMessage = 'Invalid OAuth state. Please try again';
+                else if (oauthError === 'oauth_not_configured') errorMessage = `${oauthPlatform} OAuth is not configured yet`;
+                
+                showNotification(errorMessage, 'error');
+                showPage('settings');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        async function loadConnectedAccounts() {
+            const container = document.getElementById('connected-accounts');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading accounts...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    connectedAccounts = data.accounts || [];
+                    displayConnectedAccounts();
+                } else {
+                    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                container.innerHTML = '<p style="color: var(--accent-red);">Failed to load accounts</p>';
+            }
+        }
+
+        function displayConnectedAccounts() {
+            const container = document.getElementById('connected-accounts');
+            
+            if (connectedAccounts.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet. Connect your first account below!</p>';
+                return;
+            }
+            
+            container.innerHTML = connectedAccounts.map(account => `
+                <div class="account-card connected">
+                    <div class="account-header">
+                        <div class="platform-name">
+                            <span>${getPlatformIcon(account.platform)}</span>
+                            ${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}
+                        </div>
+                        <span class="status-badge status-connected">✓ Connected</span>
+                    </div>
+                    <div class="account-details">
+                        <div class="account-username">${account.username}</div>
+                        ${account.stats ? `
+                            <div class="account-stats">
+                                <div class="mini-stat">
+                                    <div class="mini-stat-value">${formatNumber(account.stats.followers || 0)}</div>
+                                    <div class="mini-stat-label">Followers</div>
+                                </div>
+                                <div class="mini-stat">
+                                    <div class="mini-stat-value">${account.stats.engagementRate || 0}%</div>
+                                    <div class="mini-stat-label">Engagement</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="account-actions">
+                        <button class="btn btn-primary btn-sm" onclick="refreshAccountStats('${account.platform}')">
+                            🔄 Refresh
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="disconnectAccount('${account.platform}')">
+                            Disconnect
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getPlatformIcon(platform) {
+            const icons = {
+                twitter: '𝕏',
+                instagram: '📷',
+                tiktok: '🎵',
+                youtube: '▶️',
+                bluesky: '🦋',
+                twitch: '🎮'
+            };
+            return icons[platform] || '🔗';
+        }
+
+        async function refreshAccountStats(platform) {
+            showNotification(`Refreshing ${platform} stats...`, 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/social/${platform}/stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    showNotification(`✅ ${platform} stats updated!`, 'success');
+                    await loadConnectedAccounts();
+                    await loadInfluencerStats();
+                } else {
+                    showNotification(`Failed to refresh ${platform} stats`, 'error');
+                }
+            } catch (error) {
+                console.error('Error refreshing stats:', error);
+                showNotification('Failed to refresh stats', 'error');
+            }
+        }
+
+        async function refreshAllStats() {
+            showNotification('Refreshing all stats...', 'info');
+            
+            for (const account of connectedAccounts) {
+                await refreshAccountStats(account.platform);
+            }
+        }
+
+        async function disconnectAccount(platform) {
+            if (!confirm(`Are you sure you want to disconnect your ${platform} account?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/social/disconnect/${platform}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    showNotification(`${platform} account disconnected`, 'success');
+                    await loadConnectedAccounts();
+                    await loadInfluencerStats();
+                } else {
+                    showNotification('Failed to disconnect account', 'error');
+                }
+            } catch (error) {
+                console.error('Error disconnecting account:', error);
+                showNotification('Failed to disconnect account', 'error');
+            }
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(pageId).classList.add('active');
+            
+            // Find and activate the corresponding tab
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                if (tab.textContent.toLowerCase().includes(pageId)) {
+                    tab.classList.add('active');
+                }
+            });
+
+            const logoText = document.getElementById('logo-text');
+            const pageNames = {
+                'dashboard': 'Formative',
+                'opportunities': 'Opportunities',
+                'applications': 'Applications',
+                'messages': 'Messages',
+                'settings': 'Settings'
+            };
+            logoText.textContent = pageNames[pageId] || 'Formative';
+
+            // Load page-specific data
+            if (pageId === 'settings') {
+                loadConnectedAccounts();
+            } else if (pageId === 'messages') {
+                loadConversations();
+            } else if (pageId === 'applications' && userType === 'brand') {
+                loadBrandApplications();
+            }
+        }
+
         function goToProfile() {
             window.location.href = 'profile.html';
         }
         
-        // Logout function
         function logout() {
             if (confirm('Are you sure you want to logout?')) {
-                // Clear all stored data
                 localStorage.clear();
                 sessionStorage.clear();
-                
-                // Show notification
-                showNotification('Logged out successfully', 'success');
-                
-                // Redirect to homepage after a short delay
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
+                window.location.href = 'index.html';
             }
         }
-        
-        // Show user menu
-        function showUserMenu() {
-            logout();
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        // Notification system
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h';
+            if (diff < 604800000) return Math.floor(diff / 86400000) + 'd';
+            return date.toLocaleDateString();
+        }
+
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
             notification.style.cssText = `
                 position: fixed;
                 top: 20px;
@@ -966,6 +2988,7 @@
                 box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                 z-index: 10000;
                 animation: slideIn 0.3s ease;
+                max-width: 400px;
             `;
             notification.textContent = message;
             
@@ -976,11 +2999,20 @@
                 setTimeout(() => notification.remove(), 300);
             }, 3000);
         }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
-    <script src="js/main.js"></script>
-    <script src="js/mobile.js"></script>
-    <script src="js/features.js"></script>
-    <script src="js/performance.js"></script>
-    <script src="js/auth.js"></script>
 </body>
 </html>
