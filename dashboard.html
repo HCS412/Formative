@@ -2767,10 +2767,13 @@
                 showNotification(`✅ ${oauthPlatform.charAt(0).toUpperCase() + oauthPlatform.slice(1)} connected successfully!`, 'success');
                 showPage('settings');
                 window.history.replaceState({}, document.title, window.location.pathname);
+                // Immediately load accounts, then reload after a delay to ensure DB sync
+                loadConnectedAccounts();
+                loadInfluencerStats();
                 setTimeout(() => {
                     loadConnectedAccounts();
                     loadInfluencerStats();
-                }, 1000);
+                }, 2000);
             } else if (oauthError) {
                 let errorMessage = 'OAuth connection failed';
                 if (oauthError === 'oauth_denied') errorMessage = 'You cancelled the authorization';
@@ -2788,19 +2791,25 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading accounts...</div>';
             
             try {
+                console.log('🔄 Fetching social accounts from:', `${API_BASE}/api/user/social-accounts`);
                 const response = await fetch(`${API_BASE}/api/user/social-accounts`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
+                console.log('📥 Response status:', response.status);
+                
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('📊 Social accounts data:', JSON.stringify(data, null, 2));
                     connectedAccounts = data.accounts || [];
                     displayConnectedAccounts();
                 } else {
+                    const errorText = await response.text();
+                    console.error('❌ Failed to load accounts:', response.status, errorText);
                     container.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">No connected accounts yet.</p>';
                 }
             } catch (error) {
-                console.error('Error loading accounts:', error);
+                console.error('❌ Error loading accounts:', error);
                 container.innerHTML = '<p style="color: var(--accent-red);">Failed to load accounts</p>';
             }
         }
