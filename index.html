@@ -7,6 +7,44 @@
     <link rel="stylesheet" href="css/landing.css">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/mobile.css">
+    <!-- Critical navbar styles to ensure visibility -->
+    <style>
+        .navbar {
+            display: flex !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 9999 !important;
+            background: rgba(15, 20, 25, 0.95) !important;
+            backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex !important;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-buttons {
+            display: flex !important;
+            gap: 1rem;
+            align-items: center;
+        }
+        .hero {
+            padding-top: 6rem !important;
+        }
+        @media (max-width: 768px) {
+            .navbar { padding: 0.75rem 1rem; }
+            .nav-links { display: none !important; }
+            .nav-buttons { display: flex !important; gap: 0.5rem; }
+            .nav-buttons .btn { padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -353,15 +391,15 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="name">Full Name</label>
-                        <input type="text" class="form-input" id="name" placeholder="Jordan Lee" required>
+                        <input type="text" class="form-input" id="name" name="name" placeholder="Jordan Lee" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="email">Email</label>
-                        <input type="email" class="form-input" id="email" placeholder="jordan@example.com" required>
+                        <input type="email" class="form-input" id="email" name="email" placeholder="jordan@example.com" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="password">Password</label>
-                        <input type="password" class="form-input" id="password" placeholder="••••••••" required>
+                        <input type="password" class="form-input" id="password" name="password" placeholder="••••••••" required>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">Create Account</button>
                 </form>
@@ -396,11 +434,11 @@
                 <form onsubmit="handleLogin(event)">
                     <div class="form-group">
                         <label class="form-label" for="loginEmail">Email</label>
-                        <input type="email" class="form-input" id="loginEmail" placeholder="jordan@example.com" required>
+                        <input type="email" class="form-input" id="loginEmail" name="email" placeholder="jordan@example.com" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="loginPassword">Password</label>
-                        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" required>
+                        <input type="password" class="form-input" id="loginPassword" name="password" placeholder="••••••••" required>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
                         <label style="display: flex; align-items: center; gap: 0.5rem;">
