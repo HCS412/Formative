@@ -77,6 +77,9 @@ const OAUTH_CONFIG = {
   }
 };
 
+// Frontend URL for OAuth redirects (with safety check for misconfigured env var)
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://formative-production.up.railway.app').replace(/^FRONTEND_URL=/, '');
+
 // In-memory store for OAuth state (in production, use Redis)
 const oauthStates = new Map();
 
@@ -896,7 +899,7 @@ app.get('/api/oauth/status', (req, res) => {
 // Twitter OAuth - Initiate
 app.get('/api/oauth/twitter/authorize', authenticateTokenFlexible, (req, res) => {
   if (!OAUTH_CONFIG.twitter.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=twitter`);
+    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_not_configured&platform=twitter`);
   }
 
   const state = generateOAuthState();
@@ -927,7 +930,7 @@ app.get('/api/oauth/twitter/authorize', authenticateTokenFlexible, (req, res) =>
 // Instagram OAuth - Initiate
 app.get('/api/oauth/instagram/authorize', authenticateTokenFlexible, (req, res) => {
   if (!OAUTH_CONFIG.instagram.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=instagram`);
+    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_not_configured&platform=instagram`);
   }
 
   const state = generateOAuthState();
@@ -954,7 +957,7 @@ app.get('/api/oauth/instagram/authorize', authenticateTokenFlexible, (req, res) 
 // TikTok OAuth - Initiate
 app.get('/api/oauth/tiktok/authorize', authenticateTokenFlexible, (req, res) => {
   if (!OAUTH_CONFIG.tiktok.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=tiktok`);
+    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_not_configured&platform=tiktok`);
   }
 
   const state = generateOAuthState();
@@ -981,7 +984,7 @@ app.get('/api/oauth/tiktok/authorize', authenticateTokenFlexible, (req, res) => 
 // YouTube OAuth - Authorize
 app.get('/api/oauth/youtube/authorize', authenticateTokenFlexible, (req, res) => {
   if (!OAUTH_CONFIG.youtube.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=youtube`);
+    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_not_configured&platform=youtube`);
   }
 
   const state = generateOAuthState();
@@ -1011,7 +1014,7 @@ app.get('/api/oauth/youtube/authorize', authenticateTokenFlexible, (req, res) =>
 // OAUTH CALLBACK ENDPOINTS
 // ============================================
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative';
+// FRONTEND_URL is defined at the top of the file
 
 // Twitter OAuth - Callback
 app.get('/api/oauth/twitter/callback', async (req, res) => {
