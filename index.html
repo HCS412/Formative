@@ -441,19 +441,31 @@
                 const user = JSON.parse(userData);
                 console.log('User already logged in:', user.name);
                 
-                // Update nav buttons to show "Go to Dashboard" instead
+                // Update nav buttons to show "Go to Dashboard" and "Sign Out"
                 const navButtons = document.querySelector('.nav-buttons');
                 if (navButtons) {
                     navButtons.innerHTML = `
                         <span style="color: var(--text-secondary); margin-right: 1rem;">
                             Welcome back, ${user.name}!
                         </span>
+                        <button class="btn btn-ghost" onclick="signOut()">Sign Out</button>
                         <a href="dashboard.html" class="btn btn-primary">Go to Dashboard →</a>
                     `;
                 }
             }
         });
     
+        // Sign out function
+        function signOut() {
+            localStorage.removeItem('userData');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userType');
+            showNotification('Signed out successfully', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
         // Navbar scroll effect
         window.addEventListener('scroll', () => {
             const navbar = document.getElementById('navbar');
