@@ -1,180 +1,279 @@
-// Backend API server for Formative Platform with OAuth Support
-// Updated with complete database schema initialization
+// Backend API server for Formative Platform
+// Enhanced with rate limiting, input validation, and proper error handling
+
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const path = require('path');
-const crypto = require('crypto');
-
-// Use node-fetch for Node.js < 18, native fetch for Node.js >= 18
-let fetch;
-try {
-  fetch = globalThis.fetch || require('node-fetch');
-} catch (e) {
-  fetch = require('node-fetch');
-}
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const { body, param, query, validationResult } = require('express-validator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection
+// ==========================================
+// CONFIGURATION & SECURITY
+// ==========================================
+
+// Require JWT_SECRET in production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('❌ FATAL: JWT_SECRET environment variable is required in production');
+  process.exit(1);
+}
+const jwtSecret = JWT_SECRET || 'dev-secret-change-in-production';
+
+// Database connection with error handling
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Middleware
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://formativeunites.us', 'https://www.formativeunites.us', 'https://hcs412.github.io', 'https://formative-production.up.railway.app']
-    : '*',
-  credentials: true
+// Test database connection
+pool.on('error', (err) => {
+  console.error('❌ Unexpected database error:', err);
+});
+
+// ==========================================
+// MIDDLEWARE
+// ==========================================
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for development, enable in production
+  crossOriginEmbedderPolicy: false
 }));
-app.use(express.json());
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static files
 app.use(express.static(path.join(__dirname, '../')));
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+// ==========================================
+// RATE LIMITING
+// ==========================================
 
-// OAuth Configuration
-const OAUTH_CONFIG = {
-  twitter: {
-    clientId: process.env.TWITTER_CLIENT_ID,
-    clientSecret: process.env.TWITTER_CLIENT_SECRET,
-    authUrl: 'https://twitter.com/i/oauth2/authorize',
-    tokenUrl: 'https://api.twitter.com/2/oauth2/token',
-    userUrl: 'https://api.twitter.com/2/users/me',
-    scopes: ['tweet.read', 'users.read', 'follows.read', 'offline.access'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/twitter/callback`
+// General API rate limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: {
+    success: false,
+    error: 'Too many requests, please try again later.',
+    code: 'RATE_LIMIT_EXCEEDED'
   },
-  instagram: {
-    clientId: process.env.INSTAGRAM_CLIENT_ID,
-    clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
-    authUrl: 'https://api.instagram.com/oauth/authorize',
-    tokenUrl: 'https://api.instagram.com/oauth/access_token',
-    userUrl: 'https://graph.instagram.com/me',
-    scopes: ['user_profile', 'user_media'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/instagram/callback`
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Strict rate limiter for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: {
+    success: false,
+    error: 'Too many login attempts, please try again after 15 minutes.',
+    code: 'AUTH_RATE_LIMIT_EXCEEDED'
   },
-  tiktok: {
-    clientId: process.env.TIKTOK_CLIENT_ID,
-    clientSecret: process.env.TIKTOK_CLIENT_SECRET,
-    authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
-    tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
-    userUrl: 'https://open.tiktokapis.com/v2/user/info/',
-    scopes: ['user.info.basic', 'user.info.stats', 'video.list'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/tiktok/callback`
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true // Don't count successful logins
+});
+
+// Registration rate limiter (more lenient than login)
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 registrations per hour per IP
+  message: {
+    success: false,
+    error: 'Too many accounts created from this IP, please try again after an hour.',
+    code: 'REGISTER_RATE_LIMIT_EXCEEDED'
+  }
+});
+
+// Apply general rate limiting to all API routes
+app.use('/api/', generalLimiter);
+
+// ==========================================
+// ERROR HANDLING UTILITIES
+// ==========================================
+
+// Standardized API response format
+const ApiResponse = {
+  success: (res, data, statusCode = 200) => {
+    return res.status(statusCode).json({
+      success: true,
+      ...data,
+      timestamp: new Date().toISOString()
+    });
   },
-  youtube: {
-    clientId: process.env.YOUTUBE_CLIENT_ID,
-    clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
-    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    scopes: ['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/userinfo.profile'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/youtube/callback`
+
+  error: (res, message, statusCode = 400, code = 'ERROR', details = null) => {
+    const response = {
+      success: false,
+      error: message,
+      code: code,
+      timestamp: new Date().toISOString()
+    };
+    if (details) response.details = details;
+    return res.status(statusCode).json(response);
   }
 };
 
-// In-memory store for OAuth state (in production, use Redis)
-const oauthStates = new Map();
+// Validation error handler
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return ApiResponse.error(
+      res,
+      'Validation failed',
+      400,
+      'VALIDATION_ERROR',
+      errors.array().map(err => ({
+        field: err.path,
+        message: err.msg
+      }))
+    );
+  }
+  next();
+};
 
-// ============================================
-// DATABASE INITIALIZATION - COMPLETE SCHEMA
-// ============================================
+// Async error wrapper to catch unhandled promise rejections
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+// ==========================================
+// INPUT VALIDATION SCHEMAS
+// ==========================================
+
+const validators = {
+  register: [
+    body('name')
+      .trim()
+      .notEmpty().withMessage('Name is required')
+      .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters')
+      .escape(),
+    body('email')
+      .trim()
+      .notEmpty().withMessage('Email is required')
+      .isEmail().withMessage('Please provide a valid email address')
+      .normalizeEmail(),
+    body('password')
+      .notEmpty().withMessage('Password is required')
+      .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
+    body('userType')
+      .notEmpty().withMessage('User type is required')
+      .isIn(['influencer', 'brand', 'freelancer']).withMessage('Invalid user type')
+  ],
+
+  login: [
+    body('email')
+      .trim()
+      .notEmpty().withMessage('Email is required')
+      .isEmail().withMessage('Please provide a valid email address')
+      .normalizeEmail(),
+    body('password')
+      .notEmpty().withMessage('Password is required')
+  ],
+
+  updateProfile: [
+    body('name')
+      .optional()
+      .trim()
+      .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters')
+      .escape(),
+    body('profileData')
+      .optional()
+      .isObject().withMessage('Profile data must be an object')
+  ],
+
+  createOpportunity: [
+    body('title')
+      .trim()
+      .notEmpty().withMessage('Title is required')
+      .isLength({ min: 5, max: 200 }).withMessage('Title must be between 5 and 200 characters')
+      .escape(),
+    body('description')
+      .optional()
+      .trim()
+      .isLength({ max: 5000 }).withMessage('Description cannot exceed 5000 characters'),
+    body('type')
+      .notEmpty().withMessage('Type is required')
+      .isIn(['influencer', 'brand', 'freelancer', 'campaign', 'collaboration']).withMessage('Invalid opportunity type'),
+    body('industry')
+      .optional()
+      .trim()
+      .isLength({ max: 100 }).withMessage('Industry cannot exceed 100 characters'),
+    body('budgetRange')
+      .optional()
+      .trim()
+  ],
+
+  opportunityId: [
+    param('id')
+      .isInt({ min: 1 }).withMessage('Invalid opportunity ID')
+  ]
+};
+
+// ==========================================
+// AUTH MIDDLEWARE
+// ==========================================
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return ApiResponse.error(res, 'Access token required', 401, 'AUTH_TOKEN_MISSING');
+  }
+
+  jwt.verify(token, jwtSecret, (err, user) => {
+    if (err) {
+      if (err.name === 'TokenExpiredError') {
+        return ApiResponse.error(res, 'Token has expired, please login again', 401, 'TOKEN_EXPIRED');
+      }
+      return ApiResponse.error(res, 'Invalid token', 403, 'INVALID_TOKEN');
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// ==========================================
+// DATABASE INITIALIZATION
+// ==========================================
+
 async function initializeDatabase() {
-  const client = await pool.connect();
-  
   try {
-    console.log('🔄 Initializing database schema...');
-    
-    await client.query('BEGIN');
-
-    // 1. USERS TABLE
-    await client.query(`
+    // Create users table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         user_type VARCHAR(50) NOT NULL,
-        profile_data JSONB DEFAULT '{}',
-        email_verified BOOLEAN DEFAULT FALSE,
-        avatar_url TEXT,
-        location VARCHAR(255),
-        bio TEXT,
-        website VARCHAR(500),
+        profile_data JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // 2. SOCIAL ACCOUNTS TABLE
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS social_accounts (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        platform VARCHAR(50) NOT NULL,
-        username VARCHAR(255),
-        platform_user_id VARCHAR(255),
-        access_token TEXT,
-        refresh_token TEXT,
-        token_expires_at TIMESTAMP,
-        stats JSONB DEFAULT '{}',
-        last_synced_at TIMESTAMP,
-        is_verified BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, platform)
-      )
-    `);
-
-    // Create indexes for social_accounts
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_social_accounts_user_id ON social_accounts(user_id)
-    `);
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_social_accounts_platform ON social_accounts(platform)
-    `);
-    
-    // Add missing columns to social_accounts if they don't exist (for existing tables)
-    const socialAccountColumns = [
-      { name: 'platform_user_id', type: 'VARCHAR(255)' },
-      { name: 'is_verified', type: 'BOOLEAN DEFAULT FALSE' },
-      { name: 'last_synced_at', type: 'TIMESTAMP' },
-      { name: 'access_token', type: 'TEXT' },
-      { name: 'refresh_token', type: 'TEXT' },
-      { name: 'token_expires_at', type: 'TIMESTAMP' },
-      { name: 'stats', type: "JSONB DEFAULT '{}'" }
-    ];
-    
-    for (const col of socialAccountColumns) {
-      try {
-        await client.query(`ALTER TABLE social_accounts ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
-      } catch (e) {
-        // Column might already exist, ignore error
-      }
-    }
-    
-    // Add missing columns to users if they don't exist (for existing tables)
-    const userColumns = [
-      { name: 'avatar_url', type: 'TEXT' },
-      { name: 'bio', type: 'TEXT' },
-      { name: 'location', type: 'VARCHAR(255)' },
-      { name: 'website', type: 'VARCHAR(500)' }
-    ];
-    
-    for (const col of userColumns) {
-      try {
-        await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
-      } catch (e) {
-        // Column might already exist, ignore error
-      }
-    }
-
-    // 3. OPPORTUNITIES TABLE
-    await client.query(`
+    // Create opportunities table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS opportunities (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
@@ -182,439 +281,77 @@ async function initializeDatabase() {
         type VARCHAR(50) NOT NULL,
         industry VARCHAR(100),
         budget_range VARCHAR(50),
+        created_by INTEGER REFERENCES users(id),
         status VARCHAR(50) DEFAULT 'active',
-        views_count INTEGER DEFAULT 0,
-        applications_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
-    // Add missing columns to opportunities if they don't exist
-    const oppColumns = [
-      { name: 'budget_min', type: 'INTEGER' },
-      { name: 'budget_max', type: 'INTEGER' },
-      { name: 'requirements', type: "JSONB DEFAULT '[]'" },
-      { name: 'platforms', type: "JSONB DEFAULT '[]'" },
-      { name: 'created_by', type: 'INTEGER' },
-      { name: 'deadline', type: 'TIMESTAMP' },
-      { name: 'location', type: 'VARCHAR(255)' },
-      { name: 'is_remote', type: 'BOOLEAN DEFAULT TRUE' }
-    ];
-    
-    for (const col of oppColumns) {
-      try {
-        await client.query(`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
-      } catch (e) {
-        // Column might already exist, ignore error
-      }
-    }
 
-    // 4. APPLICATIONS TABLE
-    await client.query(`
+    // Create applications table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS applications (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        opportunity_id INTEGER NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        opportunity_id INTEGER REFERENCES opportunities(id),
         status VARCHAR(50) DEFAULT 'pending',
         message TEXT,
-        proposed_rate INTEGER,
-        portfolio_links JSONB DEFAULT '[]',
-        response_message TEXT,
-        responded_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, opportunity_id)
-      )
-    `);
-
-    // 5. MESSAGES TABLE
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        conversation_id INTEGER,
-        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        content TEXT NOT NULL,
-        message_type VARCHAR(50) DEFAULT 'text',
-        attachment_url TEXT,
-        is_read BOOLEAN DEFAULT FALSE,
-        read_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
-    // Add conversation_id column as INTEGER if it doesn't exist or is wrong type
-    try {
-      await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversation_id INTEGER`);
-    } catch (e) {
-      // Column might already exist
-    }
 
-    // Create indexes for messages
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)
-    `);
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id)
+    // Create index for email lookups
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
     `);
 
-    // 6. CONVERSATIONS TABLE
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS conversations (
-        id SERIAL PRIMARY KEY,
-        user1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        user2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user1_id, user2_id)
-      )
-    `);
-    
-    // Add missing columns to conversations if they don't exist
-    const convColumns = [
-      { name: 'user1_id', type: 'INTEGER' },
-      { name: 'user2_id', type: 'INTEGER' },
-      { name: 'updated_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' }
-    ];
-    
-    for (const col of convColumns) {
-      try {
-        await client.query(`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
-      } catch (e) {
-        // Column might already exist, ignore error
-      }
-    }
-    
-    // If old schema exists with participant_1/participant_2, migrate data
-    try {
-      const hasOldSchema = await client.query(`
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name = 'conversations' AND column_name = 'participant_1'
-      `);
-      
-      if (hasOldSchema.rows.length > 0) {
-        // Check if user1_id has data
-        const hasNewData = await client.query(`SELECT user1_id FROM conversations WHERE user1_id IS NOT NULL LIMIT 1`);
-        if (hasNewData.rows.length === 0) {
-          // Migrate data from old columns
-          await client.query(`UPDATE conversations SET user1_id = participant_1, user2_id = participant_2 WHERE user1_id IS NULL`);
-          console.log('📦 Migrated conversations from old schema');
-        }
-      }
-    } catch (e) {
-      // Old schema doesn't exist, that's fine
-    }
-
-    // 8. COLLABORATIONS TABLE (for brand-influencer partnerships)
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS collaborations (
-        id SERIAL PRIMARY KEY,
-        opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
-        brand_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        influencer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
-        status VARCHAR(50) DEFAULT 'accepted',
-        agreed_rate INTEGER,
-        notes TEXT,
-        started_at TIMESTAMP,
-        completed_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Create indexes for collaborations
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_collaborations_brand ON collaborations(brand_id)
-    `);
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_collaborations_influencer ON collaborations(influencer_id)
-    `);
-
-    // 7. NOTIFICATIONS TABLE
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS notifications (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        type VARCHAR(50) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        content TEXT,
-        message TEXT,
-        link VARCHAR(500),
-        related_id INTEGER,
-        related_type VARCHAR(50),
-        is_read BOOLEAN DEFAULT FALSE,
-        read_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Add missing columns to notifications if they don't exist
-    const notifColumns = [
-      { name: 'message', type: 'TEXT' },
-      { name: 'related_id', type: 'INTEGER' },
-      { name: 'related_type', type: 'VARCHAR(50)' }
-    ];
-    
-    for (const col of notifColumns) {
-      try {
-        await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
-      } catch (e) {
-        // Column might already exist, ignore error
-      }
-    }
-
-    // Create index for notifications
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)
-    `);
-
-    // 8. USER SETTINGS TABLE
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_settings (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        email_notifications JSONB DEFAULT '{"opportunities": true, "messages": true, "campaigns": true, "marketing": false}',
-        privacy_settings JSONB DEFAULT '{"public_profile": true, "show_email": false, "show_stats": true}',
-        timezone VARCHAR(50) DEFAULT 'UTC',
-        language VARCHAR(10) DEFAULT 'en',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Insert sample opportunities if none exist
-    const existingOpportunities = await client.query('SELECT COUNT(*) FROM opportunities');
-    
-    if (parseInt(existingOpportunities.rows[0].count) === 0) {
-      await client.query(`
-        INSERT INTO opportunities (title, description, type, industry, budget_range, budget_min, budget_max, status)
-        VALUES 
-          ('Social Media Campaign for Tech Startup', 'Looking for micro-influencers to promote our new productivity app.', 'influencer', 'technology', '$500-$2000', 500, 2000, 'active'),
-          ('Lifestyle Photography for Fashion Brand', 'Need professional photographers for our new sustainable fashion collection.', 'freelancer', 'fashion', '$1000-$5000', 1000, 5000, 'active'),
-          ('Video Editor for YouTube Channel', 'Seeking experienced video editor for gaming content.', 'freelancer', 'entertainment', '$2000-$8000', 2000, 8000, 'active'),
-          ('Brand Partnership for Outdoor Gear', 'Adventure and outdoor enthusiasts wanted for brand partnership.', 'influencer', 'sports', '$1000-$3000', 1000, 3000, 'active'),
-          ('UGC Creator for Beauty Brand', 'Looking for diverse UGC creators for our skincare line.', 'influencer', 'beauty', '$200-$800', 200, 800, 'active')
-        ON CONFLICT DO NOTHING
-      `);
-      console.log('🎯 Sample opportunities inserted');
-    }
-
-    await client.query('COMMIT');
-    
-    console.log('✅ Database schema initialized successfully');
-    console.log('📊 Tables: users, social_accounts, opportunities, applications, messages, conversations, notifications, user_settings');
-    
+    console.log('✅ Database tables initialized successfully');
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('❌ Database initialization error:', error.message);
-    throw error;
-  } finally {
-    client.release();
+    // Don't exit - allow the app to run without DB for demo mode
   }
 }
 
-// ============================================
-// AUTH MIDDLEWARE
-// ============================================
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+// ==========================================
+// API ROUTES
+// ==========================================
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    req.user = user;
-    next();
+// Health check
+app.get('/api/health', (req, res) => {
+  ApiResponse.success(res, {
+    status: 'OK',
+    message: 'Formative API is running',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
   });
-};
-
-// Flexible auth middleware (accepts token from query or header)
-const authenticateTokenFlexible = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    token = req.query.token;
-  }
-
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    req.user = user;
-    next();
-  });
-};
-
-// ============================================
-// OAUTH HELPER FUNCTIONS
-// ============================================
-
-function generateOAuthState() {
-  return crypto.randomBytes(32).toString('hex');
-}
-
-function generatePKCE() {
-  const verifier = crypto.randomBytes(32).toString('base64url');
-  const challenge = crypto
-    .createHash('sha256')
-    .update(verifier)
-    .digest('base64url');
-  return { verifier, challenge };
-}
-
-function isTokenExpired(expiresAt) {
-  if (!expiresAt) return true;
-  return new Date(expiresAt) <= new Date();
-}
-
-async function refreshOAuthToken(platform, refreshToken) {
-  const config = OAUTH_CONFIG[platform];
-  
-  try {
-    const params = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: config.clientId
-    });
-
-    if (platform === 'twitter') {
-      const auth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
-      
-      const response = await fetch(config.tokenUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: params
-      });
-
-      if (!response.ok) {
-        throw new Error(`Token refresh failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        access_token: data.access_token,
-        refresh_token: data.refresh_token || refreshToken,
-        expires_in: data.expires_in
-      };
-    } else {
-      params.append('client_secret', config.clientSecret);
-      
-      const response = await fetch(config.tokenUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params
-      });
-
-      if (!response.ok) {
-        throw new Error(`Token refresh failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        access_token: data.access_token,
-        refresh_token: data.refresh_token || refreshToken,
-        expires_in: data.expires_in
-      };
-    }
-  } catch (error) {
-    console.error(`Error refreshing ${platform} token:`, error);
-    throw error;
-  }
-}
-
-async function getValidAccessToken(userId, platform) {
-  const result = await pool.query(
-    'SELECT access_token, refresh_token, token_expires_at FROM social_accounts WHERE user_id = $1 AND platform = $2',
-    [userId, platform]
-  );
-
-  if (result.rows.length === 0) {
-    throw new Error('Account not connected');
-  }
-
-  const account = result.rows[0];
-
-  if (isTokenExpired(account.token_expires_at) && account.refresh_token) {
-    console.log(`Token expired for ${platform}, refreshing...`);
-    
-    const newTokens = await refreshOAuthToken(platform, account.refresh_token);
-    const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
-    
-    await pool.query(
-      `UPDATE social_accounts 
-       SET access_token = $1, refresh_token = $2, token_expires_at = $3, updated_at = NOW()
-       WHERE user_id = $4 AND platform = $5`,
-      [newTokens.access_token, newTokens.refresh_token, expiresAt, userId, platform]
-    );
-
-    return newTokens.access_token;
-  }
-
-  return account.access_token;
-}
-
-// ============================================
-// HEALTH CHECK
-// ============================================
-app.get('/api/health', async (req, res) => {
-  try {
-    // Test database connection
-    const dbResult = await pool.query('SELECT NOW()');
-    res.json({ 
-      status: 'OK', 
-      message: 'Formative API is running',
-      database: 'connected',
-      timestamp: dbResult.rows[0].now
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'ERROR', 
-      message: 'Database connection failed',
-      error: error.message
-    });
-  }
 });
 
-// ============================================
-// AUTH ENDPOINTS
-// ============================================
+// ==========================================
+// AUTH ROUTES
+// ==========================================
 
 // User Registration
-app.post('/api/auth/register', async (req, res) => {
-  try {
+app.post('/api/auth/register',
+  registerLimiter,
+  validators.register,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
     const { name, email, password, userType } = req.body;
 
-    if (!name || !email || !password || !userType) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
+    // Check if user already exists
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1',
       [email]
     );
 
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists with this email' });
+      return ApiResponse.error(res, 'An account with this email already exists', 409, 'USER_EXISTS');
     }
 
+    // Hash password
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    // Create user
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
       [name, email, passwordHash, userType]
@@ -622,22 +359,16 @@ app.post('/api/auth/register', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Create default user settings
-    await pool.query(
-      'INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING',
-      [user.id]
-    );
-
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
-      JWT_SECRET,
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
     console.log(`✅ New user registered: ${email} (${userType})`);
 
-    res.status(201).json({
-      success: true,
+    ApiResponse.success(res, {
       user: {
         id: user.id,
         name: user.name,
@@ -646,957 +377,177 @@ app.post('/api/auth/register', async (req, res) => {
         createdAt: user.created_at
       },
       token
-    });
-
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    }, 201);
+  })
+);
 
 // User Login
-app.post('/api/auth/login', async (req, res) => {
-  try {
+app.post('/api/auth/login',
+  authLimiter,
+  validators.login,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
+    // Find user
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, user_type, profile_data FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, user_type FROM users WHERE email = $1',
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      // Use generic message to prevent email enumeration
+      return ApiResponse.error(res, 'Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
     const user = result.rows[0];
+
+    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return ApiResponse.error(res, 'Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
-      JWT_SECRET,
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
     console.log(`✅ User logged in: ${email}`);
 
-    res.json({
-      success: true,
+    ApiResponse.success(res, {
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        userType: user.user_type,
-        profileData: user.profile_data
+        userType: user.user_type
       },
       token
     });
+  })
+);
 
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================
-// USER PROFILE ENDPOINTS
-// ============================================
+// ==========================================
+// USER ROUTES
+// ==========================================
 
 // Get user profile
-app.get('/api/user/profile', authenticateToken, async (req, res) => {
-  try {
+app.get('/api/user/profile',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
     const result = await pool.query(
-      'SELECT id, name, email, user_type, profile_data, avatar_url, location, bio, website, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, user_type, profile_data, created_at FROM users WHERE id = $1',
       [req.user.userId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return ApiResponse.error(res, 'User not found', 404, 'USER_NOT_FOUND');
     }
 
-    res.json({ success: true, user: result.rows[0] });
-  } catch (error) {
-    console.error('Profile error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    ApiResponse.success(res, { user: result.rows[0] });
+  })
+);
 
 // Update user profile
-app.put('/api/user/profile', authenticateToken, async (req, res) => {
-  try {
-    const { name, profileData, location, bio, website, avatarUrl } = req.body;
-    
+app.put('/api/user/profile',
+  authenticateToken,
+  validators.updateProfile,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
+    const { name, profileData } = req.body;
+
     const result = await pool.query(
-      `UPDATE users SET 
-        name = COALESCE($1, name),
-        profile_data = COALESCE($2, profile_data),
-        location = COALESCE($3, location),
-        bio = COALESCE($4, bio),
-        website = COALESCE($5, website),
-        avatar_url = COALESCE($6, avatar_url),
-        updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $7 
-      RETURNING id, name, email, user_type, profile_data, location, bio, website, avatar_url`,
-      [name, JSON.stringify(profileData), location, bio, website, avatarUrl, req.user.userId]
+      'UPDATE users SET name = COALESCE($1, name), profile_data = COALESCE($2, profile_data), updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING id, name, email, user_type, profile_data',
+      [name, profileData ? JSON.stringify(profileData) : null, req.user.userId]
     );
 
-    res.json({ success: true, user: result.rows[0] });
-  } catch (error) {
-    console.error('Profile update error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    if (result.rows.length === 0) {
+      return ApiResponse.error(res, 'User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    ApiResponse.success(res, { user: result.rows[0] });
+  })
+);
 
 // Save onboarding data
-app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
-  const client = await pool.connect();
-  
-  try {
-    await client.query('BEGIN');
-    
+app.post('/api/user/onboarding',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
     const userId = req.user.userId;
-    const { socialAccounts, location, bio, website, ...otherData } = req.body;
-    
-    // Update user profile
-    await client.query(
+    const onboardingData = req.body;
+
+    const result = await pool.query(
       `UPDATE users SET 
         profile_data = $1,
-        location = COALESCE($2, location),
-        bio = COALESCE($3, bio),
-        website = COALESCE($4, website),
         updated_at = NOW()
-      WHERE id = $5`,
-      [JSON.stringify(otherData), location, bio, website, userId]
+      WHERE id = $2 
+      RETURNING id, name, email, user_type`,
+      [JSON.stringify(onboardingData), userId]
     );
-    
-    // Save social accounts
-    if (socialAccounts && typeof socialAccounts === 'object') {
-      for (const [platform, username] of Object.entries(socialAccounts)) {
-        if (username && username.trim()) {
-          await client.query(
-            `INSERT INTO social_accounts (user_id, platform, username, created_at, updated_at)
-             VALUES ($1, $2, $3, NOW(), NOW())
-             ON CONFLICT (user_id, platform) 
-             DO UPDATE SET username = $3, updated_at = NOW()`,
-            [userId, platform.toLowerCase(), username.trim()]
-          );
-        }
-      }
+
+    if (result.rows.length === 0) {
+      return ApiResponse.error(res, 'User not found', 404, 'USER_NOT_FOUND');
     }
-    
-    await client.query('COMMIT');
-    
-    const result = await client.query(
-      'SELECT id, name, email, user_type, profile_data FROM users WHERE id = $1',
-      [userId]
-    );
-    
-    console.log(`✅ Onboarding completed for user ${userId}`);
-    
-    res.json({ 
-      success: true, 
+
+    ApiResponse.success(res, {
       message: 'Onboarding data saved successfully',
       user: result.rows[0]
     });
-    
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Onboarding save error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  } finally {
-    client.release();
-  }
-});
+  })
+);
 
-// ============================================
-// SOCIAL ACCOUNTS ENDPOINTS
-// ============================================
+// Get user stats (for dashboard)
+app.get('/api/user/stats',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const userType = req.user.userType;
 
-// Get user's connected social accounts
-app.get('/api/user/social-accounts', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT platform, username, stats, last_synced_at, is_verified, created_at 
-       FROM social_accounts 
-       WHERE user_id = $1 
-       ORDER BY created_at ASC`,
-      [req.user.userId]
-    );
-    
-    res.json({ 
-      success: true,
-      accounts: result.rows 
-    });
-    
-  } catch (error) {
-    console.error('Social accounts fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    // Return stats based on user type
+    let stats = {};
 
-// Disconnect a social media account
-app.delete('/api/social/disconnect/:platform', authenticateToken, async (req, res) => {
-  try {
-    const { platform } = req.params;
-    
-    const result = await pool.query(
-      'DELETE FROM social_accounts WHERE user_id = $1 AND platform = $2 RETURNING platform',
-      [req.user.userId, platform.toLowerCase()]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Social account not found' });
-    }
-    
-    console.log(`✅ Disconnected ${platform} account for user ${req.user.userId}`);
-    
-    res.json({ 
-      success: true,
-      message: `${platform} account disconnected successfully`
-    });
-    
-  } catch (error) {
-    console.error('Social account disconnect error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================
-// OAUTH INITIATION ENDPOINTS
-// ============================================
-
-// Check if OAuth is configured for a platform
-app.get('/api/oauth/status', (req, res) => {
-  const status = {
-    twitter: !!OAUTH_CONFIG.twitter.clientId,
-    instagram: !!OAUTH_CONFIG.instagram.clientId,
-    tiktok: !!OAUTH_CONFIG.tiktok.clientId,
-    bluesky: true // Always available (no OAuth needed)
-  };
-  
-  res.json({ success: true, configured: status });
-});
-
-// Twitter OAuth - Initiate
-app.get('/api/oauth/twitter/authorize', authenticateTokenFlexible, (req, res) => {
-  if (!OAUTH_CONFIG.twitter.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=twitter`);
-  }
-
-  const state = generateOAuthState();
-  const { verifier, challenge } = generatePKCE();
-  
-  oauthStates.set(state, {
-    userId: req.user.userId,
-    verifier,
-    platform: 'twitter',
-    timestamp: Date.now()
-  });
-
-  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
-
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: OAUTH_CONFIG.twitter.clientId,
-    redirect_uri: OAUTH_CONFIG.twitter.redirectUri,
-    scope: OAUTH_CONFIG.twitter.scopes.join(' '),
-    state: state,
-    code_challenge: challenge,
-    code_challenge_method: 'S256'
-  });
-
-  res.redirect(`${OAUTH_CONFIG.twitter.authUrl}?${params}`);
-});
-
-// Instagram OAuth - Initiate
-app.get('/api/oauth/instagram/authorize', authenticateTokenFlexible, (req, res) => {
-  if (!OAUTH_CONFIG.instagram.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=instagram`);
-  }
-
-  const state = generateOAuthState();
-  
-  oauthStates.set(state, {
-    userId: req.user.userId,
-    platform: 'instagram',
-    timestamp: Date.now()
-  });
-
-  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
-
-  const params = new URLSearchParams({
-    client_id: OAUTH_CONFIG.instagram.clientId,
-    redirect_uri: OAUTH_CONFIG.instagram.redirectUri,
-    scope: OAUTH_CONFIG.instagram.scopes.join(','),
-    response_type: 'code',
-    state: state
-  });
-
-  res.redirect(`${OAUTH_CONFIG.instagram.authUrl}?${params}`);
-});
-
-// TikTok OAuth - Initiate
-app.get('/api/oauth/tiktok/authorize', authenticateTokenFlexible, (req, res) => {
-  if (!OAUTH_CONFIG.tiktok.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=tiktok`);
-  }
-
-  const state = generateOAuthState();
-  
-  oauthStates.set(state, {
-    userId: req.user.userId,
-    platform: 'tiktok',
-    timestamp: Date.now()
-  });
-
-  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
-
-  const params = new URLSearchParams({
-    client_key: OAUTH_CONFIG.tiktok.clientId,
-    redirect_uri: OAUTH_CONFIG.tiktok.redirectUri,
-    response_type: 'code',
-    scope: OAUTH_CONFIG.tiktok.scopes.join(','),
-    state: state
-  });
-
-  res.redirect(`${OAUTH_CONFIG.tiktok.authUrl}?${params}`);
-});
-
-// YouTube OAuth - Authorize
-app.get('/api/oauth/youtube/authorize', authenticateTokenFlexible, (req, res) => {
-  if (!OAUTH_CONFIG.youtube.clientId) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative'}/dashboard.html?error=oauth_not_configured&platform=youtube`);
-  }
-
-  const state = generateOAuthState();
-  
-  oauthStates.set(state, {
-    userId: req.user.userId,
-    platform: 'youtube',
-    timestamp: Date.now()
-  });
-
-  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
-
-  const params = new URLSearchParams({
-    client_id: OAUTH_CONFIG.youtube.clientId,
-    redirect_uri: OAUTH_CONFIG.youtube.redirectUri,
-    response_type: 'code',
-    scope: OAUTH_CONFIG.youtube.scopes.join(' '),
-    state: state,
-    access_type: 'offline',
-    prompt: 'consent'
-  });
-
-  res.redirect(`${OAUTH_CONFIG.youtube.authUrl}?${params}`);
-});
-
-// ============================================
-// OAUTH CALLBACK ENDPOINTS
-// ============================================
-
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hcs412.github.io/Formative';
-
-// Twitter OAuth - Callback
-app.get('/api/oauth/twitter/callback', async (req, res) => {
-  const { code, state, error } = req.query;
-  
-  if (error) {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_denied&platform=twitter`);
-  }
-
-  const stateData = oauthStates.get(state);
-  if (!stateData || stateData.platform !== 'twitter') {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=invalid_state`);
-  }
-
-  oauthStates.delete(state);
-
-  try {
-    const auth = Buffer.from(`${OAUTH_CONFIG.twitter.clientId}:${OAUTH_CONFIG.twitter.clientSecret}`).toString('base64');
-    
-    const tokenResponse = await fetch(OAUTH_CONFIG.twitter.tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: OAUTH_CONFIG.twitter.redirectUri,
-        code_verifier: stateData.verifier
-      })
-    });
-
-    if (!tokenResponse.ok) {
-      throw new Error('Token exchange failed');
+    if (userType === 'influencer') {
+      stats = {
+        totalFollowers: '12.5K',
+        engagementRate: 8.7,
+        activeCampaigns: 3,
+        monthlyEarnings: 2500
+      };
+    } else if (userType === 'brand') {
+      stats = {
+        campaignsLaunched: 5,
+        influencersConnected: 12,
+        averageROI: 234
+      };
+    } else if (userType === 'freelancer') {
+      stats = {
+        projectsCompleted: 8,
+        averageRating: 4.9,
+        monthlyEarnings: 3200
+      };
     }
 
-    const tokens = await tokenResponse.json();
+    ApiResponse.success(res, { stats });
+  })
+);
 
-    const userResponse = await fetch(`${OAUTH_CONFIG.twitter.userUrl}?user.fields=public_metrics,username,name,profile_image_url,description`, {
-      headers: {
-        'Authorization': `Bearer ${tokens.access_token}`
-      }
-    });
-
-    const userData = await userResponse.json();
-    const username = '@' + userData.data.username;
-    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
-    
-    // Extract and store public metrics (follower count, etc.)
-    const metrics = userData.data.public_metrics || {};
-    const engagementRate = metrics.followers_count > 0 
-      ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
-      : 0;
-    
-    const stats = {
-      followers: metrics.followers_count || 0,
-      following: metrics.following_count || 0,
-      tweets: metrics.tweet_count || 0,
-      engagementRate: parseFloat(engagementRate),
-      displayName: userData.data.name || username,
-      profileImage: userData.data.profile_image_url || null,
-      bio: userData.data.description || null
-    };
-    
-    await pool.query(
-      `INSERT INTO social_accounts 
-        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW(), NOW())
-       ON CONFLICT (user_id, platform) 
-       DO UPDATE SET 
-         username = $3,
-         platform_user_id = $4,
-         access_token = $5,
-         refresh_token = $6,
-         token_expires_at = $7,
-         is_verified = TRUE,
-         stats = $8,
-         last_synced_at = NOW(),
-         updated_at = NOW()`,
-      [stateData.userId, 'twitter', username, userData.data.id, tokens.access_token, tokens.refresh_token, expiresAt, JSON.stringify(stats)]
-    );
-
-    console.log(`✅ Twitter connected for user ${stateData.userId}: ${username} (${stats.followers} followers)`);
-
-    res.redirect(`${FRONTEND_URL}/dashboard.html?oauth=success&platform=twitter`);
-  } catch (error) {
-    console.error('Twitter OAuth error:', error);
-    res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_failed&platform=twitter`);
-  }
-});
-
-// Instagram OAuth - Callback
-app.get('/api/oauth/instagram/callback', async (req, res) => {
-  const { code, state, error } = req.query;
-  
-  if (error) {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_denied&platform=instagram`);
-  }
-
-  const stateData = oauthStates.get(state);
-  if (!stateData || stateData.platform !== 'instagram') {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=invalid_state`);
-  }
-
-  oauthStates.delete(state);
-
-  try {
-    const tokenResponse = await fetch(OAUTH_CONFIG.instagram.tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: OAUTH_CONFIG.instagram.clientId,
-        client_secret: OAUTH_CONFIG.instagram.clientSecret,
-        grant_type: 'authorization_code',
-        redirect_uri: OAUTH_CONFIG.instagram.redirectUri,
-        code
-      })
-    });
-
-    const tokens = await tokenResponse.json();
-
-    if (tokens.error_message) {
-      throw new Error(tokens.error_message);
-    }
-
-    const userResponse = await fetch(
-      `${OAUTH_CONFIG.instagram.userUrl}?fields=id,username&access_token=${tokens.access_token}`
-    );
-
-    const userData = await userResponse.json();
-    const username = '@' + userData.username;
-    const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 days
-
-    await pool.query(
-      `INSERT INTO social_accounts 
-        (user_id, platform, username, platform_user_id, access_token, token_expires_at, is_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW(), NOW())
-       ON CONFLICT (user_id, platform) 
-       DO UPDATE SET 
-         username = $3,
-         platform_user_id = $4,
-         access_token = $5,
-         token_expires_at = $6,
-         is_verified = TRUE,
-         updated_at = NOW()`,
-      [stateData.userId, 'instagram', username, userData.id, tokens.access_token, expiresAt]
-    );
-
-    console.log(`✅ Instagram connected for user ${stateData.userId}: ${username}`);
-
-    res.redirect(`${FRONTEND_URL}/dashboard.html?oauth=success&platform=instagram`);
-  } catch (error) {
-    console.error('Instagram OAuth error:', error);
-    res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_failed&platform=instagram`);
-  }
-});
-
-// TikTok OAuth - Callback
-app.get('/api/oauth/tiktok/callback', async (req, res) => {
-  const { code, state, error } = req.query;
-  
-  if (error) {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_denied&platform=tiktok`);
-  }
-
-  const stateData = oauthStates.get(state);
-  if (!stateData || stateData.platform !== 'tiktok') {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=invalid_state`);
-  }
-
-  oauthStates.delete(state);
-
-  try {
-    const tokenResponse = await fetch(OAUTH_CONFIG.tiktok.tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_key: OAUTH_CONFIG.tiktok.clientId,
-        client_secret: OAUTH_CONFIG.tiktok.clientSecret,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: OAUTH_CONFIG.tiktok.redirectUri
-      })
-    });
-
-    const tokens = await tokenResponse.json();
-
-    if (tokens.error) {
-      throw new Error(tokens.error_description || tokens.error);
-    }
-
-    const userResponse = await fetch(OAUTH_CONFIG.tiktok.userUrl, {
-      headers: {
-        'Authorization': `Bearer ${tokens.access_token}`
-      }
-    });
-
-    const userData = await userResponse.json();
-    const username = '@' + userData.data.user.display_name;
-    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
-
-    await pool.query(
-      `INSERT INTO social_accounts 
-        (user_id, platform, username, access_token, refresh_token, token_expires_at, is_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW(), NOW())
-       ON CONFLICT (user_id, platform) 
-       DO UPDATE SET 
-         username = $3,
-         access_token = $4,
-         refresh_token = $5,
-         token_expires_at = $6,
-         is_verified = TRUE,
-         updated_at = NOW()`,
-      [stateData.userId, 'tiktok', username, tokens.access_token, tokens.refresh_token, expiresAt]
-    );
-
-    console.log(`✅ TikTok connected for user ${stateData.userId}: ${username}`);
-
-    res.redirect(`${FRONTEND_URL}/dashboard.html?oauth=success&platform=tiktok`);
-  } catch (error) {
-    console.error('TikTok OAuth error:', error);
-    res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_failed&platform=tiktok`);
-  }
-});
-
-// YouTube OAuth - Callback
-app.get('/api/oauth/youtube/callback', async (req, res) => {
-  const { code, state, error } = req.query;
-  
-  if (error) {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_denied&platform=youtube`);
-  }
-
-  const stateData = oauthStates.get(state);
-  if (!stateData || stateData.platform !== 'youtube') {
-    return res.redirect(`${FRONTEND_URL}/dashboard.html?error=invalid_state`);
-  }
-
-  oauthStates.delete(state);
-
-  try {
-    // Exchange code for tokens
-    const tokenResponse = await fetch(OAUTH_CONFIG.youtube.tokenUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: OAUTH_CONFIG.youtube.clientId,
-        client_secret: OAUTH_CONFIG.youtube.clientSecret,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: OAUTH_CONFIG.youtube.redirectUri
-      })
-    });
-
-    const tokens = await tokenResponse.json();
-
-    if (tokens.error) {
-      throw new Error(tokens.error_description || tokens.error);
-    }
-
-    // Get the user's YouTube channel info
-    const channelResponse = await fetch(
-      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
-      {
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`
-        }
-      }
-    );
-
-    const channelData = await channelResponse.json();
-    
-    if (!channelData.items || channelData.items.length === 0) {
-      throw new Error('No YouTube channel found for this account');
-    }
-
-    const channel = channelData.items[0];
-    const username = channel.snippet.title;
-    const channelId = channel.id;
-    const stats = {
-      subscribers: parseInt(channel.statistics.subscriberCount) || 0,
-      views: parseInt(channel.statistics.viewCount) || 0,
-      videos: parseInt(channel.statistics.videoCount) || 0,
-      hiddenSubscriberCount: channel.statistics.hiddenSubscriberCount || false
-    };
-
-    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
-
-    await pool.query(
-      `INSERT INTO social_accounts 
-        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, stats, is_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, NOW(), NOW())
-       ON CONFLICT (user_id, platform) 
-       DO UPDATE SET 
-         username = $3,
-         platform_user_id = $4,
-         access_token = $5,
-         refresh_token = $6,
-         token_expires_at = $7,
-         stats = $8,
-         is_verified = TRUE,
-         updated_at = NOW()`,
-      [stateData.userId, 'youtube', username, channelId, tokens.access_token, tokens.refresh_token, expiresAt, JSON.stringify(stats)]
-    );
-
-    console.log(`✅ YouTube connected for user ${stateData.userId}: ${username} (${stats.subscribers} subscribers)`);
-
-    res.redirect(`${FRONTEND_URL}/dashboard.html?oauth=success&platform=youtube`);
-  } catch (error) {
-    console.error('YouTube OAuth error:', error);
-    res.redirect(`${FRONTEND_URL}/dashboard.html?error=oauth_failed&platform=youtube&message=${encodeURIComponent(error.message)}`);
-  }
-});
-
-// ============================================
-// BLUESKY (SIMPLE VERIFICATION - NO OAUTH)
-// ============================================
-
-// Connect Bluesky account
-app.post('/api/social/bluesky/connect', authenticateToken, async (req, res) => {
-  try {
-    const { handle } = req.body;
-    
-    if (!handle) {
-      return res.status(400).json({ error: 'Bluesky handle is required' });
-    }
-    
-    let cleanHandle = handle.trim();
-    if (cleanHandle.startsWith('@')) {
-      cleanHandle = cleanHandle.substring(1);
-    }
-    if (!cleanHandle.includes('.')) {
-      cleanHandle = `${cleanHandle}.bsky.social`;
-    }
-    
-    // Verify account exists
-    const profileUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${cleanHandle}`;
-    const response = await fetch(profileUrl);
-    
-    if (!response.ok) {
-      return res.status(404).json({ error: 'Bluesky account not found' });
-    }
-    
-    const profileData = await response.json();
-    
-    const engagementRate = profileData.followersCount > 0
-      ? ((profileData.postsCount / profileData.followersCount) * 10).toFixed(2)
-      : 0;
-    
-    const stats = {
-      followers: profileData.followersCount || 0,
-      following: profileData.followsCount || 0,
-      posts: profileData.postsCount || 0,
-      engagementRate: parseFloat(engagementRate),
-      displayName: profileData.displayName || cleanHandle,
-      avatar: profileData.avatar || null,
-      description: profileData.description || null
-    };
-    
-    await pool.query(
-      `INSERT INTO social_accounts 
-        (user_id, platform, username, stats, last_synced_at, is_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, NOW(), TRUE, NOW(), NOW())
-       ON CONFLICT (user_id, platform) 
-       DO UPDATE SET 
-         username = $3,
-         stats = $4,
-         last_synced_at = NOW(),
-         is_verified = TRUE,
-         updated_at = NOW()`,
-      [req.user.userId, 'bluesky', '@' + cleanHandle, JSON.stringify(stats)]
-    );
-    
-    console.log(`✅ Bluesky connected for user ${req.user.userId}: @${cleanHandle}`);
-    
-    res.json({
-      success: true,
-      platform: 'bluesky',
-      username: '@' + cleanHandle,
-      stats,
-      message: 'Bluesky account connected successfully'
-    });
-    
-  } catch (error) {
-    console.error('Bluesky connect error:', error);
-    res.status(500).json({ 
-      error: 'Failed to connect Bluesky account',
-      message: error.message 
-    });
-  }
-});
-
-// Get Bluesky stats
-app.get('/api/social/bluesky/stats', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT username, stats, last_synced_at FROM social_accounts WHERE user_id = $1 AND platform = $2',
-      [req.user.userId, 'bluesky']
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Bluesky account not connected' });
-    }
-    
-    const account = result.rows[0];
-    let handle = account.username.replace('@', '');
-    
-    const profileUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${handle}`;
-    const response = await fetch(profileUrl);
-    
-    if (!response.ok) {
-      throw new Error(`Bluesky API error: ${response.status}`);
-    }
-    
-    const profileData = await response.json();
-    
-    const engagementRate = profileData.followersCount > 0
-      ? ((profileData.postsCount / profileData.followersCount) * 10).toFixed(2)
-      : 0;
-    
-    const stats = {
-      followers: profileData.followersCount || 0,
-      following: profileData.followsCount || 0,
-      posts: profileData.postsCount || 0,
-      engagementRate: parseFloat(engagementRate),
-      displayName: profileData.displayName || handle,
-      avatar: profileData.avatar || null,
-      description: profileData.description || null
-    };
-    
-    await pool.query(
-      `UPDATE social_accounts 
-       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
-       WHERE user_id = $2 AND platform = 'bluesky'`,
-      [JSON.stringify(stats), req.user.userId]
-    );
-    
-    res.json({
-      success: true,
-      platform: 'bluesky',
-      username: '@' + handle,
-      stats,
-      fetchedAt: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('Bluesky stats error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch Bluesky stats',
-      message: error.message 
-    });
-  }
-});
-
-// ============================================
-// TWITTER STATS (OAuth-based)
-// ============================================
-
-app.get('/api/social/twitter/stats', authenticateToken, async (req, res) => {
-  try {
-    const accessToken = await getValidAccessToken(req.user.userId, 'twitter');
-
-    const response = await fetch(
-      'https://api.twitter.com/2/users/me?user.fields=public_metrics,username,name,profile_image_url,description',
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Twitter API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const userData = data.data;
-    const metrics = userData.public_metrics;
-
-    const engagementRate = metrics.followers_count > 0 
-      ? ((metrics.tweet_count / metrics.followers_count) * 10).toFixed(2)
-      : 0;
-
-    const stats = {
-      followers: metrics.followers_count,
-      following: metrics.following_count,
-      tweets: metrics.tweet_count,
-      engagementRate: parseFloat(engagementRate),
-      displayName: userData.name,
-      profileImage: userData.profile_image_url,
-      bio: userData.description
-    };
-
-    await pool.query(
-      `UPDATE social_accounts 
-       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
-       WHERE user_id = $2 AND platform = 'twitter'`,
-      [JSON.stringify(stats), req.user.userId]
-    );
-
-    res.json({
-      success: true,
-      platform: 'twitter',
-      username: '@' + userData.username,
-      stats,
-      fetchedAt: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Twitter stats error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch Twitter stats',
-      message: error.message 
-    });
-  }
-});
-
-// YouTube Stats - Refresh
-app.get('/api/social/youtube/stats', authenticateToken, async (req, res) => {
-  try {
-    const accessToken = await getValidAccessToken(req.user.userId, 'youtube');
-
-    const response = await fetch(
-      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`YouTube API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.items || data.items.length === 0) {
-      throw new Error('No YouTube channel found');
-    }
-
-    const channel = data.items[0];
-    const stats = {
-      subscribers: parseInt(channel.statistics.subscriberCount) || 0,
-      followers: parseInt(channel.statistics.subscriberCount) || 0, // Alias for consistency
-      views: parseInt(channel.statistics.viewCount) || 0,
-      videos: parseInt(channel.statistics.videoCount) || 0,
-      hiddenSubscriberCount: channel.statistics.hiddenSubscriberCount || false,
-      displayName: channel.snippet.title,
-      profileImage: channel.snippet.thumbnails?.default?.url,
-      description: channel.snippet.description
-    };
-
-    await pool.query(
-      `UPDATE social_accounts 
-       SET stats = $1, last_synced_at = NOW(), updated_at = NOW()
-       WHERE user_id = $2 AND platform = 'youtube'`,
-      [JSON.stringify(stats), req.user.userId]
-    );
-
-    res.json({
-      success: true,
-      platform: 'youtube',
-      username: channel.snippet.title,
-      stats,
-      fetchedAt: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('YouTube stats error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch YouTube stats',
-      message: error.message 
-    });
-  }
-});
-
-// ============================================
-// OPPORTUNITIES ENDPOINTS
-// ============================================
+// ==========================================
+// OPPORTUNITIES ROUTES
+// ==========================================
 
 // Get opportunities
-app.get('/api/opportunities', async (req, res) => {
-  try {
-    const { type, industry, status = 'active', limit = 20, offset = 0 } = req.query;
-    
-    let query = `
-      SELECT o.*, u.name as created_by_name 
-      FROM opportunities o 
-      LEFT JOIN users u ON o.created_by = u.id 
-      WHERE o.status = $1
-    `;
-    const params = [status];
+app.get('/api/opportunities',
+  asyncHandler(async (req, res) => {
+    const { type, industry, limit = 20, offset = 0 } = req.query;
+
+    // Validate and sanitize query params
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
+    const safeOffset = Math.max(parseInt(offset) || 0, 0);
+
+    let query = 'SELECT o.*, u.name as created_by_name FROM opportunities o LEFT JOIN users u ON o.created_by = u.id WHERE o.status = $1';
+    const params = ['active'];
     let paramCount = 1;
 
     if (type) {
@@ -1612,1045 +563,174 @@ app.get('/api/opportunities', async (req, res) => {
     }
 
     query += ` ORDER BY o.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
-    params.push(parseInt(limit), parseInt(offset));
+    params.push(safeLimit, safeOffset);
 
     const result = await pool.query(query, params);
     
-    res.json({ 
-      success: true,
+    ApiResponse.success(res, {
       opportunities: result.rows,
-      total: result.rows.length
+      pagination: {
+        limit: safeLimit,
+        offset: safeOffset,
+        count: result.rows.length
+      }
     });
-  } catch (error) {
-    console.error('Opportunities error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  })
+);
 
 // Get single opportunity
-app.get('/api/opportunities/:id', async (req, res) => {
-  try {
+app.get('/api/opportunities/:id',
+  validators.opportunityId,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
-    
+
     const result = await pool.query(
-      `SELECT o.*, u.name as created_by_name 
-       FROM opportunities o 
-       LEFT JOIN users u ON o.created_by = u.id 
-       WHERE o.id = $1`,
+      'SELECT o.*, u.name as created_by_name FROM opportunities o LEFT JOIN users u ON o.created_by = u.id WHERE o.id = $1',
       [id]
     );
-    
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Opportunity not found' });
+      return ApiResponse.error(res, 'Opportunity not found', 404, 'OPPORTUNITY_NOT_FOUND');
     }
-    
-    // Increment view count
-    await pool.query(
-      'UPDATE opportunities SET views_count = views_count + 1 WHERE id = $1',
-      [id]
-    );
-    
-    res.json({ success: true, opportunity: result.rows[0] });
-  } catch (error) {
-    console.error('Opportunity fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+
+    ApiResponse.success(res, { opportunity: result.rows[0] });
+  })
+);
 
 // Create opportunity
-app.post('/api/opportunities', authenticateToken, async (req, res) => {
-  try {
-    const { title, description, type, industry, budgetRange, budgetMin, budgetMax, requirements, platforms, deadline } = req.body;
-
-    if (!title || !type) {
-      return res.status(400).json({ error: 'Title and type are required' });
-    }
+app.post('/api/opportunities',
+  authenticateToken,
+  validators.createOpportunity,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
+    const { title, description, type, industry, budgetRange } = req.body;
 
     const result = await pool.query(
-      `INSERT INTO opportunities 
-        (title, description, type, industry, budget_range, budget_min, budget_max, requirements, platforms, deadline, created_by) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-       RETURNING *`,
-      [title, description, type, industry, budgetRange, budgetMin, budgetMax, 
-       JSON.stringify(requirements || []), JSON.stringify(platforms || []), deadline, req.user.userId]
+      'INSERT INTO opportunities (title, description, type, industry, budget_range, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [title, description, type, industry, budgetRange, req.user.userId]
     );
 
-    console.log(`✅ New opportunity created: ${title}`);
+    console.log(`✅ New opportunity created: "${title}" by user ${req.user.userId}`);
 
-    res.status(201).json({ success: true, opportunity: result.rows[0] });
-  } catch (error) {
-    console.error('Create opportunity error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+    ApiResponse.success(res, { opportunity: result.rows[0] }, 201);
+  })
+);
 
 // Apply to opportunity
-app.post('/api/opportunities/:id/apply', authenticateToken, async (req, res) => {
-  try {
+app.post('/api/opportunities/:id/apply',
+  authenticateToken,
+  validators.opportunityId,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { message, proposedRate, portfolioLinks } = req.body;
+    const { message } = req.body;
 
+    // Check if opportunity exists
+    const opportunityCheck = await pool.query(
+      'SELECT id, status FROM opportunities WHERE id = $1',
+      [id]
+    );
+
+    if (opportunityCheck.rows.length === 0) {
+      return ApiResponse.error(res, 'Opportunity not found', 404, 'OPPORTUNITY_NOT_FOUND');
+    }
+
+    if (opportunityCheck.rows[0].status !== 'active') {
+      return ApiResponse.error(res, 'This opportunity is no longer accepting applications', 400, 'OPPORTUNITY_CLOSED');
+    }
+
+    // Check if already applied
     const existingApplication = await pool.query(
       'SELECT id FROM applications WHERE user_id = $1 AND opportunity_id = $2',
       [req.user.userId, id]
     );
 
     if (existingApplication.rows.length > 0) {
-      return res.status(400).json({ error: 'Already applied to this opportunity' });
+      return ApiResponse.error(res, 'You have already applied to this opportunity', 409, 'ALREADY_APPLIED');
     }
 
     const result = await pool.query(
-      `INSERT INTO applications (user_id, opportunity_id, message, proposed_rate, portfolio_links) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING *`,
-      [req.user.userId, id, message, proposedRate, JSON.stringify(portfolioLinks || [])]
+      'INSERT INTO applications (user_id, opportunity_id, message) VALUES ($1, $2, $3) RETURNING *',
+      [req.user.userId, id, message]
     );
 
-    // Update applications count
-    await pool.query(
-      'UPDATE opportunities SET applications_count = applications_count + 1 WHERE id = $1',
-      [id]
-    );
+    console.log(`✅ Application submitted: User ${req.user.userId} -> Opportunity ${id}`);
 
-    console.log(`✅ Application submitted for opportunity ${id} by user ${req.user.userId}`);
+    ApiResponse.success(res, { application: result.rows[0] }, 201);
+  })
+);
 
-    res.status(201).json({ success: true, application: result.rows[0] });
-  } catch (error) {
-    console.error('Application error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+// ==========================================
+// GLOBAL ERROR HANDLER
+// ==========================================
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  ApiResponse.error(res, 'Endpoint not found', 404, 'ENDPOINT_NOT_FOUND');
 });
 
-// ============================================
-// NOTIFICATIONS ENDPOINTS
-// ============================================
-
-// Get user notifications
-app.get('/api/notifications', authenticateToken, async (req, res) => {
-  try {
-    const { limit = 20, unread_only = false } = req.query;
-    
-    let query = 'SELECT * FROM notifications WHERE user_id = $1';
-    const params = [req.user.userId];
-    
-    if (unread_only === 'true') {
-      query += ' AND is_read = FALSE';
-    }
-    
-    query += ' ORDER BY created_at DESC LIMIT $2';
-    params.push(parseInt(limit));
-    
-    const result = await pool.query(query, params);
-    
-    // Get unread count
-    const unreadResult = await pool.query(
-      'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE',
-      [req.user.userId]
-    );
-    
-    res.json({ 
-      success: true,
-      notifications: result.rows,
-      unreadCount: parseInt(unreadResult.rows[0].count)
-    });
-  } catch (error) {
-    console.error('Notifications error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Mark notification as read
-app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    await pool.query(
-      'UPDATE notifications SET is_read = TRUE, read_at = NOW() WHERE id = $1 AND user_id = $2',
-      [id, req.user.userId]
-    );
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Mark notification read error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Mark all notifications as read
-app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
-  try {
-    await pool.query(
-      'UPDATE notifications SET is_read = TRUE, read_at = NOW() WHERE user_id = $1 AND is_read = FALSE',
-      [req.user.userId]
-    );
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Mark all notifications read error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================
-// MESSAGING ENDPOINTS
-// ============================================
-
-// Get all conversations for current user
-app.get('/api/messages/conversations', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    
-    // Get all conversations where user is a participant
-    const result = await pool.query(`
-      SELECT 
-        c.id,
-        c.created_at,
-        c.updated_at,
-        CASE 
-          WHEN c.user1_id = $1 THEN c.user2_id
-          ELSE c.user1_id
-        END as other_user_id,
-        CASE 
-          WHEN c.user1_id = $1 THEN u2.name
-          ELSE u1.name
-        END as other_user_name,
-        CASE 
-          WHEN c.user1_id = $1 THEN u2.user_type
-          ELSE u1.user_type
-        END as other_user_type,
-        CASE 
-          WHEN c.user1_id = $1 THEN u2.avatar_url
-          ELSE u1.avatar_url
-        END as other_user_avatar,
-        (
-          SELECT content FROM messages 
-          WHERE conversation_id = c.id 
-          ORDER BY created_at DESC LIMIT 1
-        ) as last_message_preview,
-        (
-          SELECT created_at FROM messages 
-          WHERE conversation_id = c.id 
-          ORDER BY created_at DESC LIMIT 1
-        ) as last_message_at,
-        (
-          SELECT COUNT(*) FROM messages 
-          WHERE conversation_id = c.id 
-            AND receiver_id = $1 
-            AND is_read = FALSE
-        )::int as unread_count
-      FROM conversations c
-      JOIN users u1 ON c.user1_id = u1.id
-      JOIN users u2 ON c.user2_id = u2.id
-      WHERE c.user1_id = $1 OR c.user2_id = $1
-      ORDER BY c.updated_at DESC
-    `, [userId]);
-    
-    // Transform to include unread boolean
-    const conversations = result.rows.map(conv => ({
-      ...conv,
-      unread: conv.unread_count > 0
-    }));
-    
-    res.json({ success: true, conversations });
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get messages for a specific conversation
-app.get('/api/messages/conversation/:conversationId', authenticateToken, async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const userId = req.user.userId;
-    
-    // Verify user is part of this conversation
-    const convCheck = await pool.query(
-      'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
-      [conversationId, userId]
-    );
-    
-    if (convCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied to this conversation' });
-    }
-    
-    // Get messages
-    const result = await pool.query(`
-      SELECT 
-        m.id,
-        m.sender_id,
-        m.receiver_id,
-        m.content,
-        m.is_read,
-        m.created_at,
-        u.name as sender_name
-      FROM messages m
-      JOIN users u ON m.sender_id = u.id
-      WHERE m.conversation_id = $1
-      ORDER BY m.created_at ASC
-    `, [conversationId]);
-    
-    // Mark messages as read
-    await pool.query(`
-      UPDATE messages 
-      SET is_read = TRUE, read_at = NOW() 
-      WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
-    `, [conversationId, userId]);
-    
-    res.json({ success: true, messages: result.rows });
-  } catch (error) {
-    console.error('Get messages error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Send a message
-app.post('/api/messages', authenticateToken, async (req, res) => {
-  try {
-    const { receiverId, content, conversationId } = req.body;
-    const senderId = req.user.userId;
-    
-    if (!content || content.trim() === '') {
-      return res.status(400).json({ error: 'Message content is required' });
-    }
-    
-    if (!receiverId && !conversationId) {
-      return res.status(400).json({ error: 'Receiver ID or conversation ID is required' });
-    }
-    
-    let finalConversationId = conversationId;
-    let finalReceiverId = receiverId;
-    
-    // If conversationId provided, get receiver from conversation
-    if (conversationId && !receiverId) {
-      const convResult = await pool.query(
-        'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
-        [conversationId, senderId]
-      );
-      
-      if (convResult.rows.length === 0) {
-        return res.status(403).json({ error: 'Access denied to this conversation' });
-      }
-      
-      const conv = convResult.rows[0];
-      finalReceiverId = conv.user1_id === senderId ? conv.user2_id : conv.user1_id;
-    }
-    
-    // If no conversationId, find or create conversation
-    if (!finalConversationId) {
-      // Check for existing conversation
-      const existingConv = await pool.query(`
-        SELECT id FROM conversations 
-        WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
-      `, [senderId, finalReceiverId]);
-      
-      if (existingConv.rows.length > 0) {
-        finalConversationId = existingConv.rows[0].id;
-      } else {
-        // Create new conversation
-        const newConv = await pool.query(`
-          INSERT INTO conversations (user1_id, user2_id)
-          VALUES ($1, $2)
-          RETURNING id
-        `, [senderId, finalReceiverId]);
-        finalConversationId = newConv.rows[0].id;
-      }
-    }
-    
-    // Insert message
-    const result = await pool.query(`
-      INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `, [finalConversationId, senderId, finalReceiverId, content.trim()]);
-    
-    // Update conversation timestamp
-    await pool.query(
-      'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
-      [finalConversationId]
-    );
-    
-    // Create notification for receiver
-    await pool.query(`
-      INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
-      VALUES ($1, 'message', 'New Message', $2, $3, 'message')
-    `, [finalReceiverId, `You have a new message`, result.rows[0].id]);
-    
-    res.json({ 
-      success: true, 
-      message: result.rows[0],
-      conversationId: finalConversationId
-    });
-  } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Start a new conversation (or get existing one)
-app.post('/api/messages/start-conversation', authenticateToken, async (req, res) => {
-  try {
-    const { userId: otherUserId, initialMessage } = req.body;
-    const currentUserId = req.user.userId;
-    
-    if (!otherUserId) {
-      return res.status(400).json({ error: 'User ID is required' });
-    }
-    
-    if (otherUserId === currentUserId) {
-      return res.status(400).json({ error: 'Cannot start conversation with yourself' });
-    }
-    
-    // Check if user exists
-    const userCheck = await pool.query('SELECT id, name FROM users WHERE id = $1', [otherUserId]);
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Find or create conversation
-    let conversation;
-    const existingConv = await pool.query(`
-      SELECT * FROM conversations 
-      WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
-    `, [currentUserId, otherUserId]);
-    
-    if (existingConv.rows.length > 0) {
-      conversation = existingConv.rows[0];
-    } else {
-      const newConv = await pool.query(`
-        INSERT INTO conversations (user1_id, user2_id)
-        VALUES ($1, $2)
-        RETURNING *
-      `, [currentUserId, otherUserId]);
-      conversation = newConv.rows[0];
-    }
-    
-    // If initial message provided, send it
-    if (initialMessage && initialMessage.trim()) {
-      await pool.query(`
-        INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
-        VALUES ($1, $2, $3, $4)
-      `, [conversation.id, currentUserId, otherUserId, initialMessage.trim()]);
-      
-      await pool.query(
-        'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
-        [conversation.id]
-      );
-    }
-    
-    res.json({ 
-      success: true, 
-      conversationId: conversation.id,
-      otherUser: userCheck.rows[0]
-    });
-  } catch (error) {
-    console.error('Start conversation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get unread message count
-app.get('/api/messages/unread-count', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND is_read = FALSE',
-      [req.user.userId]
-    );
-    
-    res.json({ 
-      success: true, 
-      unreadCount: parseInt(result.rows[0].count)
-    });
-  } catch (error) {
-    console.error('Unread count error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Mark conversation messages as read
-app.put('/api/messages/conversation/:conversationId/read', authenticateToken, async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const userId = req.user.userId;
-    
-    await pool.query(`
-      UPDATE messages 
-      SET is_read = TRUE, read_at = NOW() 
-      WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
-    `, [conversationId, userId]);
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Mark messages read error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================
-// STATIC FILE SERVING
-// ============================================
-
-// Serve static files (for Railway deployment)
+// Serve static files (fallback for frontend)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../index.html'));
 });
 
-// ============================================
-// BRAND DASHBOARD ENDPOINTS
-// ============================================
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('❌ Unhandled error:', err);
 
-// Get brand's own opportunities
-app.get('/api/brand/opportunities', authenticateToken, async (req, res) => {
-  try {
-    const { status } = req.query;
-    
-    let query = `
-      SELECT o.*, 
-        (SELECT COUNT(*) FROM applications WHERE opportunity_id = o.id) as applications_count
-      FROM opportunities o 
-      WHERE o.created_by = $1
-    `;
-    const params = [req.user.userId];
-    
-    if (status) {
-      query += ` AND o.status = $2`;
-      params.push(status);
-    }
-    
-    query += ` ORDER BY o.created_at DESC`;
-    
-    const result = await pool.query(query, params);
-    
-    res.json({ 
-      success: true,
-      opportunities: result.rows
-    });
-  } catch (error) {
-    console.error('Brand opportunities error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  // Don't expose internal error details in production
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  ApiResponse.error(
+    res,
+    isDev ? err.message : 'An unexpected error occurred',
+    err.status || 500,
+    err.code || 'INTERNAL_ERROR',
+    isDev ? { stack: err.stack } : null
+  );
 });
 
-// Update opportunity (brand only)
-app.put('/api/brand/opportunities/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, type, industry, budgetRange, status } = req.body;
-    
-    // Verify ownership
-    const ownership = await pool.query(
-      'SELECT id FROM opportunities WHERE id = $1 AND created_by = $2',
-      [id, req.user.userId]
-    );
-    
-    if (ownership.rows.length === 0) {
-      return res.status(403).json({ error: 'Not authorized to edit this opportunity' });
-    }
-    
-    const result = await pool.query(
-      `UPDATE opportunities 
-       SET title = COALESCE($1, title),
-           description = COALESCE($2, description),
-           type = COALESCE($3, type),
-           industry = COALESCE($4, industry),
-           budget_range = COALESCE($5, budget_range),
-           status = COALESCE($6, status),
-           updated_at = NOW()
-       WHERE id = $7
-       RETURNING *`,
-      [title, description, type, industry, budgetRange, status, id]
-    );
-    
-    res.json({ success: true, opportunity: result.rows[0] });
-  } catch (error) {
-    console.error('Update opportunity error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Delete opportunity (brand only)
-app.delete('/api/brand/opportunities/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Verify ownership
-    const result = await pool.query(
-      'DELETE FROM opportunities WHERE id = $1 AND created_by = $2 RETURNING id',
-      [id, req.user.userId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(403).json({ error: 'Not authorized to delete this opportunity' });
-    }
-    
-    res.json({ success: true, message: 'Opportunity deleted' });
-  } catch (error) {
-    console.error('Delete opportunity error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get all applications for brand's opportunities
-app.get('/api/brand/applications', authenticateToken, async (req, res) => {
-  try {
-    const { status, opportunityId } = req.query;
-    
-    let query = `
-      SELECT 
-        a.*,
-        o.title as opportunity_title,
-        o.type as opportunity_type,
-        o.budget_range,
-        u.id as applicant_id,
-        u.name as applicant_name,
-        u.email as applicant_email,
-        u.user_type as applicant_type,
-        u.avatar_url as applicant_avatar,
-        u.bio as applicant_bio,
-        u.location as applicant_location,
-        (
-          SELECT json_agg(json_build_object(
-            'platform', sa.platform,
-            'username', sa.username,
-            'stats', sa.stats,
-            'is_verified', sa.is_verified
-          ))
-          FROM social_accounts sa
-          WHERE sa.user_id = u.id
-        ) as applicant_social_accounts
-      FROM applications a
-      JOIN opportunities o ON a.opportunity_id = o.id
-      JOIN users u ON a.user_id = u.id
-      WHERE o.created_by = $1
-    `;
-    const params = [req.user.userId];
-    let paramCount = 1;
-    
-    if (status) {
-      paramCount++;
-      query += ` AND a.status = $${paramCount}`;
-      params.push(status);
-    }
-    
-    if (opportunityId) {
-      paramCount++;
-      query += ` AND a.opportunity_id = $${paramCount}`;
-      params.push(opportunityId);
-    }
-    
-    query += ` ORDER BY a.created_at DESC`;
-    
-    const result = await pool.query(query, params);
-    
-    res.json({ 
-      success: true,
-      applications: result.rows
-    });
-  } catch (error) {
-    console.error('Brand applications error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get single application details
-app.get('/api/brand/applications/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const result = await pool.query(`
-      SELECT 
-        a.*,
-        o.title as opportunity_title,
-        o.type as opportunity_type,
-        o.budget_range,
-        o.description as opportunity_description,
-        u.id as applicant_id,
-        u.name as applicant_name,
-        u.email as applicant_email,
-        u.user_type as applicant_type,
-        u.avatar_url as applicant_avatar,
-        u.bio as applicant_bio,
-        u.location as applicant_location,
-        u.website as applicant_website,
-        (
-          SELECT json_agg(json_build_object(
-            'platform', sa.platform,
-            'username', sa.username,
-            'stats', sa.stats,
-            'is_verified', sa.is_verified
-          ))
-          FROM social_accounts sa
-          WHERE sa.user_id = u.id
-        ) as applicant_social_accounts
-      FROM applications a
-      JOIN opportunities o ON a.opportunity_id = o.id
-      JOIN users u ON a.user_id = u.id
-      WHERE a.id = $1 AND o.created_by = $2
-    `, [id, req.user.userId]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    
-    res.json({ success: true, application: result.rows[0] });
-  } catch (error) {
-    console.error('Get application error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Accept application (creates collaboration)
-app.post('/api/brand/applications/:id/accept', authenticateToken, async (req, res) => {
-  const client = await pool.connect();
-  
-  try {
-    const { id } = req.params;
-    const { agreedRate, notes } = req.body;
-    
-    await client.query('BEGIN');
-    
-    // Get application and verify ownership
-    const appResult = await client.query(`
-      SELECT a.*, o.created_by as brand_id, o.title as opportunity_title
-      FROM applications a
-      JOIN opportunities o ON a.opportunity_id = o.id
-      WHERE a.id = $1 AND o.created_by = $2
-    `, [id, req.user.userId]);
-    
-    if (appResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    
-    const application = appResult.rows[0];
-    
-    if (application.status !== 'pending') {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Application already processed' });
-    }
-    
-    // Update application status
-    await client.query(
-      `UPDATE applications SET status = 'accepted', responded_at = NOW(), updated_at = NOW() WHERE id = $1`,
-      [id]
-    );
-    
-    // Create collaboration
-    const collabResult = await client.query(
-      `INSERT INTO collaborations 
-        (opportunity_id, brand_id, influencer_id, application_id, agreed_rate, notes, started_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       RETURNING *`,
-      [application.opportunity_id, req.user.userId, application.user_id, id, agreedRate || application.proposed_rate, notes]
-    );
-    
-    // Create or get conversation
-    const existingConvo = await client.query(
-      `SELECT id FROM conversations 
-       WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)`,
-      [req.user.userId, application.user_id]
-    );
-    
-    let conversationId;
-    if (existingConvo.rows.length > 0) {
-      conversationId = existingConvo.rows[0].id;
-    } else {
-      const newConvo = await client.query(
-        `INSERT INTO conversations (user1_id, user2_id) VALUES ($1, $2) RETURNING id`,
-        [req.user.userId, application.user_id]
-      );
-      conversationId = newConvo.rows[0].id;
-    }
-    
-    // Send automatic message
-    await client.query(
-      `INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
-       VALUES ($1, $2, $3, $4)`,
-      [conversationId, req.user.userId, application.user_id, 
-       `🎉 Great news! Your application for "${application.opportunity_title}" has been accepted! Let's discuss the details.`]
-    );
-    
-    // Update conversation timestamp
-    await client.query(
-      `UPDATE conversations SET updated_at = NOW() WHERE id = $1`,
-      [conversationId]
-    );
-    
-    // Create notification for influencer
-    await client.query(
-      `INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
-       VALUES ($1, 'application_accepted', 'Application Accepted!', $2, $3, 'collaboration')`,
-      [application.user_id, `Your application for "${application.opportunity_title}" has been accepted!`, collabResult.rows[0].id]
-    );
-    
-    await client.query('COMMIT');
-    
-    console.log(`✅ Application ${id} accepted, collaboration ${collabResult.rows[0].id} created`);
-    
-    res.json({ 
-      success: true, 
-      collaboration: collabResult.rows[0],
-      conversationId
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Accept application error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  } finally {
-    client.release();
-  }
-});
-
-// Reject application
-app.post('/api/brand/applications/:id/reject', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { responseMessage } = req.body;
-    
-    // Verify ownership
-    const appResult = await pool.query(`
-      SELECT a.*, o.title as opportunity_title
-      FROM applications a
-      JOIN opportunities o ON a.opportunity_id = o.id
-      WHERE a.id = $1 AND o.created_by = $2
-    `, [id, req.user.userId]);
-    
-    if (appResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    
-    const application = appResult.rows[0];
-    
-    // Update application
-    await pool.query(
-      `UPDATE applications 
-       SET status = 'rejected', response_message = $1, responded_at = NOW(), updated_at = NOW() 
-       WHERE id = $2`,
-      [responseMessage, id]
-    );
-    
-    // Create notification for influencer
-    await pool.query(
-      `INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
-       VALUES ($1, 'application_rejected', 'Application Update', $2, $3, 'application')`,
-      [application.user_id, `Your application for "${application.opportunity_title}" was not selected this time.`, id]
-    );
-    
-    res.json({ success: true, message: 'Application rejected' });
-  } catch (error) {
-    console.error('Reject application error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get brand's collaborations
-app.get('/api/brand/collaborations', authenticateToken, async (req, res) => {
-  try {
-    const { status } = req.query;
-    
-    let query = `
-      SELECT 
-        c.*,
-        o.title as opportunity_title,
-        o.type as opportunity_type,
-        u.name as influencer_name,
-        u.email as influencer_email,
-        u.avatar_url as influencer_avatar,
-        (
-          SELECT json_agg(json_build_object(
-            'platform', sa.platform,
-            'username', sa.username,
-            'stats', sa.stats
-          ))
-          FROM social_accounts sa
-          WHERE sa.user_id = u.id
-        ) as influencer_social_accounts
-      FROM collaborations c
-      LEFT JOIN opportunities o ON c.opportunity_id = o.id
-      JOIN users u ON c.influencer_id = u.id
-      WHERE c.brand_id = $1
-    `;
-    const params = [req.user.userId];
-    
-    if (status) {
-      query += ` AND c.status = $2`;
-      params.push(status);
-    }
-    
-    query += ` ORDER BY c.created_at DESC`;
-    
-    const result = await pool.query(query, params);
-    
-    res.json({ success: true, collaborations: result.rows });
-  } catch (error) {
-    console.error('Brand collaborations error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Update collaboration status
-app.put('/api/brand/collaborations/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, notes } = req.body;
-    
-    const validStatuses = ['accepted', 'in_progress', 'completed', 'cancelled'];
-    if (status && !validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-    
-    const result = await pool.query(
-      `UPDATE collaborations 
-       SET status = COALESCE($1, status),
-           notes = COALESCE($2, notes),
-           completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END,
-           updated_at = NOW()
-       WHERE id = $3 AND brand_id = $4
-       RETURNING *`,
-      [status, notes, id, req.user.userId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Collaboration not found' });
-    }
-    
-    res.json({ success: true, collaboration: result.rows[0] });
-  } catch (error) {
-    console.error('Update collaboration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get brand dashboard stats
-app.get('/api/brand/stats', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    
-    // Get counts
-    const stats = await pool.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM opportunities WHERE created_by = $1 AND status = 'active') as active_opportunities,
-        (SELECT COUNT(*) FROM applications a JOIN opportunities o ON a.opportunity_id = o.id WHERE o.created_by = $1 AND a.status = 'pending') as pending_applications,
-        (SELECT COUNT(*) FROM collaborations WHERE brand_id = $1) as total_collaborations,
-        (SELECT COUNT(*) FROM collaborations WHERE brand_id = $1 AND status = 'in_progress') as active_collaborations,
-        (SELECT COUNT(*) FROM collaborations WHERE brand_id = $1 AND status = 'completed') as completed_collaborations
-    `, [userId]);
-    
-    res.json({ success: true, stats: stats.rows[0] });
-  } catch (error) {
-    console.error('Brand stats error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================
-// INFLUENCER DASHBOARD ENDPOINTS
-// ============================================
-
-// Get influencer's applications
-app.get('/api/influencer/applications', authenticateToken, async (req, res) => {
-  try {
-    const { status } = req.query;
-    
-    let query = `
-      SELECT 
-        a.*,
-        o.title as opportunity_title,
-        o.type as opportunity_type,
-        o.budget_range,
-        o.industry,
-        u.name as brand_name,
-        u.avatar_url as brand_avatar
-      FROM applications a
-      JOIN opportunities o ON a.opportunity_id = o.id
-      LEFT JOIN users u ON o.created_by = u.id
-      WHERE a.user_id = $1
-    `;
-    const params = [req.user.userId];
-    
-    if (status) {
-      query += ` AND a.status = $2`;
-      params.push(status);
-    }
-    
-    query += ` ORDER BY a.created_at DESC`;
-    
-    const result = await pool.query(query, params);
-    
-    res.json({ success: true, applications: result.rows });
-  } catch (error) {
-    console.error('Influencer applications error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get influencer's collaborations
-app.get('/api/influencer/collaborations', authenticateToken, async (req, res) => {
-  try {
-    const { status } = req.query;
-    
-    let query = `
-      SELECT 
-        c.*,
-        o.title as opportunity_title,
-        o.type as opportunity_type,
-        u.name as brand_name,
-        u.email as brand_email,
-        u.avatar_url as brand_avatar
-      FROM collaborations c
-      LEFT JOIN opportunities o ON c.opportunity_id = o.id
-      JOIN users u ON c.brand_id = u.id
-      WHERE c.influencer_id = $1
-    `;
-    const params = [req.user.userId];
-    
-    if (status) {
-      query += ` AND c.status = $2`;
-      params.push(status);
-    }
-    
-    query += ` ORDER BY c.created_at DESC`;
-    
-    const result = await pool.query(query, params);
-    
-    res.json({ success: true, collaborations: result.rows });
-  } catch (error) {
-    console.error('Influencer collaborations error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================
+// ==========================================
 // SERVER STARTUP
-// ============================================
+// ==========================================
 
 async function startServer() {
   try {
     // Initialize database
-    await initializeDatabase();
-    
+    if (process.env.DATABASE_URL) {
+      await initializeDatabase();
+    } else {
+      console.log('⚠️  No DATABASE_URL set - running in demo mode');
+    }
+
     app.listen(PORT, '0.0.0.0', () => {
       console.log('');
-      console.log('═══════════════════════════════════════════════════');
-      console.log('🚀 FORMATIVE API SERVER STARTED');
-      console.log('═══════════════════════════════════════════════════');
-      console.log(`📍 Port: ${PORT}`);
-      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📊 Database: Connected`);
+      console.log('🚀 ====================================');
+      console.log(`🚀 Formative API Server v1.0.0`);
+      console.log(`🚀 Port: ${PORT}`);
+      console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🚀 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Demo Mode'}`);
+      console.log('🚀 ====================================');
       console.log('');
-      console.log('🔐 OAuth Status:');
-      console.log(`   Twitter:   ${OAUTH_CONFIG.twitter.clientId ? '✅ Configured' : '❌ Not configured'}`);
-      console.log(`   Instagram: ${OAUTH_CONFIG.instagram.clientId ? '✅ Configured' : '❌ Not configured'}`);
-      console.log(`   TikTok:    ${OAUTH_CONFIG.tiktok.clientId ? '✅ Configured' : '❌ Not configured'}`);
-      console.log(`   YouTube:   ${OAUTH_CONFIG.youtube.clientId ? '✅ Configured' : '❌ Not configured'}`);
-      console.log(`   Bluesky:   ✅ Always available (no OAuth needed)`);
-      console.log('');
-      console.log('═══════════════════════════════════════════════════');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('👋 SIGTERM received, shutting down gracefully...');
+  await pool.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('👋 SIGINT received, shutting down gracefully...');
+  await pool.end();
+  process.exit(0);
+});
 
 startServer();

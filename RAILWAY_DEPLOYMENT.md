@@ -125,3 +125,5 @@ After deployment:
 3. Configure environment variables
 4. Monitor performance and logs
 5. Set up auto-deploy from GitHub
+
+

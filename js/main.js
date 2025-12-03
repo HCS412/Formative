@@ -421,3 +421,5 @@ window.closeModal = Modal.close;
 window.switchModal = Modal.switch;
 window.handleSignup = Forms.handleSignup;
 window.handleLogin = Forms.handleLogin;
+
+
