@@ -1433,7 +1433,23 @@
 
                 currentUser = JSON.parse(userData);
                 userType = type || currentUser.userType || 'influencer';
-                authToken = token;
+                
+                // Sanitize and validate the token
+                let cleanToken = token.replace(/^"|"$/g, ''); // Remove any surrounding quotes
+                
+                // Check if it's a valid JWT (should start with eyJ)
+                if (!cleanToken.startsWith('eyJ')) {
+                    console.error('❌ Invalid token format detected:', cleanToken.substring(0, 20) + '...');
+                    showNotification('Your session is invalid. Please log in again.', 'error');
+                    setTimeout(() => {
+                        localStorage.clear();
+                        window.location.href = 'index.html';
+                    }, 2000);
+                    return;
+                }
+                
+                authToken = cleanToken;
+                console.log('✅ Valid JWT token loaded');
 
                 updateUserInterface();
                 await Promise.all([
