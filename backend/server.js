@@ -448,9 +448,18 @@ const authenticateTokenFlexible = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
+  // Remove any accidental quotes around the token (URL decoded or literal)
+  token = token.replace(/^["']|["']$/g, '');
+  
+  // Validate token format
+  if (!token.startsWith('eyJ')) {
+    return res.status(403).json({ error: 'Invalid token format. Please log in again.' });
+  }
+
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      console.error('Token verification error:', err.message);
+      return res.status(403).json({ error: 'Invalid or expired token. Please log in again.' });
     }
     req.user = user;
     next();
