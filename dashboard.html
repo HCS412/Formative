@@ -7,6 +7,106 @@
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/mobile.css">
+    <!-- Critical navbar styles to ensure visibility -->
+    <style>
+        .navbar {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            background: rgba(30, 41, 54, 0.98) !important;
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 9999 !important;
+            border-bottom: 1px solid #374151;
+            min-height: 70px;
+        }
+        .logo {
+            display: flex !important;
+            align-items: center !important;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffffff !important;
+        }
+        .logo span {
+            color: #ffffff !important;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #14b8a6, #f97316) !important;
+            border-radius: 50%;
+        }
+        .nav-section {
+            display: flex !important;
+            align-items: center;
+        }
+        .nav-tabs {
+            display: flex !important;
+            gap: 1rem;
+        }
+        .nav-tab {
+            color: #9ca3af !important;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .nav-tab:hover, .nav-tab.active {
+            color: #ffffff !important;
+            background: rgba(42, 63, 95, 0.8);
+        }
+        .user-section {
+            display: flex !important;
+            align-items: center !important;
+            gap: 1rem;
+        }
+        .greeting {
+            color: #9ca3af !important;
+            font-size: 0.9rem;
+        }
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #243447;
+            border: 1px solid #374151;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ffffff !important;
+            cursor: pointer;
+        }
+        .btn-ghost {
+            background: transparent;
+            color: #ffffff !important;
+            border: 1px solid #374151;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; padding: 1rem !important; }
+            .nav-section { order: 3; width: 100%; margin-top: 1rem; }
+            .nav-tabs { width: 100%; justify-content: space-around; gap: 0.5rem; }
+            .nav-tab { font-size: 0.85rem; padding: 0.5rem; }
+            .greeting { display: none; }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
