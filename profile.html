@@ -710,6 +710,44 @@
         <!-- Settings Tab -->
         <div id="settings-tab" class="tab-content">
             <h2 style="margin-bottom: 1.5rem;">Account Settings</h2>
+            
+            <!-- Media Kit URL Section -->
+            <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🔗</span> Your Media Kit URL
+                </h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Create a unique, shareable link for your public media kit.</p>
+                
+                <div class="form-group">
+                    <label class="form-label" for="username-input">Choose your username</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <span style="color: var(--text-secondary); font-size: 0.9rem;">formative.app/kit/</span>
+                        <input type="text" class="form-input" id="username-input" 
+                               placeholder="your-username" 
+                               pattern="[a-zA-Z0-9_-]{3,30}"
+                               style="flex: 1; min-width: 150px; max-width: 200px;">
+                        <button class="btn btn-primary" id="save-username-btn" onclick="saveUsername()">Save</button>
+                    </div>
+                    <small id="username-status" style="color: var(--text-secondary); margin-top: 0.5rem; display: block;"></small>
+                </div>
+                
+                <div id="media-kit-link" style="display: none; margin-top: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: 0.75rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Your Media Kit:</div>
+                            <a href="#" id="kit-url-link" target="_blank" style="color: var(--accent-teal); word-break: break-all;"></a>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-ghost" onclick="copyKitLink()" style="padding: 0.5rem 1rem;">
+                                <span id="copy-icon">📋</span> Copy
+                            </button>
+                            <button class="btn btn-ghost" onclick="openKitPreview()" style="padding: 0.5rem 1rem;">👁️ Preview</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Privacy Settings -->
             <div style="background: var(--bg-card); border-radius: 1rem; padding: 2rem;">
                 <h3 style="margin-bottom: 1rem;">Privacy Settings</h3>
                 <p style="color: var(--text-secondary); margin-bottom: 2rem;">Control who can see your profile.</p>
@@ -1027,7 +1065,162 @@
             document.getElementById('public-profile').checked = settings.publicProfile !== false;
             document.getElementById('show-email').checked = settings.showEmail === true;
             document.getElementById('show-stats').checked = settings.showStats !== false;
+            
+            // Load username
+            loadUsername();
         }
+
+        async function loadUsername() {
+            try {
+                const response = await fetch(`${API_BASE}/api/user/username`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.username) {
+                        document.getElementById('username-input').value = data.username;
+                        showKitLink(data.kitUrl);
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load username:', error);
+            }
+        }
+
+        async function saveUsername() {
+            const usernameInput = document.getElementById('username-input');
+            const saveBtn = document.getElementById('save-username-btn');
+            const statusEl = document.getElementById('username-status');
+            const username = usernameInput.value.trim().toLowerCase();
+            
+            // Validate
+            if (!username) {
+                statusEl.textContent = '❌ Please enter a username';
+                statusEl.style.color = '#ef4444';
+                return;
+            }
+            
+            if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
+                statusEl.textContent = '❌ Username must be 3-30 characters (letters, numbers, _, -)';
+                statusEl.style.color = '#ef4444';
+                return;
+            }
+            
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            statusEl.textContent = '';
+            
+            try {
+                // Check availability first
+                const checkResponse = await fetch(`${API_BASE}/api/user/username/check/${encodeURIComponent(username)}`);
+                const checkData = await checkResponse.json();
+                
+                if (!checkData.available && checkData.error) {
+                    statusEl.textContent = '❌ ' + checkData.error;
+                    statusEl.style.color = '#ef4444';
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                    return;
+                }
+                
+                // Save username
+                const response = await fetch(`${API_BASE}/api/user/username`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.textContent = '✅ Username saved!';
+                    statusEl.style.color = '#10b981';
+                    showKitLink(data.kitUrl);
+                    showNotification('Media kit URL saved!', 'success');
+                } else {
+                    const error = await response.json();
+                    statusEl.textContent = '❌ ' + (error.error || 'Failed to save');
+                    statusEl.style.color = '#ef4444';
+                }
+            } catch (error) {
+                console.error('Save username error:', error);
+                statusEl.textContent = '❌ Connection error. Please try again.';
+                statusEl.style.color = '#ef4444';
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        }
+
+        function showKitLink(url) {
+            const container = document.getElementById('media-kit-link');
+            const link = document.getElementById('kit-url-link');
+            container.style.display = 'block';
+            link.href = url;
+            link.textContent = url;
+        }
+
+        function copyKitLink() {
+            const link = document.getElementById('kit-url-link').href;
+            navigator.clipboard.writeText(link).then(() => {
+                const icon = document.getElementById('copy-icon');
+                icon.textContent = '✓';
+                showNotification('Link copied to clipboard!', 'success');
+                setTimeout(() => icon.textContent = '📋', 2000);
+            });
+        }
+
+        function openKitPreview() {
+            const link = document.getElementById('kit-url-link').href;
+            window.open(link, '_blank');
+        }
+
+        // Check username availability as user types
+        let usernameCheckTimeout;
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameInput = document.getElementById('username-input');
+            if (usernameInput) {
+                usernameInput.addEventListener('input', () => {
+                    clearTimeout(usernameCheckTimeout);
+                    const statusEl = document.getElementById('username-status');
+                    const username = usernameInput.value.trim();
+                    
+                    if (!username) {
+                        statusEl.textContent = '';
+                        return;
+                    }
+                    
+                    if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
+                        statusEl.textContent = 'Use only letters, numbers, underscores, and hyphens (3-30 chars)';
+                        statusEl.style.color = 'var(--text-secondary)';
+                        return;
+                    }
+                    
+                    statusEl.textContent = 'Checking availability...';
+                    statusEl.style.color = 'var(--text-secondary)';
+                    
+                    usernameCheckTimeout = setTimeout(async () => {
+                        try {
+                            const response = await fetch(`${API_BASE}/api/user/username/check/${encodeURIComponent(username)}`);
+                            const data = await response.json();
+                            
+                            if (data.available) {
+                                statusEl.textContent = '✓ Available!';
+                                statusEl.style.color = '#10b981';
+                            } else {
+                                statusEl.textContent = '✗ ' + (data.error || 'Username taken');
+                                statusEl.style.color = '#ef4444';
+                            }
+                        } catch (error) {
+                            statusEl.textContent = '';
+                        }
+                    }, 500);
+                });
+            }
+        });
 
         function saveSettings() {
             localStorage.setItem('profileSettings', JSON.stringify({
@@ -1039,8 +1232,48 @@
         }
 
         function goToSettings() { window.location.href = 'dashboard.html?tab=settings'; }
-        function shareProfile() { navigator.clipboard.writeText(window.location.origin + '/profile.html?user=' + (currentUser?.id || 'demo')); showNotification('Profile link copied!', 'success'); }
-        function viewPublicProfile() { window.open('/profile.html?user=' + (currentUser?.id || 'demo') + '&view=public', '_blank'); }
+        
+        async function shareProfile() { 
+            // Try to get the media kit URL
+            try {
+                const response = await fetch(`${API_BASE}/api/user/username`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.kitUrl) {
+                        navigator.clipboard.writeText(data.kitUrl);
+                        showNotification('Media Kit link copied!', 'success');
+                        return;
+                    }
+                }
+            } catch (e) {}
+            
+            // Fallback - prompt to set up media kit
+            showNotification('Set up your Media Kit URL in Settings first!', 'info');
+            switchTab('settings');
+            document.querySelector('[onclick="switchTab(\'settings\')"]').classList.add('active');
+        }
+        
+        async function viewPublicProfile() { 
+            try {
+                const response = await fetch(`${API_BASE}/api/user/username`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.kitUrl) {
+                        window.open(data.kitUrl, '_blank');
+                        return;
+                    }
+                }
+            } catch (e) {}
+            
+            // Fallback - prompt to set up media kit
+            showNotification('Set up your Media Kit URL in Settings first!', 'info');
+            switchTab('settings');
+        }
+        
         function addPortfolioItem() { showNotification('Portfolio upload coming soon!', 'info'); }
 
         function formatNumber(num) {

@@ -165,7 +165,9 @@ async function initializeDatabase() {
       { name: 'avatar_url', type: 'TEXT' },
       { name: 'bio', type: 'TEXT' },
       { name: 'location', type: 'VARCHAR(255)' },
-      { name: 'website', type: 'VARCHAR(500)' }
+      { name: 'website', type: 'VARCHAR(500)' },
+      { name: 'username', type: 'VARCHAR(50) UNIQUE' },
+      { name: 'is_public', type: 'BOOLEAN DEFAULT TRUE' }
     ];
     
     for (const col of userColumns) {
@@ -246,7 +248,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // Add conversation_id column as INTEGER if it doesn't exist or is wrong type
     try {
       await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversation_id INTEGER`);
@@ -2628,6 +2630,218 @@ app.get('/api/influencer/collaborations', authenticateToken, async (req, res) =>
     res.json({ success: true, collaborations: result.rows });
   } catch (error) {
     console.error('Influencer collaborations error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// PUBLIC MEDIA KIT ENDPOINTS
+// ============================================
+
+// Check username availability
+app.get('/api/user/username/check/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Validate username format (alphanumeric, underscores, hyphens, 3-30 chars)
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,30}$/;
+    if (!usernameRegex.test(username)) {
+      return res.json({ 
+        available: false, 
+        error: 'Username must be 3-30 characters and contain only letters, numbers, underscores, or hyphens' 
+      });
+    }
+    
+    // Check reserved usernames
+    const reserved = ['admin', 'api', 'dashboard', 'profile', 'settings', 'login', 'register', 'kit', 'help', 'support'];
+    if (reserved.includes(username.toLowerCase())) {
+      return res.json({ available: false, error: 'This username is reserved' });
+    }
+    
+    const result = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [username]);
+    res.json({ available: result.rows.length === 0 });
+  } catch (error) {
+    console.error('Username check error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Set/update username
+app.put('/api/user/username', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.body;
+    const userId = req.user.userId;
+    
+    // Validate username format
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,30}$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({ 
+        error: 'Username must be 3-30 characters and contain only letters, numbers, underscores, or hyphens' 
+      });
+    }
+    
+    // Check reserved usernames
+    const reserved = ['admin', 'api', 'dashboard', 'profile', 'settings', 'login', 'register', 'kit', 'help', 'support'];
+    if (reserved.includes(username.toLowerCase())) {
+      return res.status(400).json({ error: 'This username is reserved' });
+    }
+    
+    // Check if username is already taken by another user
+    const existing = await pool.query(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2', 
+      [username, userId]
+    );
+    
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Username is already taken' });
+    }
+    
+    // Update username
+    const result = await pool.query(
+      'UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2 RETURNING username',
+      [username.toLowerCase(), userId]
+    );
+    
+    res.json({ 
+      success: true, 
+      username: result.rows[0].username,
+      kitUrl: `${FRONTEND_URL}/kit.html?u=${result.rows[0].username}`
+    });
+  } catch (error) {
+    console.error('Set username error:', error);
+    if (error.code === '23505') { // Unique violation
+      return res.status(400).json({ error: 'Username is already taken' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get current user's username
+app.get('/api/user/username', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT username FROM users WHERE id = $1', [req.user.userId]);
+    res.json({ 
+      username: result.rows[0]?.username || null,
+      kitUrl: result.rows[0]?.username ? `${FRONTEND_URL}/kit.html?u=${result.rows[0].username}` : null
+    });
+  } catch (error) {
+    console.error('Get username error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUBLIC: Get media kit by username (no authentication required!)
+app.get('/api/kit/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Get user profile
+    const userResult = await pool.query(`
+      SELECT 
+        id, name, username, user_type, bio, location, website, avatar_url, 
+        is_public, created_at
+      FROM users 
+      WHERE LOWER(username) = LOWER($1)
+    `, [username]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Media kit not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Check if profile is public
+    if (user.is_public === false) {
+      return res.status(403).json({ error: 'This media kit is private' });
+    }
+    
+    // Get connected social accounts with stats
+    const socialResult = await pool.query(`
+      SELECT 
+        platform, username, stats, is_verified, last_synced_at
+      FROM social_accounts 
+      WHERE user_id = $1
+      ORDER BY 
+        CASE platform 
+          WHEN 'twitter' THEN 1 
+          WHEN 'instagram' THEN 2 
+          WHEN 'tiktok' THEN 3 
+          WHEN 'youtube' THEN 4 
+          WHEN 'bluesky' THEN 5 
+          ELSE 6 
+        END
+    `, [user.id]);
+    
+    // Calculate total followers and average engagement
+    let totalFollowers = 0;
+    let totalEngagement = 0;
+    let engagementCount = 0;
+    
+    const platforms = socialResult.rows.map(account => {
+      const stats = account.stats || {};
+      if (stats.followers) totalFollowers += parseInt(stats.followers) || 0;
+      if (stats.engagementRate) {
+        totalEngagement += parseFloat(stats.engagementRate) || 0;
+        engagementCount++;
+      }
+      
+      return {
+        platform: account.platform,
+        username: account.username,
+        followers: stats.followers || 0,
+        engagementRate: stats.engagementRate || null,
+        isVerified: account.is_verified || false,
+        lastSynced: account.last_synced_at
+      };
+    });
+    
+    const avgEngagement = engagementCount > 0 ? (totalEngagement / engagementCount).toFixed(2) : null;
+    
+    // Get collaboration/review stats (optional enhancement)
+    let collaborationsCount = 0;
+    let averageRating = null;
+    
+    try {
+      const collabResult = await pool.query(`
+        SELECT COUNT(*) as count FROM collaborations 
+        WHERE influencer_id = $1 AND status = 'completed'
+      `, [user.id]);
+      collaborationsCount = parseInt(collabResult.rows[0].count) || 0;
+      
+      const reviewResult = await pool.query(`
+        SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM reviews 
+        WHERE reviewed_user_id = $1 AND is_public = true
+      `, [user.id]);
+      if (reviewResult.rows[0].count > 0) {
+        averageRating = parseFloat(reviewResult.rows[0].avg_rating).toFixed(1);
+      }
+    } catch (e) {
+      // Tables might not exist, that's okay
+    }
+    
+    res.json({
+      success: true,
+      kit: {
+        name: user.name,
+        username: user.username,
+        userType: user.user_type,
+        bio: user.bio,
+        location: user.location,
+        website: user.website,
+        avatarUrl: user.avatar_url,
+        memberSince: user.created_at,
+        stats: {
+          totalFollowers,
+          avgEngagement,
+          platformCount: platforms.length,
+          collaborationsCompleted: collaborationsCount,
+          averageRating
+        },
+        platforms
+      }
+    });
+  } catch (error) {
+    console.error('Get media kit error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

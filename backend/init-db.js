@@ -31,6 +31,8 @@ async function initializeDatabase() {
         location VARCHAR(255),
         bio TEXT,
         website VARCHAR(500),
+        username VARCHAR(50) UNIQUE,
+        is_public BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
