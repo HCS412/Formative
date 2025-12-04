@@ -723,6 +723,36 @@ app.post('/api/auth/login', async (req, res) => {
 // USER PROFILE ENDPOINTS
 // ============================================
 
+// Search users (for messaging)
+app.get('/api/users/search', authenticateToken, async (req, res) => {
+  try {
+    const { q } = req.query;
+    const currentUserId = req.user.userId;
+    
+    if (!q || q.length < 2) {
+      return res.json({ users: [] });
+    }
+    
+    // Search by name or email (exclude current user)
+    const result = await pool.query(`
+      SELECT id, name, user_type, avatar_url
+      FROM users 
+      WHERE id != $1 
+        AND (
+          LOWER(name) LIKE LOWER($2) 
+          OR LOWER(email) LIKE LOWER($2)
+        )
+      ORDER BY name ASC
+      LIMIT 20
+    `, [currentUserId, `%${q}%`]);
+    
+    res.json({ success: true, users: result.rows });
+  } catch (error) {
+    console.error('User search error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get user profile
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {

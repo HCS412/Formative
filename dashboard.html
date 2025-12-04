@@ -1107,11 +1107,17 @@
 
         <!-- Messages Page -->
         <div id="messages" class="page">
-            <h2 style="margin-bottom: 1.5rem;">Messages</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Messages</h2>
+                <button class="btn btn-primary" onclick="openNewMessageModal()">
+                    ✉️ New Message
+                </button>
+            </div>
             <div class="messages-container">
                 <div class="conversations-list">
                     <div class="conversations-header">
-                        Conversations
+                        <span>Conversations</span>
+                        <button class="btn btn-ghost btn-sm" onclick="openNewMessageModal()" title="New Message" style="padding: 0.25rem 0.5rem;">➕</button>
                     </div>
                     <div class="conversations-scroll" id="conversations-list">
                         <div class="loading">
@@ -1123,8 +1129,54 @@
                 <div class="chat-area" id="chat-area">
                     <div class="no-chat-selected">
                         <div class="no-chat-selected-icon">💬</div>
-                        <p>Select a conversation to start messaging</p>
+                        <p>Select a conversation or start a new one</p>
+                        <button class="btn btn-primary" onclick="openNewMessageModal()" style="margin-top: 1rem;">
+                            ✉️ Start a Conversation
+                        </button>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- New Message Modal -->
+        <div class="modal" id="newMessageModal" style="display: none;">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2 class="modal-title">New Message</h2>
+                    <p class="modal-subtitle">Start a conversation with another user</p>
+                    <div class="close-modal" onclick="closeNewMessageModal()">✕</div>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Search for a user</label>
+                        <input type="text" class="form-input" id="user-search-input" placeholder="Type a name or email..." oninput="searchUsers(this.value)">
+                    </div>
+                    
+                    <div id="user-search-results" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
+                        <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">
+                            Start typing to search for users...
+                        </p>
+                    </div>
+                    
+                    <div id="selected-user-container" style="display: none; background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div id="selected-user-avatar" class="conversation-avatar" style="width: 40px; height: 40px; font-size: 1rem;"></div>
+                            <div style="flex: 1;">
+                                <div id="selected-user-name" style="font-weight: 600;"></div>
+                                <div id="selected-user-type" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
+                            </div>
+                            <button class="btn btn-ghost btn-sm" onclick="clearSelectedUser()">✕</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-input" id="new-message-content" rows="4" placeholder="Write your message..." style="resize: vertical;"></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-block" onclick="sendNewMessage()" id="send-new-message-btn" disabled>
+                        Send Message
+                    </button>
                 </div>
             </div>
         </div>
@@ -2661,6 +2713,198 @@
                 showNotification('Failed to send message', 'error');
             }
         }
+
+        // ============================================
+        // NEW MESSAGE MODAL
+        // ============================================
+        
+        let selectedUser = null;
+        let searchTimeout = null;
+        
+        function openNewMessageModal() {
+            document.getElementById('newMessageModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            document.getElementById('user-search-input').value = '';
+            document.getElementById('new-message-content').value = '';
+            clearSelectedUser();
+            document.getElementById('user-search-results').innerHTML = `
+                <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">
+                    Start typing to search for users...
+                </p>
+            `;
+        }
+        
+        function closeNewMessageModal() {
+            document.getElementById('newMessageModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            selectedUser = null;
+        }
+        
+        async function searchUsers(query) {
+            clearTimeout(searchTimeout);
+            
+            const resultsContainer = document.getElementById('user-search-results');
+            
+            if (query.length < 2) {
+                resultsContainer.innerHTML = `
+                    <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">
+                        Type at least 2 characters to search...
+                    </p>
+                `;
+                return;
+            }
+            
+            resultsContainer.innerHTML = `
+                <div style="text-align: center; padding: 1rem;">
+                    <div class="spinner" style="margin: 0 auto;"></div>
+                </div>
+            `;
+            
+            // Debounce the search
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/users/search?q=${encodeURIComponent(query)}`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        displayUserSearchResults(data.users || []);
+                    } else {
+                        resultsContainer.innerHTML = `
+                            <p style="color: var(--accent-red); text-align: center; padding: 1rem;">
+                                Failed to search users
+                            </p>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Search users error:', error);
+                    resultsContainer.innerHTML = `
+                        <p style="color: var(--accent-red); text-align: center; padding: 1rem;">
+                            Error searching users
+                        </p>
+                    `;
+                }
+            }, 300);
+        }
+        
+        function displayUserSearchResults(users) {
+            const resultsContainer = document.getElementById('user-search-results');
+            
+            if (users.length === 0) {
+                resultsContainer.innerHTML = `
+                    <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">
+                        No users found
+                    </p>
+                `;
+                return;
+            }
+            
+            resultsContainer.innerHTML = users.map(user => `
+                <div class="user-search-result" onclick="selectUser(${user.id}, '${escapeHtml(user.name)}', '${user.user_type}')" 
+                     style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background 0.2s;"
+                     onmouseover="this.style.background='var(--bg-secondary)'" 
+                     onmouseout="this.style.background='transparent'">
+                    <div class="conversation-avatar" style="width: 40px; height: 40px; font-size: 1rem;">
+                        ${getInitials(user.name)}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">${escapeHtml(user.name)}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                            ${user.user_type ? user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1) : 'User'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function selectUser(userId, userName, userType) {
+            selectedUser = { id: userId, name: userName, type: userType };
+            
+            // Hide search results, show selected user
+            document.getElementById('user-search-results').style.display = 'none';
+            document.getElementById('selected-user-container').style.display = 'block';
+            document.getElementById('selected-user-avatar').textContent = getInitials(userName);
+            document.getElementById('selected-user-name').textContent = userName;
+            document.getElementById('selected-user-type').textContent = userType ? userType.charAt(0).toUpperCase() + userType.slice(1) : 'User';
+            
+            // Enable send button
+            document.getElementById('send-new-message-btn').disabled = false;
+            
+            // Focus on message input
+            document.getElementById('new-message-content').focus();
+        }
+        
+        function clearSelectedUser() {
+            selectedUser = null;
+            document.getElementById('user-search-results').style.display = 'block';
+            document.getElementById('selected-user-container').style.display = 'none';
+            document.getElementById('send-new-message-btn').disabled = true;
+        }
+        
+        async function sendNewMessage() {
+            if (!selectedUser) {
+                showNotification('Please select a user first', 'error');
+                return;
+            }
+            
+            const content = document.getElementById('new-message-content').value.trim();
+            if (!content) {
+                showNotification('Please enter a message', 'error');
+                return;
+            }
+            
+            const sendBtn = document.getElementById('send-new-message-btn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/messages/start-conversation`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: selectedUser.id,
+                        initialMessage: content
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showNotification('Message sent!', 'success');
+                    closeNewMessageModal();
+                    
+                    // Reload conversations and select the new one
+                    await loadConversations();
+                    
+                    // Try to select the conversation
+                    if (data.conversationId) {
+                        const conv = conversations.find(c => c.id === data.conversationId);
+                        if (conv) {
+                            selectConversation(conv);
+                        }
+                    }
+                } else {
+                    const error = await response.json();
+                    showNotification(error.error || 'Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Send new message error:', error);
+                showNotification('Failed to send message', 'error');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send Message';
+            }
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('newMessageModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeNewMessageModal();
+            }
+        });
 
         function updateUnreadCount() {
             const unreadCount = conversations.filter(c => c.unread).length;
