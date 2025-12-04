@@ -93,7 +93,7 @@ export function Profile() {
       const usernameData = await api.getUsername()
       if (usernameData.username) {
         setUsername(usernameData.username)
-        setKitUrl(usernameData.kitUrl)
+        setKitUrl(`${window.location.origin}/kit/${usernameData.username}`)
       }
     } catch (error) {
       console.error('Failed to load profile:', error)
@@ -172,7 +172,7 @@ export function Profile() {
     try {
       const data = await api.setUsername(newUsername)
       setUsername(data.username)
-      setKitUrl(data.kitUrl)
+      setKitUrl(`${window.location.origin}/kit/${data.username}`)
       addToast('Username saved!', 'success')
       setShowUsernameModal(false)
     } catch (error) {
@@ -516,7 +516,7 @@ export function Profile() {
           <p className="text-sm text-[var(--text-secondary)]">
             Your profile will be available at:<br />
             <code className="text-teal-400">
-              {`https://formative-production.up.railway.app/kit.html?u=${newUsername || 'username'}`}
+              {`${window.location.origin}/kit/${newUsername || 'username'}`}
             </code>
           </p>
           <div className="flex gap-3 pt-2">

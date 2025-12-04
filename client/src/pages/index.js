@@ -8,4 +8,5 @@ export { Profile } from './Profile'
 export { Settings } from './Settings'
 export { Campaigns } from './Campaigns'
 export { Notifications } from './Notifications'
+export { MediaKit } from './MediaKit'
 
