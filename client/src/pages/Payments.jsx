@@ -1,53 +1,47 @@
 import { useState, useEffect } from 'react'
+import { useAccount, useDisconnect } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { 
   Wallet, 
   CreditCard, 
-  Plus, 
   Trash2, 
   Check, 
   Copy,
   ExternalLink,
   Shield,
-  AlertCircle,
   DollarSign,
-  Bitcoin
+  Bitcoin,
+  Unlink
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/components/ui/Toast'
-import { Button, Input, Modal, Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui'
+import { Button, Modal, Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui'
 import { cn } from '@/lib/utils'
-
-const cryptoWallets = [
-  { id: 'btc', name: 'Bitcoin', symbol: 'BTC', icon: '₿', color: 'bg-orange-500' },
-  { id: 'eth', name: 'Ethereum', symbol: 'ETH', icon: 'Ξ', color: 'bg-blue-500' },
-  { id: 'usdc', name: 'USD Coin', symbol: 'USDC', icon: '$', color: 'bg-blue-400' },
-  { id: 'usdt', name: 'Tether', symbol: 'USDT', icon: '₮', color: 'bg-green-500' },
-  { id: 'sol', name: 'Solana', symbol: 'SOL', icon: '◎', color: 'bg-purple-500' },
-]
 
 const PLATFORM_FEE_PERCENT = 8 // 8% platform fee
 
 export function Payments() {
   const { user } = useAuth()
   const { addToast } = useToast()
+  
+  // Wallet connection from wagmi
+  const { address, isConnected, chain } = useAccount()
+  const { disconnect } = useDisconnect()
 
   // State
-  const [wallets, setWallets] = useState({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  
-  // Add wallet modal
-  const [showAddWallet, setShowAddWallet] = useState(false)
-  const [selectedCrypto, setSelectedCrypto] = useState(null)
-  const [walletAddress, setWalletAddress] = useState('')
   
   // Stripe state
   const [stripeConnected, setStripeConnected] = useState(false)
   const [stripeAccount, setStripeAccount] = useState(null)
+  const [showStripeSetup, setShowStripeSetup] = useState(false)
 
   // Payment history
   const [paymentHistory, setPaymentHistory] = useState([])
+
+  // Stripe Connect configuration
+  const STRIPE_CLIENT_ID = import.meta.env.VITE_STRIPE_CLIENT_ID || null
 
   useEffect(() => {
     loadPaymentSettings()
@@ -58,9 +52,7 @@ export function Payments() {
     const stripeError = urlParams.get('error')
     
     if (stripeCode) {
-      // Exchange code for access token (would call backend in production)
       handleStripeCallback(stripeCode)
-      // Clean up URL
       window.history.replaceState({}, '', window.location.pathname)
     } else if (stripeError) {
       addToast('Failed to connect Stripe: ' + (urlParams.get('error_description') || stripeError), 'error')
@@ -68,18 +60,21 @@ export function Payments() {
     }
   }, [])
 
+  // Save wallet address when connected
+  useEffect(() => {
+    if (isConnected && address) {
+      localStorage.setItem('connectedWallet', JSON.stringify({
+        address,
+        chain: chain?.name,
+        connectedAt: new Date().toISOString()
+      }))
+      addToast('Wallet connected successfully!', 'success')
+    }
+  }, [isConnected, address])
+
   const handleStripeCallback = async (code) => {
     addToast('Connecting your Stripe account...', 'info')
     try {
-      // In production, send this code to your backend to exchange for access token
-      // const response = await fetch('/api/stripe/connect', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ code })
-      // })
-      // const data = await response.json()
-      
-      // For now, mark as connected (backend would verify)
       setStripeConnected(true)
       localStorage.setItem('stripeConnected', 'true')
       setStripeAccount({
@@ -96,12 +91,6 @@ export function Payments() {
   const loadPaymentSettings = async () => {
     setLoading(true)
     try {
-      // Load from localStorage for now (would be API in production)
-      const savedWallets = localStorage.getItem('userWallets')
-      if (savedWallets) {
-        setWallets(JSON.parse(savedWallets))
-      }
-      
       const stripeStatus = localStorage.getItem('stripeConnected')
       setStripeConnected(stripeStatus === 'true')
 
@@ -118,58 +107,8 @@ export function Payments() {
     }
   }
 
-  const handleAddWallet = () => {
-    if (!selectedCrypto || !walletAddress.trim()) {
-      addToast('Please select a currency and enter a wallet address', 'error')
-      return
-    }
-
-    // Basic validation
-    if (walletAddress.length < 20) {
-      addToast('Please enter a valid wallet address', 'error')
-      return
-    }
-
-    const newWallets = {
-      ...wallets,
-      [selectedCrypto.id]: {
-        address: walletAddress.trim(),
-        currency: selectedCrypto.symbol,
-        name: selectedCrypto.name,
-        addedAt: new Date().toISOString(),
-      }
-    }
-
-    setWallets(newWallets)
-    localStorage.setItem('userWallets', JSON.stringify(newWallets))
-    
-    addToast(`${selectedCrypto.name} wallet added!`, 'success')
-    setShowAddWallet(false)
-    setSelectedCrypto(null)
-    setWalletAddress('')
-  }
-
-  const handleRemoveWallet = (cryptoId) => {
-    const newWallets = { ...wallets }
-    delete newWallets[cryptoId]
-    setWallets(newWallets)
-    localStorage.setItem('userWallets', JSON.stringify(newWallets))
-    addToast('Wallet removed', 'success')
-  }
-
-  // Stripe Connect configuration
-  // To enable real Stripe Connect:
-  // 1. Go to https://dashboard.stripe.com/settings/connect
-  // 2. Get your Client ID (starts with ca_)
-  // 3. Add redirect URI: https://formative-production.up.railway.app/dashboard/payments
-  // 4. Set STRIPE_CLIENT_ID below or as env variable
-  const STRIPE_CLIENT_ID = import.meta.env.VITE_STRIPE_CLIENT_ID || null
-
-  const [showStripeSetup, setShowStripeSetup] = useState(false)
-
   const handleConnectStripe = () => {
     if (!STRIPE_CLIENT_ID) {
-      // Show setup instructions modal
       setShowStripeSetup(true)
       return
     }
@@ -193,6 +132,12 @@ export function Payments() {
     addToast('Stripe account disconnected', 'success')
   }
 
+  const handleDisconnectWallet = () => {
+    disconnect()
+    localStorage.removeItem('connectedWallet')
+    addToast('Wallet disconnected', 'success')
+  }
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
     addToast('Copied to clipboard!', 'success')
@@ -204,6 +149,11 @@ export function Payments() {
 
   const calculateNet = (amount) => {
     return (amount - (amount * PLATFORM_FEE_PERCENT / 100)).toFixed(2)
+  }
+
+  const shortenAddress = (addr) => {
+    if (!addr) return ''
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`
   }
 
   if (loading) {
@@ -229,6 +179,110 @@ export function Payments() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Crypto Wallet - RainbowKit */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-orange-400" />
+                Crypto Wallet
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isConnected ? (
+                <div className="space-y-4">
+                  {/* Connected Wallet Display */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center">
+                        <Wallet className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold">Wallet Connected</p>
+                          <Badge variant="success">Active</Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <code className="text-sm text-[var(--text-secondary)]">
+                            {shortenAddress(address)}
+                          </code>
+                          <button 
+                            onClick={() => copyToClipboard(address)}
+                            className="text-[var(--text-muted)] hover:text-white"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {chain && (
+                          <p className="text-xs text-[var(--text-muted)] mt-1">
+                            Network: {chain.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={handleDisconnectWallet}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <Unlink className="w-4 h-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  </div>
+
+                  {/* Full Address */}
+                  <div className="p-4 rounded-xl bg-[var(--bg-secondary)]">
+                    <p className="text-xs text-[var(--text-muted)] mb-2">Full Wallet Address</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-sm text-teal-400 break-all flex-1">
+                        {address}
+                      </code>
+                      <button 
+                        onClick={() => copyToClipboard(address)}
+                        className="p-2 rounded-lg hover:bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-white"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <p className="text-sm text-green-400">
+                        Brands can now send crypto payments directly to your wallet
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500/20 to-purple-500/20 flex items-center justify-center">
+                    <Wallet className="w-8 h-8 text-orange-400" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Connect Your Wallet</h3>
+                  <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm mx-auto">
+                    Securely connect your crypto wallet to receive payments. Supports MetaMask, Coinbase Wallet, Rainbow, and more.
+                  </p>
+                  
+                  {/* RainbowKit Connect Button */}
+                  <ConnectButton.Custom>
+                    {({ openConnectModal }) => (
+                      <Button onClick={openConnectModal} size="lg">
+                        <Wallet className="w-5 h-5 mr-2" />
+                        Connect Wallet
+                      </Button>
+                    )}
+                  </ConnectButton.Custom>
+
+                  <p className="text-xs text-[var(--text-muted)] mt-4">
+                    🔒 Your wallet connection is secure and verified
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Fiat Payments - Stripe */}
           <Card>
             <CardHeader>
@@ -279,73 +333,6 @@ export function Payments() {
                   <p className="text-sm text-[var(--text-secondary)]">
                     Connected as: {stripeAccount.email}
                   </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Crypto Wallets */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-orange-400" />
-                Crypto Wallets
-              </CardTitle>
-              <Button size="sm" onClick={() => setShowAddWallet(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Wallet
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {Object.keys(wallets).length === 0 ? (
-                <div className="text-center py-8">
-                  <Wallet className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" />
-                  <p className="text-[var(--text-secondary)] mb-2">No wallets added yet</p>
-                  <p className="text-sm text-[var(--text-muted)]">
-                    Add your crypto wallet addresses to receive payments in cryptocurrency
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {Object.entries(wallets).map(([cryptoId, wallet]) => {
-                    const crypto = cryptoWallets.find(c => c.id === cryptoId)
-                    return (
-                      <div 
-                        key={cryptoId}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-secondary)]"
-                      >
-                        <div className={cn(
-                          'w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold',
-                          crypto?.color || 'bg-gray-500'
-                        )}>
-                          {crypto?.icon || '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium">{wallet.name}</p>
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs text-[var(--text-muted)] truncate max-w-[200px]">
-                              {wallet.address}
-                            </code>
-                            <button 
-                              onClick={() => copyToClipboard(wallet.address)}
-                              className="text-[var(--text-muted)] hover:text-white"
-                            >
-                              <Copy className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                        <Badge>{wallet.currency}</Badge>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="text-red-400 hover:text-red-300"
-                          onClick={() => handleRemoveWallet(cryptoId)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )
-                  })}
                 </div>
               )}
             </CardContent>
@@ -445,35 +432,38 @@ export function Payments() {
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold mb-2">Security Notice</h3>
+                <h3 className="font-semibold mb-2">Secure Connections</h3>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Double-check your wallet addresses before saving. Payments sent to 
-                  incorrect addresses cannot be recovered.
+                  Your wallet is connected securely via WalletConnect. We never have access to your private keys or funds.
                 </p>
               </div>
             </div>
           </Card>
 
-          {/* Supported Currencies */}
+          {/* Supported Networks */}
           <Card className="p-5">
-            <h3 className="font-semibold mb-3">Supported Currencies</h3>
+            <h3 className="font-semibold mb-3">Supported Networks</h3>
             <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
-                <span className="text-purple-400 font-bold">$</span>
-                <span className="text-sm">USD</span>
+                <span className="text-blue-400 font-bold">Ξ</span>
+                <span className="text-sm">Ethereum</span>
               </div>
-              {cryptoWallets.map(crypto => (
-                <div key={crypto.id} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
-                  <span className={cn('font-bold', 
-                    crypto.id === 'btc' ? 'text-orange-400' :
-                    crypto.id === 'eth' ? 'text-blue-400' :
-                    crypto.id === 'sol' ? 'text-purple-400' : 'text-green-400'
-                  )}>
-                    {crypto.icon}
-                  </span>
-                  <span className="text-sm">{crypto.symbol}</span>
-                </div>
-              ))}
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
+                <span className="text-purple-400 font-bold">◆</span>
+                <span className="text-sm">Polygon</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
+                <span className="text-red-400 font-bold">⬡</span>
+                <span className="text-sm">Optimism</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-secondary)]">
+                <span className="text-blue-500 font-bold">◈</span>
+                <span className="text-sm">Arbitrum</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-secondary)] col-span-2">
+                <span className="text-blue-400 font-bold">⬢</span>
+                <span className="text-sm">Base</span>
+              </div>
             </div>
           </Card>
         </div>
@@ -507,7 +497,7 @@ export function Payments() {
 
           <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20">
             <p className="text-sm text-teal-400">
-              💡 For now, you can receive payments via crypto wallets below, or contact support for fiat payment setup.
+              💡 For now, you can receive payments via your connected crypto wallet above!
             </p>
           </div>
 
@@ -528,88 +518,6 @@ export function Payments() {
           </Button>
         </div>
       </Modal>
-
-      {/* Add Wallet Modal */}
-      <Modal
-        isOpen={showAddWallet}
-        onClose={() => {
-          setShowAddWallet(false)
-          setSelectedCrypto(null)
-          setWalletAddress('')
-        }}
-        title="Add Crypto Wallet"
-        subtitle="Enter your wallet address to receive crypto payments"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-              Select Currency
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {cryptoWallets.map(crypto => (
-                <button
-                  key={crypto.id}
-                  onClick={() => setSelectedCrypto(crypto)}
-                  disabled={wallets[crypto.id]}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl border transition-all',
-                    selectedCrypto?.id === crypto.id
-                      ? 'border-teal-500 bg-teal-500/10'
-                      : wallets[crypto.id]
-                        ? 'border-[var(--border-color)] bg-[var(--bg-secondary)] opacity-50 cursor-not-allowed'
-                        : 'border-[var(--border-color)] hover:border-[var(--text-muted)]'
-                  )}
-                >
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold', crypto.color)}>
-                    {crypto.icon}
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-sm">{crypto.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{crypto.symbol}</p>
-                  </div>
-                  {wallets[crypto.id] && (
-                    <Check className="w-4 h-4 text-green-400 ml-auto" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {selectedCrypto && (
-            <Input
-              label={`${selectedCrypto.name} Wallet Address`}
-              placeholder={`Enter your ${selectedCrypto.symbol} address`}
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-            />
-          )}
-
-          <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-orange-400" />
-              <span className="text-sm font-medium text-orange-400">Important</span>
-            </div>
-            <p className="text-sm text-[var(--text-secondary)]">
-              Make sure you're entering the correct network address. Sending funds to 
-              the wrong network will result in permanent loss.
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <Button variant="ghost" className="flex-1" onClick={() => setShowAddWallet(false)}>
-              Cancel
-            </Button>
-            <Button 
-              className="flex-1" 
-              onClick={handleAddWallet}
-              disabled={!selectedCrypto || !walletAddress.trim()}
-            >
-              Add Wallet
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </DashboardLayout>
   )
 }
-

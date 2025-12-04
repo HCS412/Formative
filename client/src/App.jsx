@@ -1,8 +1,16 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider } from 'wagmi'
+import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit'
+import '@rainbow-me/rainbowkit/styles.css'
+
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
+import { config } from '@/lib/wagmi'
 import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Payments } from '@/pages'
+
+const queryClient = new QueryClient()
 
 // Activity timeout wrapper - logs out after 15 min inactivity
 function ActivityMonitor({ children }) {
@@ -145,15 +153,27 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <ActivityMonitor>
-            <AppRoutes />
-          </ActivityMonitor>
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider 
+          theme={darkTheme({
+            accentColor: '#14b8a6',
+            accentColorForeground: 'white',
+            borderRadius: 'medium',
+          })}
+        >
+          <BrowserRouter>
+            <AuthProvider>
+              <ToastProvider>
+                <ActivityMonitor>
+                  <AppRoutes />
+                </ActivityMonitor>
+              </ToastProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   )
 }
 
