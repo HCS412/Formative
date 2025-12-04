@@ -9,4 +9,5 @@ export { Settings } from './Settings'
 export { Campaigns } from './Campaigns'
 export { Notifications } from './Notifications'
 export { MediaKit } from './MediaKit'
+export { Payments } from './Payments'
 
