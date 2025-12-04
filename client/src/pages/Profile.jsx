@@ -140,10 +140,22 @@ export function Profile() {
     setCheckingUsername(true)
     try {
       const response = await fetch(`/api/user/username/check/${encodeURIComponent(value)}`)
+      if (!response.ok) {
+        // If server error, assume available (will validate on save)
+        setUsernameAvailable(true)
+        return
+      }
       const data = await response.json()
-      setUsernameAvailable(data.available)
+      // Handle error responses that still return 200
+      if (data.error && !data.hasOwnProperty('available')) {
+        setUsernameAvailable(true) // Assume available, validate on save
+      } else {
+        setUsernameAvailable(data.available)
+      }
     } catch (error) {
-      setUsernameAvailable(null)
+      console.error('Username check error:', error)
+      // On network error, assume available and validate on save
+      setUsernameAvailable(true)
     } finally {
       setCheckingUsername(false)
     }
