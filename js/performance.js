@@ -153,9 +153,9 @@ const PerformanceOptimizer = {
     },
     
     optimizeCSS: () => {
-        // Critical CSS inlining
+        // Critical CSS inlining - NOTE: navbar should NEVER be hidden
         const criticalCSS = `
-            .hero, .navbar, .card { opacity: 0; }
+            .card { opacity: 0; }
             .loaded { opacity: 1; transition: opacity 0.3s ease; }
         `;
         
