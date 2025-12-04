@@ -157,10 +157,23 @@ export function Payments() {
     addToast('Wallet removed', 'success')
   }
 
+  // Stripe Connect configuration
+  // To enable real Stripe Connect:
+  // 1. Go to https://dashboard.stripe.com/settings/connect
+  // 2. Get your Client ID (starts with ca_)
+  // 3. Add redirect URI: https://formative-production.up.railway.app/dashboard/payments
+  // 4. Set STRIPE_CLIENT_ID below or as env variable
+  const STRIPE_CLIENT_ID = import.meta.env.VITE_STRIPE_CLIENT_ID || null
+
+  const [showStripeSetup, setShowStripeSetup] = useState(false)
+
   const handleConnectStripe = () => {
-    // Stripe Connect OAuth URL
-    // You'll need to set up a Stripe Connect application at https://dashboard.stripe.com/connect
-    const STRIPE_CLIENT_ID = 'ca_demo' // Replace with your actual Stripe Connect Client ID
+    if (!STRIPE_CLIENT_ID) {
+      // Show setup instructions modal
+      setShowStripeSetup(true)
+      return
+    }
+
     const REDIRECT_URI = `${window.location.origin}/dashboard/payments`
     
     const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?` + 
@@ -170,7 +183,6 @@ export function Payments() {
       `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
       `stripe_user[email]=${encodeURIComponent(user?.email || '')}`
     
-    // Redirect to Stripe
     window.location.href = stripeConnectUrl
   }
 
@@ -466,6 +478,56 @@ export function Payments() {
           </Card>
         </div>
       </div>
+
+      {/* Stripe Setup Modal */}
+      <Modal
+        isOpen={showStripeSetup}
+        onClose={() => setShowStripeSetup(false)}
+        title="Connect Stripe Account"
+        subtitle="Set up Stripe Connect to receive payments"
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <span className="text-xl font-bold text-purple-400">S</span>
+              </div>
+              <div>
+                <p className="font-semibold">Stripe Connect</p>
+                <p className="text-sm text-[var(--text-secondary)]">Secure payment processing</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--text-secondary)]">
+              To enable Stripe payments, the platform admin needs to configure Stripe Connect integration.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20">
+            <p className="text-sm text-teal-400">
+              💡 For now, you can receive payments via crypto wallets below, or contact support for fiat payment setup.
+            </p>
+          </div>
+
+          <a 
+            href="https://dashboard.stripe.com/settings/connect" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <Button variant="secondary" className="w-full">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Learn More About Stripe Connect
+            </Button>
+          </a>
+
+          <Button variant="ghost" className="w-full" onClick={() => setShowStripeSetup(false)}>
+            Close
+          </Button>
+        </div>
+      </Modal>
 
       {/* Add Wallet Modal */}
       <Modal
