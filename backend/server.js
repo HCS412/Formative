@@ -688,8 +688,16 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    // Ensure 2FA columns exist
+    try {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255)`);
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE`);
+    } catch (e) {
+      // Columns may already exist
+    }
+
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, user_type, profile_data FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, user_type, profile_data, two_factor_enabled FROM users WHERE email = $1',
       [email]
     );
 
@@ -702,6 +710,15 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Check if 2FA is enabled
+    if (user.two_factor_enabled) {
+      // Return that 2FA is required
+      return res.json({
+        requires2FA: true,
+        userId: user.id
+      });
     }
 
     const token = jwt.sign(
@@ -727,6 +744,207 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// TWO-FACTOR AUTHENTICATION ENDPOINTS
+// ============================================
+
+// Generate a base32 secret for 2FA (simple implementation without external lib)
+function generateSecret() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let secret = '';
+  for (let i = 0; i < 32; i++) {
+    secret += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return secret;
+}
+
+// Generate TOTP code
+function generateTOTP(secret, timeStep = 30) {
+  const crypto = require('crypto');
+  const time = Math.floor(Date.now() / 1000 / timeStep);
+  const timeBuffer = Buffer.alloc(8);
+  timeBuffer.writeBigInt64BE(BigInt(time));
+  
+  // Decode base32 secret
+  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const char of secret.toUpperCase()) {
+    const val = base32Chars.indexOf(char);
+    if (val === -1) continue;
+    bits += val.toString(2).padStart(5, '0');
+  }
+  const keyBuffer = Buffer.from(bits.match(/.{8}/g).map(b => parseInt(b, 2)));
+  
+  const hmac = crypto.createHmac('sha1', keyBuffer);
+  hmac.update(timeBuffer);
+  const hash = hmac.digest();
+  
+  const offset = hash[hash.length - 1] & 0xf;
+  const code = ((hash[offset] & 0x7f) << 24 |
+    (hash[offset + 1] & 0xff) << 16 |
+    (hash[offset + 2] & 0xff) << 8 |
+    (hash[offset + 3] & 0xff)) % 1000000;
+  
+  return code.toString().padStart(6, '0');
+}
+
+// Verify TOTP code (check current and previous time step for clock drift)
+function verifyTOTP(secret, code) {
+  const current = generateTOTP(secret);
+  const previous = generateTOTP(secret, 30); // Allow for slight clock drift
+  return code === current || code === previous;
+}
+
+// Setup 2FA
+app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Generate secret
+    const secret = generateSecret();
+    
+    // Store temporarily (not enabled yet)
+    await pool.query(
+      `UPDATE users SET two_factor_secret = $1, two_factor_enabled = false WHERE id = $2`,
+      [secret, userId]
+    );
+    
+    // Get user email for QR code
+    const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
+    const email = userResult.rows[0]?.email || 'user';
+    
+    // Generate QR code URL (using Google Charts API for simplicity)
+    const issuer = 'Formative';
+    const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+    const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
+    
+    res.json({
+      success: true,
+      secret,
+      qrCode
+    });
+  } catch (error) {
+    console.error('2FA setup error:', error);
+    res.status(500).json({ error: 'Failed to setup 2FA' });
+  }
+});
+
+// Verify and enable 2FA
+app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { code } = req.body;
+    
+    // Get secret
+    const result = await pool.query(
+      'SELECT two_factor_secret FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (!result.rows[0]?.two_factor_secret) {
+      return res.status(400).json({ error: 'Please setup 2FA first' });
+    }
+    
+    const secret = result.rows[0].two_factor_secret;
+    
+    // Verify code
+    if (!verifyTOTP(secret, code)) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+    
+    // Enable 2FA
+    await pool.query(
+      'UPDATE users SET two_factor_enabled = true WHERE id = $1',
+      [userId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('2FA verify error:', error);
+    res.status(500).json({ error: 'Failed to verify 2FA' });
+  }
+});
+
+// Disable 2FA
+app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { code } = req.body;
+    
+    // Get secret
+    const result = await pool.query(
+      'SELECT two_factor_secret FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (!result.rows[0]?.two_factor_secret) {
+      return res.status(400).json({ error: '2FA is not enabled' });
+    }
+    
+    // Verify code
+    if (!verifyTOTP(result.rows[0].two_factor_secret, code)) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+    
+    // Disable 2FA
+    await pool.query(
+      'UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL WHERE id = $1',
+      [userId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('2FA disable error:', error);
+    res.status(500).json({ error: 'Failed to disable 2FA' });
+  }
+});
+
+// 2FA Login verification
+app.post('/api/auth/2fa/login', async (req, res) => {
+  try {
+    const { userId, code, rememberMe } = req.body;
+    
+    // Get user and secret
+    const result = await pool.query(
+      'SELECT id, name, email, user_type, two_factor_secret, profile_data FROM users WHERE id = $1 AND two_factor_enabled = true',
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+    
+    const user = result.rows[0];
+    
+    // Verify code
+    if (!verifyTOTP(user.two_factor_secret, code)) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+    
+    // Generate token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, userType: user.user_type },
+      JWT_SECRET,
+      { expiresIn: rememberMe ? '30d' : '1d' }
+    );
+    
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        user_type: user.user_type,
+        profileData: user.profile_data
+      },
+      token
+    });
+  } catch (error) {
+    console.error('2FA login error:', error);
+    res.status(500).json({ error: 'Verification failed' });
   }
 });
 

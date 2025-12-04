@@ -113,6 +113,18 @@ export function Settings() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
+  // 2FA state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [setting2FA, setSetting2FA] = useState(false)
+  const [show2FASetupModal, setShow2FASetupModal] = useState(false)
+  const [twoFactorSecret, setTwoFactorSecret] = useState('')
+  const [twoFactorQR, setTwoFactorQR] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [verifying2FA, setVerifying2FA] = useState(false)
+  const [showDisable2FAModal, setShowDisable2FAModal] = useState(false)
+  const [disableCode, setDisableCode] = useState('')
+  const [disabling2FA, setDisabling2FA] = useState(false)
+
   useEffect(() => {
     loadSettings()
   }, [])
@@ -237,6 +249,69 @@ export function Settings() {
   const savePrivacy = () => {
     localStorage.setItem('privacySettings', JSON.stringify(privacy))
     addToast('Privacy settings saved!', 'success')
+  }
+
+  // 2FA setup
+  const handleSetup2FA = async () => {
+    setSetting2FA(true)
+    try {
+      const response = await api.setup2FA()
+      if (response.secret && response.qrCode) {
+        setTwoFactorSecret(response.secret)
+        setTwoFactorQR(response.qrCode)
+        setShow2FASetupModal(true)
+      }
+    } catch (error) {
+      addToast('Failed to setup 2FA', 'error')
+    } finally {
+      setSetting2FA(false)
+    }
+  }
+
+  // Verify and enable 2FA
+  const handleVerify2FA = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      addToast('Please enter a valid 6-digit code', 'error')
+      return
+    }
+
+    setVerifying2FA(true)
+    try {
+      const response = await api.verify2FA(verificationCode)
+      if (response.success) {
+        setTwoFactorEnabled(true)
+        setShow2FASetupModal(false)
+        setVerificationCode('')
+        addToast('Two-factor authentication enabled!', 'success')
+      }
+    } catch (error) {
+      addToast(error.message || 'Invalid code', 'error')
+    } finally {
+      setVerifying2FA(false)
+    }
+  }
+
+  // Disable 2FA
+  const handleDisable2FA = async () => {
+    if (!disableCode || disableCode.length !== 6) {
+      addToast('Please enter a valid 6-digit code', 'error')
+      return
+    }
+
+    setDisabling2FA(true)
+    try {
+      const response = await api.disable2FA(disableCode)
+      if (response.success) {
+        setTwoFactorEnabled(false)
+        setShowDisable2FAModal(false)
+        setDisableCode('')
+        addToast('Two-factor authentication disabled', 'success')
+      }
+    } catch (error) {
+      addToast(error.message || 'Invalid code', 'error')
+    } finally {
+      setDisabling2FA(false)
+    }
   }
 
   // Check if platform is connected
@@ -533,7 +608,40 @@ export function Settings() {
                 <CardHeader>
                   <CardTitle>Security</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {/* Two-Factor Authentication */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-teal-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Two-Factor Authentication</p>
+                          {twoFactorEnabled ? (
+                            <Badge variant="success">Enabled</Badge>
+                          ) : (
+                            <Badge>Disabled</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          {twoFactorEnabled 
+                            ? 'Your account is protected with 2FA' 
+                            : 'Add an extra layer of security'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant={twoFactorEnabled ? "ghost" : "secondary"} 
+                      size="sm" 
+                      onClick={() => twoFactorEnabled ? setShowDisable2FAModal(true) : handleSetup2FA()}
+                      loading={setting2FA}
+                    >
+                      {twoFactorEnabled ? 'Disable' : 'Enable'}
+                    </Button>
+                  </div>
+
+                  {/* Password */}
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-secondary)]">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-[var(--bg-card)] flex items-center justify-center">
@@ -547,6 +655,18 @@ export function Settings() {
                     <Button variant="secondary" size="sm" onClick={() => setShowPasswordModal(true)}>
                       Change Password
                     </Button>
+                  </div>
+
+                  {/* Session Info */}
+                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Bell className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm font-medium text-blue-400">Session Security</span>
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      You will be automatically logged out after 15 minutes of inactivity. 
+                      Sessions expire when you close the browser unless "Remember me" was checked.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -712,6 +832,117 @@ export function Settings() {
               }}
             >
               Delete My Account
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 2FA Setup Modal */}
+      <Modal
+        isOpen={show2FASetupModal}
+        onClose={() => setShow2FASetupModal(false)}
+        title="Set Up Two-Factor Authentication"
+        subtitle="Scan the QR code with your authenticator app"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 rounded-full bg-teal-500/20 flex items-center justify-center">
+              <Shield className="w-8 h-8 text-teal-400" />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--text-secondary)] text-center">
+              Scan this QR code with an authenticator app like Google Authenticator, 
+              Authy, or 1Password.
+            </p>
+
+            {/* QR Code */}
+            {twoFactorQR && (
+              <div className="flex justify-center p-4 bg-white rounded-xl">
+                <img src={twoFactorQR} alt="2FA QR Code" className="w-48 h-48" />
+              </div>
+            )}
+
+            {/* Manual entry */}
+            <div className="p-4 rounded-xl bg-[var(--bg-secondary)]">
+              <p className="text-xs text-[var(--text-muted)] mb-2">
+                Can't scan? Enter this code manually:
+              </p>
+              <code className="text-sm text-teal-400 break-all font-mono">
+                {twoFactorSecret}
+              </code>
+            </div>
+
+            {/* Verification */}
+            <Input
+              type="text"
+              label="Enter verification code"
+              placeholder="000000"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              maxLength={6}
+              className="text-center text-xl tracking-widest"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <Button variant="ghost" className="flex-1" onClick={() => setShow2FASetupModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className="flex-1" 
+              onClick={handleVerify2FA}
+              loading={verifying2FA}
+              disabled={verificationCode.length !== 6}
+            >
+              Verify & Enable
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Disable 2FA Modal */}
+      <Modal
+        isOpen={showDisable2FAModal}
+        onClose={() => setShowDisable2FAModal(false)}
+        title="Disable Two-Factor Authentication"
+        subtitle="Enter your 2FA code to confirm"
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/30">
+            <div className="flex items-center gap-3 mb-2">
+              <AlertTriangle className="w-5 h-5 text-orange-400" />
+              <span className="font-semibold text-orange-400">Warning</span>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Disabling 2FA will make your account less secure. You can always re-enable it later.
+            </p>
+          </div>
+
+          <Input
+            type="text"
+            label="Enter your 2FA code"
+            placeholder="000000"
+            value={disableCode}
+            onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            maxLength={6}
+            className="text-center text-xl tracking-widest"
+          />
+
+          <div className="flex gap-3">
+            <Button variant="ghost" className="flex-1" onClick={() => setShowDisable2FAModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="danger"
+              className="flex-1" 
+              onClick={handleDisable2FA}
+              loading={disabling2FA}
+              disabled={disableCode.length !== 6}
+            >
+              Disable 2FA
             </Button>
           </div>
         </div>

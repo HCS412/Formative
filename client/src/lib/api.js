@@ -2,23 +2,42 @@ const API_BASE = import.meta.env.PROD
   ? '' 
   : 'http://localhost:3000'
 
+// Storage helper - uses sessionStorage by default, localStorage for "Remember Me"
+const storage = {
+  get: (key) => sessionStorage.getItem(key) || localStorage.getItem(key),
+  set: (key, value, remember = false) => {
+    if (remember) {
+      localStorage.setItem(key, value)
+      sessionStorage.removeItem(key)
+    } else {
+      sessionStorage.setItem(key, value)
+      localStorage.removeItem(key)
+    }
+  },
+  remove: (key) => {
+    sessionStorage.removeItem(key)
+    localStorage.removeItem(key)
+  },
+  isRemembered: () => !!localStorage.getItem('authToken')
+}
+
 class ApiClient {
   constructor() {
     this.baseUrl = API_BASE
   }
 
   getToken() {
-    return localStorage.getItem('authToken')
+    return storage.get('authToken')
   }
 
-  setToken(token) {
-    localStorage.setItem('authToken', token)
+  setToken(token, remember = false) {
+    storage.set('authToken', token, remember)
   }
 
   clearToken() {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('userData')
-    localStorage.removeItem('userType')
+    storage.remove('authToken')
+    storage.remove('userData')
+    storage.remove('userType')
   }
 
   async request(endpoint, options = {}) {
@@ -44,7 +63,7 @@ class ApiClient {
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         this.clearToken()
-        window.location.href = '/'
+        window.location.href = '/login'
       }
       throw new Error(data.error || 'Request failed')
     }
@@ -53,28 +72,28 @@ class ApiClient {
   }
 
   // Auth
-  async login(email, password) {
+  async login(email, password, remember = false) {
     const data = await this.request('/api/auth/login', {
       method: 'POST',
       body: { email, password },
     })
     if (data.token) {
-      this.setToken(data.token)
-      localStorage.setItem('userData', JSON.stringify(data.user))
-      localStorage.setItem('userType', data.user.user_type)
+      this.setToken(data.token, remember)
+      storage.set('userData', JSON.stringify(data.user), remember)
+      storage.set('userType', data.user.user_type, remember)
     }
     return data
   }
 
-  async register(userData) {
+  async register(userData, remember = false) {
     const data = await this.request('/api/auth/register', {
       method: 'POST',
       body: userData,
     })
     if (data.token) {
-      this.setToken(data.token)
-      localStorage.setItem('userData', JSON.stringify(data.user))
-      localStorage.setItem('userType', userData.userType)
+      this.setToken(data.token, remember)
+      storage.set('userData', JSON.stringify(data.user), remember)
+      storage.set('userType', userData.userType, remember)
     }
     return data
   }
@@ -219,8 +238,35 @@ class ApiClient {
       body: { userId },
     })
   }
+
+  // 2FA
+  async setup2FA() {
+    return this.request('/api/auth/2fa/setup', {
+      method: 'POST',
+    })
+  }
+
+  async verify2FA(code) {
+    return this.request('/api/auth/2fa/verify', {
+      method: 'POST',
+      body: { code },
+    })
+  }
+
+  async disable2FA(code) {
+    return this.request('/api/auth/2fa/disable', {
+      method: 'POST',
+      body: { code },
+    })
+  }
+
+  async verify2FALogin(userId, code) {
+    return this.request('/api/auth/2fa/login', {
+      method: 'POST',
+      body: { userId, code },
+    })
+  }
 }
 
 export const api = new ApiClient()
 export default api
-

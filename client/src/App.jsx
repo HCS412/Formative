@@ -1,7 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
+import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit } from '@/pages'
+
+// Activity timeout wrapper - logs out after 15 min inactivity
+function ActivityMonitor({ children }) {
+  useActivityTimeout()
+  return children
+}
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -133,7 +140,9 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
-          <AppRoutes />
+          <ActivityMonitor>
+            <AppRoutes />
+          </ActivityMonitor>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
