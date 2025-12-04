@@ -42,13 +42,42 @@ export function Messages() {
   const loadConversations = async () => {
     try {
       const data = await api.getConversations()
-      setConversations(data.conversations || [])
+      const convs = data.conversations || []
+      setConversations(convs.length > 0 ? convs : getDemoConversations())
     } catch (error) {
       console.error('Failed to load conversations:', error)
+      setConversations(getDemoConversations())
     } finally {
       setLoading(false)
     }
   }
+
+  const getDemoConversations = () => [
+    {
+      id: 1,
+      other_user: { id: 101, name: 'StyleCo Marketing', avatar_url: null },
+      other_user_id: 101,
+      last_message: 'Hey! We loved your content and would love to discuss a collaboration...',
+      last_message_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      unread_count: 2,
+    },
+    {
+      id: 2,
+      other_user: { id: 102, name: 'TechNova Inc.', avatar_url: null },
+      other_user_id: 102,
+      last_message: 'Thanks for your application! We\'d like to move forward with the campaign.',
+      last_message_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+      unread_count: 0,
+    },
+    {
+      id: 3,
+      other_user: { id: 103, name: 'FitLife Brand', avatar_url: null },
+      other_user_id: 103,
+      last_message: 'The content looked great! Payment has been processed.',
+      last_message_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      unread_count: 0,
+    },
+  ]
 
   const selectConversation = async (conversation) => {
     setSelectedConversation(conversation)

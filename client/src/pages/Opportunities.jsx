@@ -61,11 +61,95 @@ export function Opportunities() {
       setOpportunities(data.opportunities || [])
     } catch (error) {
       console.error('Failed to load opportunities:', error)
-      addToast('Failed to load opportunities', 'error')
+      // Use demo data for presentation
+      setOpportunities(getDemoOpportunities())
     } finally {
       setLoading(false)
     }
   }
+
+  const getDemoOpportunities = () => [
+    {
+      id: 1,
+      title: 'Summer Fashion Collection Launch',
+      description: 'We are looking for fashion-forward influencers to showcase our new summer collection. Create authentic content featuring our latest styles across Instagram and TikTok.',
+      type: 'influencer',
+      industry: 'Fashion',
+      budget_range: '$2,000 - $5,000',
+      platforms: ['Instagram', 'TikTok'],
+      location: 'Remote',
+      is_remote: true,
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      views_count: 234,
+      applications_count: 12,
+      requirements: ['10K+ followers', 'Fashion/lifestyle niche', 'High engagement rate'],
+    },
+    {
+      id: 2,
+      title: 'Tech Product Review Campaign',
+      description: 'Seeking tech reviewers for our latest smart home device. Honest, detailed reviews on YouTube with unboxing and feature demonstrations.',
+      type: 'influencer',
+      industry: 'Technology',
+      budget_range: '$3,000 - $8,000',
+      platforms: ['YouTube'],
+      location: 'USA',
+      is_remote: true,
+      deadline: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      views_count: 456,
+      applications_count: 28,
+      requirements: ['Tech niche', '50K+ subscribers', 'Previous review experience'],
+    },
+    {
+      id: 3,
+      title: 'Fitness App Partnership',
+      description: 'Long-term partnership opportunity for fitness content creators. Create workout content featuring our app with monthly deliverables.',
+      type: 'influencer',
+      industry: 'Health',
+      budget_range: '$5,000 - $15,000',
+      platforms: ['Instagram', 'TikTok', 'YouTube'],
+      location: 'Global',
+      is_remote: true,
+      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      views_count: 789,
+      applications_count: 45,
+      requirements: ['Fitness niche', '25K+ followers', 'Consistent posting'],
+    },
+    {
+      id: 4,
+      title: 'Food & Restaurant Content Creator',
+      description: 'Create mouth-watering content for our restaurant chain. Visit locations, create reels, and share your genuine dining experience.',
+      type: 'influencer',
+      industry: 'Food',
+      budget_range: '$1,500 - $3,000',
+      platforms: ['Instagram', 'TikTok'],
+      location: 'Los Angeles, CA',
+      is_remote: false,
+      deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      views_count: 321,
+      applications_count: 19,
+      requirements: ['Food/lifestyle niche', 'Based in LA area', '5K+ followers'],
+    },
+    {
+      id: 5,
+      title: 'Travel Vlog Series Sponsorship',
+      description: 'Sponsor opportunity for travel vloggers. Feature our travel accessories in your upcoming travel content across multiple destinations.',
+      type: 'influencer',
+      industry: 'Travel',
+      budget_range: '$4,000 - $10,000',
+      platforms: ['YouTube', 'Instagram'],
+      location: 'Remote',
+      is_remote: true,
+      deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      views_count: 567,
+      applications_count: 34,
+      requirements: ['Travel niche', '100K+ subscribers', 'Upcoming travel planned'],
+    },
+  ]
 
   const handleViewDetails = (opportunity) => {
     setSelectedOpportunity(opportunity)
