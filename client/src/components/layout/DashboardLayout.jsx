@@ -9,7 +9,8 @@ import {
   Bell,
   LogOut,
   Menu,
-  X
+  X,
+  Target
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar, Button } from '@/components/ui'
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
   { name: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase },
+  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]

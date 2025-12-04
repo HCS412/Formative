@@ -169,6 +169,56 @@ class ApiClient {
       method: 'PUT',
     })
   }
+
+  // Campaigns
+  async getCampaigns(filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/campaigns?${params}`)
+  }
+
+  async getCampaign(id) {
+    return this.request(`/api/campaigns/${id}`)
+  }
+
+  async createCampaign(campaignData) {
+    return this.request('/api/campaigns', {
+      method: 'POST',
+      body: campaignData,
+    })
+  }
+
+  async updateCampaign(id, data) {
+    return this.request(`/api/campaigns/${id}`, {
+      method: 'PUT',
+      body: data,
+    })
+  }
+
+  async deleteCampaign(id) {
+    return this.request(`/api/campaigns/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async submitDeliverable(campaignId, deliverableId, url) {
+    return this.request(`/api/campaigns/${campaignId}/deliverables/${deliverableId}/submit`, {
+      method: 'POST',
+      body: { url },
+    })
+  }
+
+  async approveDeliverable(campaignId, deliverableId) {
+    return this.request(`/api/campaigns/${campaignId}/deliverables/${deliverableId}/approve`, {
+      method: 'PUT',
+    })
+  }
+
+  async inviteToCompaign(campaignId, userId) {
+    return this.request(`/api/campaigns/${campaignId}/invite`, {
+      method: 'POST',
+      body: { userId },
+    })
+  }
 }
 
 export const api = new ApiClient()
