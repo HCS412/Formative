@@ -104,7 +104,7 @@ const Navigation = {
         
         // Add active class to clicked tab
         const clickedTab = event?.target;
-        if (clickedTab && clickedTab.classList.contains('nav-tab')) {
+        if (clickedTab && clickedTab.classList && clickedTab.classList.contains('nav-tab')) {
             clickedTab.classList.add('active');
         }
 
@@ -363,14 +363,20 @@ const Forms = {
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize navigation
-    Navigation.showPage('dashboard');
+    // Check if we're on the dashboard page (has dashboard element)
+    // Don't run dashboard-specific code on landing page
+    const dashboardElement = document.getElementById('dashboard');
     
-    // Setup global event listeners
-    setupGlobalEventListeners();
-    
-    // Initialize user data
-    initializeUserData();
+    if (dashboardElement) {
+        // Initialize navigation only on dashboard pages
+        Navigation.showPage('dashboard');
+        
+        // Setup global event listeners
+        setupGlobalEventListeners();
+        
+        // Initialize user data
+        initializeUserData();
+    }
 });
 
 function setupGlobalEventListeners() {
