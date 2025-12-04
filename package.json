@@ -1,14 +1,14 @@
 {
   "name": "formative-platform",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A modern influencer marketing platform that connects brands, influencers, and freelancers",
-  "main": "index.html",
+  "main": "backend/server.js",
   "scripts": {
-    "start": "node start-dev.js",
-    "dev": "node start-dev.js",
+    "start": "node backend/server.js",
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm install && npm run build",
+    "build:client": "cd client && npm run build",
     "serve": "npx serve .",
-    "live": "npx live-server .",
-    "build": "echo 'Build process would go here'",
     "test": "echo 'Tests would go here'",
     "railway:deploy": "railway up",
     "railway:logs": "railway logs"

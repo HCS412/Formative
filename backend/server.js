@@ -33,7 +33,18 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../')));
+
+// Serve React app from dist folder (built by Vite)
+const distPath = path.join(__dirname, '../dist');
+const oldStaticPath = path.join(__dirname, '../');
+
+// Check if React build exists, otherwise fall back to old static files
+const fs = require('fs');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  app.use(express.static(oldStaticPath));
+}
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
@@ -2873,6 +2884,29 @@ app.get('/api/kit/:username', async (req, res) => {
   } catch (error) {
     console.error('Get media kit error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// CATCH-ALL FOR REACT ROUTER (SPA)
+// ============================================
+
+// Serve React app for all non-API routes
+app.get('*', (req, res) => {
+  // Don't catch API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  
+  const distPath = path.join(__dirname, '../dist');
+  const indexPath = path.join(distPath, 'index.html');
+  
+  // Check if React build exists
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    // Fall back to old index.html
+    res.sendFile(path.join(__dirname, '../index.html'));
   }
 });
 
