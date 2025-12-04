@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
-import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns } from '@/pages'
+import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications } from '@/pages'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -109,6 +109,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Campaigns />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/dashboard/notifications" 
+        element={
+          <ProtectedRoute>
+            <Notifications />
           </ProtectedRoute>
         } 
       />

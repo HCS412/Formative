@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar, Button } from '@/components/ui'
+import { NotificationDropdown } from '@/components/NotificationDropdown'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -127,10 +128,7 @@ export function DashboardLayout({ children }) {
             <div className="flex-1" />
 
             <div className="flex items-center gap-4">
-              <button className="p-2 text-[var(--text-secondary)] hover:text-white relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
+              <NotificationDropdown />
               <Avatar name={user?.name} size="sm" />
             </div>
           </div>
