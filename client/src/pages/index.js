@@ -4,4 +4,5 @@ export { Register } from './Register'
 export { Dashboard } from './Dashboard'
 export { Messages } from './Messages'
 export { Opportunities } from './Opportunities'
+export { Profile } from './Profile'
 
