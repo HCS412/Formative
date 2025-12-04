@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
-import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile } from '@/pages'
+import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile, Settings } from '@/pages'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -100,7 +100,7 @@ function AppRoutes() {
         path="/dashboard/settings" 
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Settings />
           </ProtectedRoute>
         } 
       />
