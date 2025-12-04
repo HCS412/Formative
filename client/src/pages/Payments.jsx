@@ -51,7 +51,47 @@ export function Payments() {
 
   useEffect(() => {
     loadPaymentSettings()
+    
+    // Check for Stripe Connect callback
+    const urlParams = new URLSearchParams(window.location.search)
+    const stripeCode = urlParams.get('code')
+    const stripeError = urlParams.get('error')
+    
+    if (stripeCode) {
+      // Exchange code for access token (would call backend in production)
+      handleStripeCallback(stripeCode)
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (stripeError) {
+      addToast('Failed to connect Stripe: ' + (urlParams.get('error_description') || stripeError), 'error')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
+
+  const handleStripeCallback = async (code) => {
+    addToast('Connecting your Stripe account...', 'info')
+    try {
+      // In production, send this code to your backend to exchange for access token
+      // const response = await fetch('/api/stripe/connect', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ code })
+      // })
+      // const data = await response.json()
+      
+      // For now, mark as connected (backend would verify)
+      setStripeConnected(true)
+      localStorage.setItem('stripeConnected', 'true')
+      setStripeAccount({
+        id: 'acct_connected',
+        email: user?.email,
+        payoutsEnabled: true,
+      })
+      addToast('Stripe account connected successfully!', 'success')
+    } catch (error) {
+      addToast('Failed to complete Stripe connection', 'error')
+    }
+  }
 
   const loadPaymentSettings = async () => {
     setLoading(true)
@@ -118,19 +158,20 @@ export function Payments() {
   }
 
   const handleConnectStripe = () => {
-    // In production, this would redirect to Stripe Connect OAuth
-    // For demo, we'll simulate connection
-    addToast('Stripe Connect would open here. Simulating connection...', 'info')
-    setTimeout(() => {
-      setStripeConnected(true)
-      localStorage.setItem('stripeConnected', 'true')
-      setStripeAccount({
-        id: 'acct_demo123',
-        email: user?.email,
-        payoutsEnabled: true,
-      })
-      addToast('Stripe account connected!', 'success')
-    }, 1500)
+    // Stripe Connect OAuth URL
+    // You'll need to set up a Stripe Connect application at https://dashboard.stripe.com/connect
+    const STRIPE_CLIENT_ID = 'ca_demo' // Replace with your actual Stripe Connect Client ID
+    const REDIRECT_URI = `${window.location.origin}/dashboard/payments`
+    
+    const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?` + 
+      `response_type=code&` +
+      `client_id=${STRIPE_CLIENT_ID}&` +
+      `scope=read_write&` +
+      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+      `stripe_user[email]=${encodeURIComponent(user?.email || '')}`
+    
+    // Redirect to Stripe
+    window.location.href = stripeConnectUrl
   }
 
   const handleDisconnectStripe = () => {
