@@ -803,6 +803,14 @@ app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     
+    // Ensure 2FA columns exist
+    try {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255)`);
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE`);
+    } catch (alterError) {
+      console.log('2FA columns may already exist:', alterError.message);
+    }
+    
     // Generate secret
     const secret = generateSecret();
     
