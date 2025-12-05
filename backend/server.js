@@ -36,17 +36,18 @@ app.use(express.json());
 
 // Serve React app from dist folder (built by Vite)
 const distPath = path.join(__dirname, '../dist');
-const oldStaticPath = path.join(__dirname, '../');
-
-// Check if React build exists, otherwise fall back to old static files
 const fs = require('fs');
+
+// ONLY serve React app assets - never serve old static HTML files
 if (fs.existsSync(distPath)) {
-  // Only serve React app - don't serve old static files
-  app.use(express.static(distPath, { index: false })); // Don't serve index.html from static, let catch-all handle it
-} else {
-  // Fallback to old static files only if React build doesn't exist
-  app.use(express.static(oldStaticPath));
+  // Serve static assets (JS, CSS, images) from dist folder
+  // But NOT index.html - let the catch-all route handle that
+  app.use(express.static(distPath, { 
+    index: false, // Don't serve index.html automatically
+    maxAge: '1d' // Cache static assets
+  }));
 }
+// NO fallback to old static files - React app is required
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
