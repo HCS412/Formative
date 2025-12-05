@@ -1,0 +1,19 @@
+name: Disable GitHub Pages
+
+# This workflow exists to prevent GitHub Pages from auto-deploying
+# We use Railway for deployment instead
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  cancel-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Pages Deployment
+        run: |
+          echo "GitHub Pages deployment cancelled - using Railway for deployment instead"
+          exit 0
+
