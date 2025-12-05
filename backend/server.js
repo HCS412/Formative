@@ -41,8 +41,10 @@ const oldStaticPath = path.join(__dirname, '../');
 // Check if React build exists, otherwise fall back to old static files
 const fs = require('fs');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  // Only serve React app - don't serve old static files
+  app.use(express.static(distPath, { index: false })); // Don't serve index.html from static, let catch-all handle it
 } else {
+  // Fallback to old static files only if React build doesn't exist
   app.use(express.static(oldStaticPath));
 }
 
@@ -3753,15 +3755,24 @@ app.get('*', (req, res) => {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
   
+  // Don't serve old static HTML files - always use React app
   const distPath = path.join(__dirname, '../dist');
   const indexPath = path.join(distPath, 'index.html');
   
-  // Check if React build exists
+  // Always try to serve React app first
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    // Fall back to old index.html
-    res.sendFile(path.join(__dirname, '../index.html'));
+    // If React build doesn't exist, return error (don't fall back to old HTML)
+    res.status(500).send(`
+      <html>
+        <body style="font-family: sans-serif; padding: 2rem; text-align: center;">
+          <h1>Application Not Built</h1>
+          <p>Please build the React application first.</p>
+          <p>Run: <code>cd client && npm run build</code></p>
+        </body>
+      </html>
+    `);
   }
 });
 
