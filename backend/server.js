@@ -400,6 +400,191 @@ async function initializeDatabase() {
       )
     `);
 
+    // 9. CAMPAIGNS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS campaigns (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        brand_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE SET NULL,
+        status VARCHAR(50) DEFAULT 'draft',
+        budget INTEGER,
+        start_date DATE,
+        end_date DATE,
+        goals JSONB DEFAULT '{}',
+        metrics JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_campaigns_brand ON campaigns(brand_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)`);
+
+    // 10. CAMPAIGN PARTICIPANTS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS campaign_participants (
+        id SERIAL PRIMARY KEY,
+        campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'influencer',
+        status VARCHAR(50) DEFAULT 'invited',
+        payment_amount INTEGER,
+        payment_status VARCHAR(50) DEFAULT 'pending',
+        deliverables JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(campaign_id, user_id)
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_campaign_participants_campaign ON campaign_participants(campaign_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_campaign_participants_user ON campaign_participants(user_id)`);
+
+    // 11. DELIVERABLES TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS deliverables (
+        id SERIAL PRIMARY KEY,
+        campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+        participant_id INTEGER NOT NULL REFERENCES campaign_participants(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        type VARCHAR(50) NOT NULL,
+        platform VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'pending',
+        due_date DATE,
+        submitted_at TIMESTAMP,
+        submitted_url TEXT,
+        submitted_content TEXT,
+        feedback TEXT,
+        approved_at TIMESTAMP,
+        approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_deliverables_campaign ON deliverables(campaign_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_deliverables_participant ON deliverables(participant_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_deliverables_status ON deliverables(status)`);
+
+    // 12. REVIEWS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reviewed_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        title VARCHAR(255),
+        content TEXT,
+        is_public BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(reviewer_id, reviewed_user_id, campaign_id)
+      )
+    `);
+
+    // 13. PAYMENT METHODS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payment_methods (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL,
+        is_default BOOLEAN DEFAULT FALSE,
+        is_verified BOOLEAN DEFAULT FALSE,
+        stripe_account_id VARCHAR(255),
+        stripe_account_status VARCHAR(50),
+        wallet_address VARCHAR(255),
+        wallet_network VARCHAR(50),
+        bank_last_four VARCHAR(4),
+        bank_name VARCHAR(255),
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_payment_methods_user ON payment_methods(user_id)`);
+
+    // 14. PAYMENTS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        participant_id INTEGER REFERENCES campaign_participants(id) ON DELETE SET NULL,
+        payer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        payee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount INTEGER NOT NULL,
+        currency VARCHAR(10) DEFAULT 'USD',
+        platform_fee INTEGER DEFAULT 0,
+        net_amount INTEGER NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        payment_method_id INTEGER REFERENCES payment_methods(id) ON DELETE SET NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        stripe_payment_id VARCHAR(255),
+        stripe_transfer_id VARCHAR(255),
+        crypto_tx_hash VARCHAR(255),
+        description TEXT,
+        metadata JSONB DEFAULT '{}',
+        processed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_campaign ON payments(campaign_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_payer ON payments(payer_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_payee ON payments(payee_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`);
+
+    // 15. ANALYTICS EVENTS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        event_type VARCHAR(100) NOT NULL,
+        event_category VARCHAR(50) NOT NULL,
+        page VARCHAR(255),
+        referrer VARCHAR(500),
+        target_type VARCHAR(50),
+        target_id INTEGER,
+        properties JSONB DEFAULT '{}',
+        session_id VARCHAR(255),
+        device_type VARCHAR(50),
+        browser VARCHAR(100),
+        ip_address INET,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at DESC)`);
+
+    // 16. SAVED ITEMS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS saved_items (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        item_type VARCHAR(50) NOT NULL,
+        item_id INTEGER NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, item_type, item_id)
+      )
+    `);
+
+    // Add 2FA columns to users if they don't exist
+    try {
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT`);
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE`);
+    } catch (e) {
+      // Columns might already exist
+    }
+
+    console.log('✅ All tables created/verified');
+
     // Insert sample opportunities if none exist
     const existingOpportunities = await client.query('SELECT COUNT(*) FROM opportunities');
     
@@ -420,7 +605,9 @@ async function initializeDatabase() {
     await client.query('COMMIT');
     
     console.log('✅ Database schema initialized successfully');
-    console.log('📊 Tables: users, social_accounts, opportunities, applications, messages, conversations, notifications, user_settings');
+    console.log('📊 Tables: users, social_accounts, opportunities, applications, messages, conversations,');
+    console.log('           notifications, user_settings, campaigns, campaign_participants, deliverables,');
+    console.log('           reviews, payment_methods, payments, analytics_events, saved_items');
     
   } catch (error) {
     await client.query('ROLLBACK');
