@@ -77,7 +77,9 @@
         .hero {
             padding-top: 6rem !important;
         }
+
         @media (max-width: 768px) {
+
             .navbar { padding: 0.75rem 1rem !important; }
             .nav-links { display: none !important; }
             .nav-buttons { display: flex !important; gap: 0.5rem; }
@@ -111,8 +113,9 @@
                 <a href="#pricing" class="nav-link">Pricing</a>
             </div>
             <div class="nav-buttons">
-                <button class="btn btn-ghost" onclick="document.getElementById('loginModal').style.display='flex'; document.body.style.overflow='hidden';">Sign In</button>
-                <button class="btn btn-primary" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';">Get Started</button>
+                <!-- Use direct links so buttons always work, even if JS fails -->
+                <a class="btn btn-ghost" href="/login">Sign In</a>
+                <a class="btn btn-primary" href="/register">Get Started</a>
             </div>
         </div>
     </nav>
@@ -132,9 +135,9 @@
                     Streamline your workflow, amplify your reach, and unlock unprecedented growth.
                 </p>
                 <div class="hero-cta">
-                    <button class="btn btn-primary btn-large" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';" id="get-started-btn">
+                    <a class="btn btn-primary btn-large" href="/register" id="get-started-btn">
                         Get Started →
-                    </button>
+                    </a>
                     <button class="btn btn-ghost btn-large">
                         Watch Demo ▶
                     </button>
@@ -324,9 +327,9 @@
         <div class="cta-content">
             <h2 class="cta-title">Ready to Transform Your Business?</h2>
             <p class="cta-subtitle">Join thousands of influencers, brands, and freelancers already growing with Formative</p>
-            <button class="btn btn-primary btn-large" onclick="document.getElementById('signupModal').style.display='flex'; document.body.style.overflow='hidden';" id="cta-get-started-btn">
+            <a class="btn btn-primary btn-large" href="/register" id="cta-get-started-btn">
                 Get Started Now
-            </button>
+            </a>
         </div>
     </section>
 
