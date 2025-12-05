@@ -77,7 +77,14 @@ export function Login() {
         storage.setItem('userType', data.user.user_type)
         
         addToast('Welcome back!', 'success')
-        window.location.href = '/dashboard' // Full reload to update auth state
+        setShow2FAModal(false)
+        
+        // Use React Router navigation
+        setTimeout(() => {
+          navigate('/dashboard')
+          // Force re-check auth state
+          window.location.reload()
+        }, 500)
       } else {
         addToast(data.error || 'Invalid code', 'error')
       }

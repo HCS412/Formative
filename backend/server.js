@@ -2371,10 +2371,8 @@ app.put('/api/messages/conversation/:conversationId/read', authenticateToken, as
 // STATIC FILE SERVING
 // ============================================
 
-// Serve static files (for Railway deployment)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../index.html'));
-});
+// Note: Static files served via express.static() earlier
+// SPA catch-all at the end handles React client-side routing
 
 // ============================================
 // BRAND DASHBOARD ENDPOINTS
