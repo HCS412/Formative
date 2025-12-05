@@ -20,8 +20,6 @@ import { CampaignCard } from '@/components/CampaignCard'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/components/ui/Toast'
 import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardContent, Badge, Avatar } from '@/components/ui'
-import { useCampaignEscrow } from '@/hooks/useCampaignEscrow'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Shield, Zap } from 'lucide-react'
 import api from '@/lib/api'
 import { cn, capitalizeFirst, formatDate, formatNumber } from '@/lib/utils'
@@ -56,7 +54,23 @@ export function Campaigns() {
   const [creating, setCreating] = useState(false)
   const [useEscrow, setUseEscrow] = useState(false)
   const [influencerAddress, setInfluencerAddress] = useState('')
-  const escrow = useCampaignEscrow()
+  const [escrowHook, setEscrowHook] = useState(null)
+  const [ConnectButtonComponent, setConnectButtonComponent] = useState(null)
+  
+  // Lazy load escrow hook only when escrow is enabled
+  useEffect(() => {
+    if (useEscrow && !escrowHook) {
+      import('@/hooks/useCampaignEscrow').then(module => {
+        setEscrowHook(() => module.useCampaignEscrow)
+      })
+      import('@rainbow-me/rainbowkit').then(module => {
+        setConnectButtonComponent(() => module.ConnectButton)
+      })
+    }
+  }, [useEscrow, escrowHook])
+  
+  const escrow = escrowHook ? escrowHook() : { isConnected: false, isPending: false, createEscrowCampaign: () => Promise.reject('Wallet not configured'), approveAndRelease: () => Promise.reject('Wallet not configured') }
+  
   const [campaignForm, setCampaignForm] = useState({
     title: '',
     description: '',
@@ -586,17 +600,23 @@ export function Campaigns() {
                 <p className="text-sm text-[var(--text-secondary)] mb-4">
                   Payment is locked in smart contract. Approve deliverables to release payment.
                 </p>
-                {escrow.isConnected ? (
-                  <Button
-                    onClick={() => handleApproveAndRelease(selectedCampaign.escrow_campaign_id)}
-                    loading={escrow.isPending}
-                    className="w-full"
-                  >
-                    <Zap className="w-4 h-4 mr-2" />
-                    Approve & Release Payment
-                  </Button>
+                {ConnectButtonComponent ? (
+                  escrow.isConnected ? (
+                    <Button
+                      onClick={() => handleApproveAndRelease(selectedCampaign.escrow_campaign_id)}
+                      loading={escrow.isPending}
+                      className="w-full"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Approve & Release Payment
+                    </Button>
+                  ) : (
+                    <ConnectButtonComponent />
+                  )
                 ) : (
-                  <ConnectButton />
+                  <div className="text-sm text-[var(--text-secondary)]">
+                    Wallet integration not available. Please configure WalletConnect Project ID.
+                  </div>
                 )}
               </div>
             )}
@@ -718,9 +738,13 @@ export function Campaigns() {
             
             {useEscrow && (
               <div className="space-y-3 mt-3 pt-3 border-t border-[var(--border-color)]">
-                {!escrow.isConnected ? (
+                {!ConnectButtonComponent ? (
+                  <div className="text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                    Wallet integration requires WalletConnect Project ID. Escrow features disabled.
+                  </div>
+                ) : !escrow.isConnected ? (
                   <div className="flex items-center gap-3">
-                    <ConnectButton />
+                    <ConnectButtonComponent />
                     <span className="text-sm text-[var(--text-secondary)]">
                       Connect wallet to use escrow
                     </span>

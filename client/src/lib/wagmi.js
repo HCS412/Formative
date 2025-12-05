@@ -2,12 +2,18 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { mainnet, polygon, optimism, arbitrum, base } from 'wagmi/chains'
 
 // Get a free project ID at https://cloud.walletconnect.com
-const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'demo-project-id'
+// If not set, wallet features will be disabled
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
 
-export const config = getDefaultConfig({
-  appName: 'Formative',
-  projectId,
-  chains: [mainnet, polygon, optimism, arbitrum, base],
-  ssr: false,
-})
+// Only create config if project ID is set, otherwise return null
+export const config = projectId && projectId !== 'demo-project-id' 
+  ? getDefaultConfig({
+      appName: 'Formative',
+      projectId,
+      chains: [mainnet, polygon, optimism, arbitrum, base],
+      ssr: false,
+    })
+  : null
+
+export const isWalletEnabled = !!config
 
