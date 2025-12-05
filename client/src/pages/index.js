@@ -1,6 +1,7 @@
 export { Landing } from './Landing'
 export { Login } from './Login'
 export { Register } from './Register'
+export { Onboarding } from './Onboarding'
 export { Dashboard } from './Dashboard'
 export { Messages } from './Messages'
 export { Opportunities } from './Opportunities'

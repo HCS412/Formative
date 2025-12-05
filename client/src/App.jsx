@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { config } from '@/lib/wagmi'
-import { Landing, Login, Register, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Payments } from '@/pages'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Payments } from '@/pages'
 
 const queryClient = new QueryClient()
 
@@ -76,6 +76,14 @@ function AppRoutes() {
           <PublicRoute>
             <Register />
           </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/onboarding" 
+        element={
+          <ProtectedRoute>
+            <Onboarding />
+          </ProtectedRoute>
         } 
       />
 

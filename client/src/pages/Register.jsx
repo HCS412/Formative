@@ -36,8 +36,11 @@ export function Register() {
     try {
       const result = await register(formData)
       if (result.success) {
-        addToast('Account created successfully!', 'success')
-        navigate('/dashboard')
+        // Store user type for onboarding
+        localStorage.setItem('userType', formData.userType)
+        sessionStorage.setItem('userType', formData.userType)
+        addToast('Account created! Let\'s set up your profile.', 'success')
+        navigate('/onboarding')
       } else {
         addToast(result.error || 'Registration failed', 'error')
       }
