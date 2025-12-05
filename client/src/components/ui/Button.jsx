@@ -26,9 +26,10 @@ export function Button({
     <button
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-200',
+        'pointer-events-auto cursor-pointer',
         variants[variant],
         sizes[size],
-        disabled && 'opacity-50 cursor-not-allowed',
+        disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
         loading && 'cursor-wait',
         className
       )}

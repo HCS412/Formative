@@ -12,11 +12,11 @@ export function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[rgba(15,20,25,0.98)] backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-[9999] bg-[rgba(15,20,25,0.98)] backdrop-blur-xl border-b border-white/10 pointer-events-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 pointer-events-auto">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-orange-500 relative">
               <div className="absolute w-6 h-6 rounded-full bg-[var(--bg-primary)] top-1/2 left-1/2 -translate-x-[30%] -translate-y-1/2" />
             </div>
@@ -25,19 +25,19 @@ export function Navbar() {
 
           {/* Navigation Links - Desktop */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-[var(--text-secondary)] hover:text-white transition-colors">
+            <a href="#features" className="text-[var(--text-secondary)] hover:text-white transition-colors pointer-events-auto">
               Features
             </a>
-            <a href="#solution" className="text-[var(--text-secondary)] hover:text-white transition-colors">
+            <a href="#solution" className="text-[var(--text-secondary)] hover:text-white transition-colors pointer-events-auto">
               Solution
             </a>
-            <a href="#how-it-works" className="text-[var(--text-secondary)] hover:text-white transition-colors">
+            <a href="#how-it-works" className="text-[var(--text-secondary)] hover:text-white transition-colors pointer-events-auto">
               How It Works
             </a>
           </div>
 
           {/* Auth Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pointer-events-auto">
             {isAuthenticated ? (
               <>
                 <span className="text-[var(--text-secondary)] hidden sm:block">
@@ -52,10 +52,10 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <Link to="/login">
+                <Link to="/login" className="pointer-events-auto">
                   <Button variant="ghost" size="sm">Sign In</Button>
                 </Link>
-                <Link to="/register">
+                <Link to="/register" className="pointer-events-auto">
                   <Button size="sm">Get Started</Button>
                 </Link>
               </>
