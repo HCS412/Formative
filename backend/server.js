@@ -3129,6 +3129,433 @@ app.get('/api/kit/:username', async (req, res) => {
 });
 
 // ============================================
+// CAMPAIGNS API ENDPOINTS
+// ============================================
+
+// Get all campaigns for user (as brand owner or participant)
+app.get('/api/campaigns', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const userId = req.user.userId;
+    const userType = req.user.userType;
+    
+    let query;
+    let params = [userId];
+    
+    if (userType === 'brand') {
+      // Brands see campaigns they created
+      query = `
+        SELECT c.*, 
+          (SELECT COUNT(*) FROM campaign_participants WHERE campaign_id = c.id) as participants_count,
+          (SELECT COUNT(*) FROM deliverables d 
+           JOIN campaign_participants cp ON d.participant_id = cp.id 
+           WHERE cp.campaign_id = c.id AND d.status = 'approved') as completed_deliverables
+        FROM campaigns c
+        WHERE c.brand_id = $1
+      `;
+      
+      if (status && status !== 'all') {
+        query += ` AND c.status = $2`;
+        params.push(status);
+      }
+      
+      query += ` ORDER BY c.created_at DESC`;
+    } else {
+      // Influencers/freelancers see campaigns they're participating in
+      query = `
+        SELECT c.*, cp.status as participant_status, cp.payment_amount, cp.payment_status,
+          u.name as brand_name,
+          (SELECT COUNT(*) FROM deliverables WHERE participant_id = cp.id) as total_deliverables,
+          (SELECT COUNT(*) FROM deliverables WHERE participant_id = cp.id AND status = 'approved') as completed_deliverables
+        FROM campaigns c
+        JOIN campaign_participants cp ON c.id = cp.campaign_id
+        JOIN users u ON c.brand_id = u.id
+        WHERE cp.user_id = $1
+      `;
+      
+      if (status && status !== 'all') {
+        query += ` AND c.status = $2`;
+        params.push(status);
+      }
+      
+      query += ` ORDER BY c.created_at DESC`;
+    }
+    
+    const result = await pool.query(query, params);
+    
+    res.json({
+      success: true,
+      campaigns: result.rows
+    });
+  } catch (error) {
+    console.error('Get campaigns error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get single campaign with details
+app.get('/api/campaigns/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    
+    // Get campaign
+    const campaignResult = await pool.query(`
+      SELECT c.*, u.name as brand_name, u.avatar_url as brand_avatar
+      FROM campaigns c
+      JOIN users u ON c.brand_id = u.id
+      WHERE c.id = $1
+    `, [id]);
+    
+    if (campaignResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    const campaign = campaignResult.rows[0];
+    
+    // Check if user has access (brand owner or participant)
+    const accessCheck = await pool.query(`
+      SELECT 1 FROM campaign_participants WHERE campaign_id = $1 AND user_id = $2
+      UNION
+      SELECT 1 FROM campaigns WHERE id = $1 AND brand_id = $2
+    `, [id, userId]);
+    
+    if (accessCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Get participants
+    const participants = await pool.query(`
+      SELECT cp.*, u.name, u.avatar_url, u.email
+      FROM campaign_participants cp
+      JOIN users u ON cp.user_id = u.id
+      WHERE cp.campaign_id = $1
+    `, [id]);
+    
+    // Get deliverables
+    const deliverables = await pool.query(`
+      SELECT d.*, u.name as participant_name
+      FROM deliverables d
+      JOIN campaign_participants cp ON d.participant_id = cp.id
+      JOIN users u ON cp.user_id = u.id
+      WHERE cp.campaign_id = $1
+      ORDER BY d.due_date ASC
+    `, [id]);
+    
+    res.json({
+      success: true,
+      campaign: {
+        ...campaign,
+        participants: participants.rows,
+        deliverables: deliverables.rows
+      }
+    });
+  } catch (error) {
+    console.error('Get campaign error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create campaign (brand only)
+app.post('/api/campaigns', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.userType !== 'brand') {
+      return res.status(403).json({ error: 'Only brands can create campaigns' });
+    }
+    
+    const { name, description, budget, startDate, endDate, goals, opportunityId } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO campaigns (name, description, brand_id, budget, start_date, end_date, goals, opportunity_id, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')
+      RETURNING *
+    `, [name, description, req.user.userId, budget, startDate, endDate, JSON.stringify(goals || {}), opportunityId]);
+    
+    res.json({
+      success: true,
+      campaign: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Create campaign error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update campaign
+app.put('/api/campaigns/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, status, budget, startDate, endDate, goals } = req.body;
+    
+    // Verify ownership
+    const campaign = await pool.query('SELECT brand_id FROM campaigns WHERE id = $1', [id]);
+    if (campaign.rows.length === 0 || campaign.rows[0].brand_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE campaigns 
+      SET name = COALESCE($1, name),
+          description = COALESCE($2, description),
+          status = COALESCE($3, status),
+          budget = COALESCE($4, budget),
+          start_date = COALESCE($5, start_date),
+          end_date = COALESCE($6, end_date),
+          goals = COALESCE($7, goals),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $8
+      RETURNING *
+    `, [name, description, status, budget, startDate, endDate, goals ? JSON.stringify(goals) : null, id]);
+    
+    res.json({
+      success: true,
+      campaign: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update campaign error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete campaign
+app.delete('/api/campaigns/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify ownership
+    const campaign = await pool.query('SELECT brand_id FROM campaigns WHERE id = $1', [id]);
+    if (campaign.rows.length === 0 || campaign.rows[0].brand_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await pool.query('DELETE FROM campaigns WHERE id = $1', [id]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete campaign error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Invite user to campaign
+app.post('/api/campaigns/:id/invite', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, paymentAmount, role } = req.body;
+    
+    // Verify ownership
+    const campaign = await pool.query('SELECT brand_id, name FROM campaigns WHERE id = $1', [id]);
+    if (campaign.rows.length === 0 || campaign.rows[0].brand_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Add participant
+    const result = await pool.query(`
+      INSERT INTO campaign_participants (campaign_id, user_id, role, payment_amount, status)
+      VALUES ($1, $2, $3, $4, 'invited')
+      ON CONFLICT (campaign_id, user_id) DO UPDATE SET status = 'invited', updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [id, userId, role || 'influencer', paymentAmount]);
+    
+    // Create notification for invited user
+    await pool.query(`
+      INSERT INTO notifications (user_id, type, title, content, link)
+      VALUES ($1, 'campaign', 'Campaign Invitation', $2, $3)
+    `, [userId, `You've been invited to join "${campaign.rows[0].name}"`, `/dashboard/campaigns`]);
+    
+    res.json({
+      success: true,
+      participant: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Invite to campaign error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Accept/decline campaign invitation
+app.put('/api/campaigns/:id/respond', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { accept } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE campaign_participants
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE campaign_id = $2 AND user_id = $3
+      RETURNING *
+    `, [accept ? 'accepted' : 'declined', id, req.user.userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+    
+    res.json({
+      success: true,
+      participant: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Respond to campaign error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Submit deliverable
+app.post('/api/campaigns/:campaignId/deliverables/:deliverableId/submit', authenticateToken, async (req, res) => {
+  try {
+    const { campaignId, deliverableId } = req.params;
+    const { url, content } = req.body;
+    
+    // Verify participant owns this deliverable
+    const deliverable = await pool.query(`
+      SELECT d.* FROM deliverables d
+      JOIN campaign_participants cp ON d.participant_id = cp.id
+      WHERE d.id = $1 AND cp.campaign_id = $2 AND cp.user_id = $3
+    `, [deliverableId, campaignId, req.user.userId]);
+    
+    if (deliverable.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE deliverables
+      SET status = 'submitted', submitted_url = $1, submitted_content = $2, submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+      RETURNING *
+    `, [url, content, deliverableId]);
+    
+    res.json({
+      success: true,
+      deliverable: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Submit deliverable error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Approve/reject deliverable (brand only)
+app.put('/api/campaigns/:campaignId/deliverables/:deliverableId/review', authenticateToken, async (req, res) => {
+  try {
+    const { campaignId, deliverableId } = req.params;
+    const { approve, feedback } = req.body;
+    
+    // Verify brand owns campaign
+    const campaign = await pool.query('SELECT brand_id FROM campaigns WHERE id = $1', [campaignId]);
+    if (campaign.rows.length === 0 || campaign.rows[0].brand_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const newStatus = approve ? 'approved' : 'revision_requested';
+    
+    const result = await pool.query(`
+      UPDATE deliverables
+      SET status = $1, feedback = $2, 
+          approved_at = $3, approved_by = $4,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [newStatus, feedback, approve ? new Date() : null, approve ? req.user.userId : null, deliverableId]);
+    
+    res.json({
+      success: true,
+      deliverable: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Review deliverable error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// PAYMENTS API ENDPOINTS
+// ============================================
+
+// Get user's payment methods
+app.get('/api/payments/methods', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, type, is_default, is_verified, stripe_account_status, 
+             wallet_address, wallet_network, bank_last_four, bank_name, created_at
+      FROM payment_methods
+      WHERE user_id = $1
+      ORDER BY is_default DESC, created_at DESC
+    `, [req.user.userId]);
+    
+    res.json({
+      success: true,
+      methods: result.rows
+    });
+  } catch (error) {
+    console.error('Get payment methods error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add payment method
+app.post('/api/payments/methods', authenticateToken, async (req, res) => {
+  try {
+    const { type, walletAddress, walletNetwork, stripeAccountId, isDefault } = req.body;
+    
+    // If setting as default, unset other defaults first
+    if (isDefault) {
+      await pool.query('UPDATE payment_methods SET is_default = FALSE WHERE user_id = $1', [req.user.userId]);
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO payment_methods (user_id, type, wallet_address, wallet_network, stripe_account_id, is_default)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [req.user.userId, type, walletAddress, walletNetwork, stripeAccountId, isDefault || false]);
+    
+    res.json({
+      success: true,
+      method: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Add payment method error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete payment method
+app.delete('/api/payments/methods/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM payment_methods WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete payment method error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get payment history
+app.get('/api/payments/history', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.*, 
+        payer.name as payer_name, payee.name as payee_name,
+        c.name as campaign_name
+      FROM payments p
+      LEFT JOIN users payer ON p.payer_id = payer.id
+      LEFT JOIN users payee ON p.payee_id = payee.id
+      LEFT JOIN campaigns c ON p.campaign_id = c.id
+      WHERE p.payer_id = $1 OR p.payee_id = $1
+      ORDER BY p.created_at DESC
+      LIMIT 50
+    `, [req.user.userId]);
+    
+    res.json({
+      success: true,
+      payments: result.rows
+    });
+  } catch (error) {
+    console.error('Get payment history error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
 // CATCH-ALL FOR REACT ROUTER (SPA)
 // ============================================
 

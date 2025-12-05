@@ -266,7 +266,7 @@ async function initializeDatabase() {
     `);
 
     // ==========================================
-    // 11. USER SETTINGS TABLE (NEW!)
+    // 11. USER SETTINGS TABLE
     // ==========================================
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_settings (
@@ -281,6 +281,201 @@ async function initializeDatabase() {
       )
     `);
     console.log('✅ User settings table created/verified');
+
+    // ==========================================
+    // 12. DELIVERABLES TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS deliverables (
+        id SERIAL PRIMARY KEY,
+        campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+        participant_id INTEGER NOT NULL REFERENCES campaign_participants(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        type VARCHAR(50) NOT NULL CHECK (type IN ('post', 'story', 'reel', 'video', 'blog', 'review', 'photo', 'other')),
+        platform VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'submitted', 'revision_requested', 'approved', 'rejected')),
+        due_date DATE,
+        submitted_at TIMESTAMP,
+        submitted_url TEXT,
+        submitted_content TEXT,
+        feedback TEXT,
+        approved_at TIMESTAMP,
+        approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Deliverables table created/verified');
+
+    // Create indexes for deliverables
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_deliverables_campaign ON deliverables(campaign_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_deliverables_participant ON deliverables(participant_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_deliverables_status ON deliverables(status)
+    `);
+
+    // ==========================================
+    // 13. PAYMENT METHODS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payment_methods (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL CHECK (type IN ('stripe', 'paypal', 'bank', 'crypto_eth', 'crypto_btc', 'crypto_usdc', 'crypto_sol')),
+        is_default BOOLEAN DEFAULT FALSE,
+        is_verified BOOLEAN DEFAULT FALSE,
+        
+        -- Stripe fields
+        stripe_account_id VARCHAR(255),
+        stripe_account_status VARCHAR(50),
+        
+        -- Crypto fields
+        wallet_address VARCHAR(255),
+        wallet_network VARCHAR(50),
+        
+        -- Bank fields (for reference only, actual details in Stripe)
+        bank_last_four VARCHAR(4),
+        bank_name VARCHAR(255),
+        
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Payment methods table created/verified');
+
+    // Create index for payment methods
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_payment_methods_user ON payment_methods(user_id)
+    `);
+
+    // ==========================================
+    // 14. PAYMENTS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        participant_id INTEGER REFERENCES campaign_participants(id) ON DELETE SET NULL,
+        payer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        payee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        
+        amount INTEGER NOT NULL,
+        currency VARCHAR(10) DEFAULT 'USD',
+        platform_fee INTEGER DEFAULT 0,
+        net_amount INTEGER NOT NULL,
+        
+        payment_method VARCHAR(50) NOT NULL,
+        payment_method_id INTEGER REFERENCES payment_methods(id) ON DELETE SET NULL,
+        
+        status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'refunded', 'disputed')),
+        
+        -- External references
+        stripe_payment_id VARCHAR(255),
+        stripe_transfer_id VARCHAR(255),
+        crypto_tx_hash VARCHAR(255),
+        
+        description TEXT,
+        metadata JSONB DEFAULT '{}',
+        
+        processed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Payments table created/verified');
+
+    // Create indexes for payments
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_payments_campaign ON payments(campaign_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_payments_payer ON payments(payer_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_payments_payee ON payments(payee_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)
+    `);
+
+    // ==========================================
+    // 15. ANALYTICS EVENTS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        event_type VARCHAR(100) NOT NULL,
+        event_category VARCHAR(50) NOT NULL CHECK (event_category IN ('page_view', 'user_action', 'campaign', 'engagement', 'conversion', 'error')),
+        
+        -- Context
+        page VARCHAR(255),
+        referrer VARCHAR(500),
+        
+        -- Target (what was interacted with)
+        target_type VARCHAR(50),
+        target_id INTEGER,
+        
+        -- Additional data
+        properties JSONB DEFAULT '{}',
+        
+        -- Session tracking
+        session_id VARCHAR(255),
+        device_type VARCHAR(50),
+        browser VARCHAR(100),
+        ip_address INET,
+        
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Analytics events table created/verified');
+
+    // Create indexes for analytics (time-series optimized)
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_analytics_type ON analytics_events(event_type)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at DESC)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_analytics_target ON analytics_events(target_type, target_id)
+    `);
+
+    // ==========================================
+    // 16. SAVED/BOOKMARKS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS saved_items (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        item_type VARCHAR(50) NOT NULL CHECK (item_type IN ('opportunity', 'user', 'campaign')),
+        item_id INTEGER NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, item_type, item_id)
+      )
+    `);
+    console.log('✅ Saved items table created/verified');
+
+    // ==========================================
+    // ADD 2FA COLUMNS TO USERS IF MISSING
+    // ==========================================
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT
+    `);
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE
+    `);
+    console.log('✅ 2FA columns verified on users table');
 
     // ==========================================
     // INSERT SAMPLE DATA
@@ -369,6 +564,54 @@ async function initializeDatabase() {
         ON CONFLICT DO NOTHING
       `);
       console.log('🎯 Sample opportunities inserted');
+      
+      // Insert sample campaigns (requires a brand user)
+      // First check if we have any brand users
+      const brandUsers = await client.query(`SELECT id FROM users WHERE user_type = 'brand' LIMIT 1`);
+      
+      if (brandUsers.rows.length > 0) {
+        const brandId = brandUsers.rows[0].id;
+        
+        await client.query(`
+          INSERT INTO campaigns (name, description, brand_id, status, budget, start_date, end_date, goals, metrics)
+          VALUES 
+            (
+              'Summer Collection Launch',
+              'Promote our new summer fashion collection across social media platforms',
+              $1,
+              'active',
+              5000,
+              CURRENT_DATE,
+              CURRENT_DATE + INTERVAL '30 days',
+              '{"awareness": true, "sales": true, "ugc": true}',
+              '{"target_reach": 100000, "target_engagement": 5000}'
+            ),
+            (
+              'Product Review Campaign',
+              'Get authentic reviews from micro-influencers for our new tech gadget',
+              $1,
+              'active',
+              3000,
+              CURRENT_DATE - INTERVAL '7 days',
+              CURRENT_DATE + INTERVAL '14 days',
+              '{"reviews": true, "awareness": true}',
+              '{"target_reviews": 10, "target_reach": 50000}'
+            ),
+            (
+              'Holiday Giveaway',
+              'Run a collaborative giveaway campaign with multiple influencers',
+              $1,
+              'draft',
+              8000,
+              CURRENT_DATE + INTERVAL '30 days',
+              CURRENT_DATE + INTERVAL '45 days',
+              '{"engagement": true, "followers": true}',
+              '{"target_entries": 5000, "target_new_followers": 2000}'
+            )
+          ON CONFLICT DO NOTHING
+        `, [brandId]);
+        console.log('🎯 Sample campaigns inserted');
+      }
     } else {
       console.log('📊 Sample data already exists, skipping...');
     }
@@ -381,7 +624,7 @@ async function initializeDatabase() {
     console.log('═══════════════════════════════════════════════════');
     console.log('');
     console.log('📊 Tables created/verified:');
-    console.log('   • users');
+    console.log('   • users (with 2FA columns)');
     console.log('   • social_accounts');
     console.log('   • opportunities');
     console.log('   • applications');
@@ -389,9 +632,14 @@ async function initializeDatabase() {
     console.log('   • conversations');
     console.log('   • campaigns');
     console.log('   • campaign_participants');
+    console.log('   • deliverables');
     console.log('   • reviews');
     console.log('   • notifications');
     console.log('   • user_settings');
+    console.log('   • payment_methods');
+    console.log('   • payments');
+    console.log('   • analytics_events');
+    console.log('   • saved_items');
     console.log('');
     console.log('🔗 Indexes created for optimal performance');
     console.log('🎯 Sample data ready');
