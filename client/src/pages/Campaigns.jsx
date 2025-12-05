@@ -20,6 +20,9 @@ import { CampaignCard } from '@/components/CampaignCard'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/components/ui/Toast'
 import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardContent, Badge, Avatar } from '@/components/ui'
+import { useCampaignEscrow } from '@/hooks/useCampaignEscrow'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Shield, Zap } from 'lucide-react'
 import api from '@/lib/api'
 import { cn, capitalizeFirst, formatDate, formatNumber } from '@/lib/utils'
 
@@ -51,6 +54,9 @@ export function Campaigns() {
   // Create/Edit modal
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [useEscrow, setUseEscrow] = useState(false)
+  const [influencerAddress, setInfluencerAddress] = useState('')
+  const escrow = useCampaignEscrow()
   const [campaignForm, setCampaignForm] = useState({
     title: '',
     description: '',
@@ -152,23 +158,72 @@ export function Campaigns() {
       return
     }
 
+    if (useEscrow && !escrow.isConnected) {
+      addToast('Please connect your wallet to use escrow', 'error')
+      return
+    }
+
+    if (useEscrow && !influencerAddress.trim()) {
+      addToast('Please enter influencer wallet address for escrow', 'error')
+      return
+    }
+
     setCreating(true)
     try {
-      await api.createCampaign({
+      // Create campaign in database
+      const campaign = await api.createCampaign({
         ...campaignForm,
         budget: parseFloat(campaignForm.budget) || 0,
         platforms: campaignForm.platforms,
         deliverables: campaignForm.deliverables.split('\n').filter(d => d.trim()),
         requirements: campaignForm.requirements.split('\n').filter(r => r.trim()),
       })
-      addToast('Campaign created successfully!', 'success')
+
+      // If using escrow, create smart contract escrow
+      if (useEscrow && escrow.isConnected) {
+        const deadline = campaignForm.end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        const amountEth = parseFloat(campaignForm.budget) || 0
+        
+        addToast('Creating escrow on blockchain...', 'info')
+        
+        await escrow.createEscrowCampaign(
+          influencerAddress,
+          deadline,
+          campaign.campaign?.id?.toString() || '0',
+          amountEth
+        )
+        
+        addToast('Escrow created! Payment locked until deliverables approved.', 'success')
+      } else {
+        addToast('Campaign created successfully!', 'success')
+      }
+      
       setShowCreateModal(false)
       resetForm()
+      setUseEscrow(false)
+      setInfluencerAddress('')
       loadCampaigns()
     } catch (error) {
+      console.error('Create campaign error:', error)
       addToast(error.message || 'Failed to create campaign', 'error')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleApproveAndRelease = async (campaignId) => {
+    if (!escrow.isConnected) {
+      addToast('Please connect your wallet', 'error')
+      return
+    }
+
+    try {
+      addToast('Approving and releasing payment...', 'info')
+      await escrow.approveAndRelease(campaignId)
+      addToast('Payment released to influencer!', 'success')
+      loadCampaigns()
+    } catch (error) {
+      addToast(error.message || 'Failed to release payment', 'error')
     }
   }
 
@@ -520,6 +575,31 @@ export function Campaigns() {
                 </div>
               </div>
             )}
+
+            {/* Smart Contract Actions (if escrow used) */}
+            {isBrand && selectedCampaign.escrow_campaign_id && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border border-teal-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="w-5 h-5 text-teal-400" />
+                  <h4 className="font-semibold">Smart Contract Escrow</h4>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] mb-4">
+                  Payment is locked in smart contract. Approve deliverables to release payment.
+                </p>
+                {escrow.isConnected ? (
+                  <Button
+                    onClick={() => handleApproveAndRelease(selectedCampaign.escrow_campaign_id)}
+                    loading={escrow.isPending}
+                    className="w-full"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Approve & Release Payment
+                  </Button>
+                ) : (
+                  <ConnectButton />
+                )}
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -610,6 +690,58 @@ export function Campaigns() {
             onChange={(e) => setCampaignForm(prev => ({ ...prev, requirements: e.target.value }))}
             rows={3}
           />
+
+          {/* Smart Contract Escrow Option */}
+          <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-teal-400" />
+                <label className="font-medium">Use Smart Contract Escrow</label>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUseEscrow(!useEscrow)}
+                className={cn(
+                  "relative w-12 h-6 rounded-full transition-colors",
+                  useEscrow ? "bg-teal-500" : "bg-[var(--bg-card)]"
+                )}
+              >
+                <div className={cn(
+                  "absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform",
+                  useEscrow && "translate-x-6"
+                )} />
+              </button>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)] mb-3">
+              Lock payment in smart contract. Funds released automatically when deliverables are approved.
+            </p>
+            
+            {useEscrow && (
+              <div className="space-y-3 mt-3 pt-3 border-t border-[var(--border-color)]">
+                {!escrow.isConnected ? (
+                  <div className="flex items-center gap-3">
+                    <ConnectButton />
+                    <span className="text-sm text-[var(--text-secondary)]">
+                      Connect wallet to use escrow
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      label="Influencer Wallet Address"
+                      placeholder="0x..."
+                      value={influencerAddress}
+                      onChange={(e) => setInfluencerAddress(e.target.value)}
+                    />
+                    <div className="flex items-center gap-2 text-xs text-teal-400">
+                      <Zap className="w-4 h-4" />
+                      <span>Payment will be locked until you approve deliverables</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3 pt-2">
             <Button variant="ghost" className="flex-1" onClick={() => setShowCreateModal(false)}>

@@ -5,4 +5,5 @@ export { Card, CardHeader, CardTitle, CardContent } from './Card'
 export { Avatar } from './Avatar'
 export { Badge } from './Badge'
 export { ToastProvider, useToast } from './Toast'
+export { Skeleton, PageSkeleton, CardSkeleton } from './Skeleton'
 

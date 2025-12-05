@@ -1,21 +1,64 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { WagmiProvider } from 'wagmi'
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit'
-import '@rainbow-me/rainbowkit/styles.css'
+import { useState, useEffect } from 'react'
 
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
-import { config } from '@/lib/wagmi'
-import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Payments } from '@/pages'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { SearchModal } from '@/components/SearchModal'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit } from '@/pages'
+import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+// Loading skeleton component
+function PageSkeleton() {
+  return (
+    <div className="min-h-screen bg-[var(--bg-primary)] p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="h-8 bg-[var(--bg-card)] rounded-lg w-1/3 animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-32 bg-[var(--bg-card)] rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-24 bg-[var(--bg-card)] rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Activity timeout wrapper - logs out after 15 min inactivity
 function ActivityMonitor({ children }) {
   useActivityTimeout()
+  useKeyboardShortcuts()
   return children
+}
+
+// Search modal handler
+function SearchHandler() {
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    const handleOpenSearch = () => setSearchOpen(true)
+    window.addEventListener('openSearch', handleOpenSearch)
+    return () => window.removeEventListener('openSearch', handleOpenSearch)
+  }, [])
+
+  return <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 }
 
 // Protected Route wrapper
@@ -148,7 +191,7 @@ function AppRoutes() {
         path="/dashboard/payments" 
         element={
           <ProtectedRoute>
-            <Payments />
+            <PaymentsWrapper />
           </ProtectedRoute>
         } 
       />
@@ -161,27 +204,18 @@ function AppRoutes() {
 
 function App() {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider 
-          theme={darkTheme({
-            accentColor: '#14b8a6',
-            accentColorForeground: 'white',
-            borderRadius: 'medium',
-          })}
-        >
-          <BrowserRouter>
-            <AuthProvider>
-              <ToastProvider>
-                <ActivityMonitor>
-                  <AppRoutes />
-                </ActivityMonitor>
-              </ToastProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <ToastProvider>
+            <ActivityMonitor>
+              <SearchHandler />
+              <AppRoutes />
+            </ActivityMonitor>
+          </ToastProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 
