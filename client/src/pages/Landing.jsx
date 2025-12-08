@@ -19,7 +19,7 @@ export function Landing() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 mb-6">
                 <span>🚀</span>
                 <span className="text-teal-400 text-sm font-medium">
-                  Launching the Future of Influencer Marketing
+                  Launching the Future of Influencer Marketing (v2.0)
                 </span>
               </div>
               
