@@ -52,12 +52,21 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <Link to="/login" className="pointer-events-auto">
-                  <Button variant="ghost" size="sm">Sign In</Button>
-                </Link>
-                <Link to="/register" className="pointer-events-auto">
-                  <Button size="sm">Get Started</Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate('/login')}
+                  type="button"
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => navigate('/register')}
+                  type="button"
+                >
+                  Get Started
+                </Button>
               </>
             )}
           </div>

@@ -20,10 +20,11 @@ export function Button({
   className,
   disabled,
   loading,
+  as: Component = 'button',
   ...props
 }) {
   return (
-    <button
+    <Component
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-200',
         'pointer-events-auto cursor-pointer',
@@ -43,7 +44,7 @@ export function Button({
         </svg>
       )}
       {children}
-    </button>
+    </Component>
   )
 }
 
