@@ -1,3 +1,4 @@
+// Wallet configuration - lazy loaded to avoid bundling if not needed
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { mainnet, polygon, optimism, arbitrum, base } from 'wagmi/chains'
 
