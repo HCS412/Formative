@@ -5,7 +5,6 @@ import { Button } from '@/components/ui'
 export function Landing() {
   return (
     <div className="min-h-screen">
-      <Navbar />
       
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-4 overflow-hidden">

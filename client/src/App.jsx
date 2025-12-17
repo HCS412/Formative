@@ -211,6 +211,7 @@ function App() {
             <ActivityMonitor>
               <SearchHandler />
               <AppRoutes />
+              <DebugInfo />
             </ActivityMonitor>
           </ToastProvider>
         </AuthProvider>
