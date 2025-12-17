@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 
@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SearchModal } from '@/components/SearchModal'
+import { Navbar } from '@/components/layout/Navbar'
 import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
@@ -39,6 +40,16 @@ function PageSkeleton() {
       </div>
     </div>
   )
+}
+
+// Debug Info Component
+function DebugInfo() {
+  const location = useLocation();
+  return (
+    <div className="fixed bottom-4 right-4 z-[9999] bg-black/80 text-teal-400 px-3 py-1 rounded-full text-xs font-mono border border-teal-500/30 pointer-events-none">
+      v2.3 | {location.pathname}
+    </div>
+  );
 }
 
 // Activity timeout wrapper - logs out after 15 min inactivity
@@ -100,105 +111,115 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
+  const location = useLocation();
+  const isDashboard = location.pathname.startsWith('/dashboard');
+  const isMediaKit = location.pathname.startsWith('/kit/');
+  const isAuthPage = ['/login', '/register', '/onboarding'].includes(location.pathname);
+
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/kit/:username" element={<MediaKit />} />
-      <Route 
-        path="/login" 
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/register" 
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/onboarding" 
-        element={
-          <ProtectedRoute>
-            <Onboarding />
-          </ProtectedRoute>
-        } 
-      />
+    <>
+      {/* Show Navbar on all public pages except Auth/MediaKit */}
+      {!isDashboard && !isMediaKit && !isAuthPage && <Navbar />}
+      
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/kit/:username" element={<MediaKit />} />
+        <Route 
+          path="/login" 
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          } 
+        />
+        <Route 
+          path="/register" 
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          } 
+        />
+        <Route 
+          path="/onboarding" 
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          } 
+        />
 
-      {/* Protected Routes */}
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/messages" 
-        element={
-          <ProtectedRoute>
-            <Messages />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/opportunities" 
-        element={
-          <ProtectedRoute>
-            <Opportunities />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/profile" 
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/settings" 
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/campaigns" 
-        element={
-          <ProtectedRoute>
-            <Campaigns />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/notifications" 
-        element={
-          <ProtectedRoute>
-            <Notifications />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/dashboard/payments" 
-        element={
-          <ProtectedRoute>
-            <PaymentsWrapper />
-          </ProtectedRoute>
-        } 
-      />
+        {/* Protected Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/messages" 
+          element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/opportunities" 
+          element={
+            <ProtectedRoute>
+              <Opportunities />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/settings" 
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/campaigns" 
+          element={
+            <ProtectedRoute>
+              <Campaigns />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/notifications" 
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/payments" 
+          element={
+            <ProtectedRoute>
+              <PaymentsWrapper />
+            </ProtectedRoute>
+          } 
+        />
 
-      {/* Catch all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Catch all - redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   )
 }
 
