@@ -68,7 +68,7 @@ export function Register() {
         {/* Form Card */}
         <div className="bg-[var(--bg-card)] rounded-2xl p-8 border border-[var(--border-color)]">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">Create Your Account</h1>
+            <h1 className="text-2xl font-bold mb-2">Create Your Account (v2.1)</h1>
             <p className="text-[var(--text-secondary)]">Join the future of influencer marketing</p>
           </div>
 

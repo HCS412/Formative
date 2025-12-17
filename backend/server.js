@@ -41,10 +41,19 @@ const fs = require('fs');
 // ONLY serve React app assets - never serve old static HTML files
 if (fs.existsSync(distPath)) {
   // Serve static assets (JS, CSS, images) from dist folder
-  // But NOT index.html - let the catch-all route handle that
   app.use(express.static(distPath, { 
     index: false, // Don't serve index.html automatically
-    maxAge: '1d' // Cache static assets
+    setHeaders: (res, path) => {
+      // Don't cache index.html
+      if (path.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else {
+        // Cache other assets (JS, CSS, etc.)
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+      }
+    }
   }));
 }
 // NO fallback to old static files - React app is required
