@@ -5,13 +5,10 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
-    "dev": "npm run dev --workspace=client",
-    "build": "npm run build --workspace=client",
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm install && npm run build",
     "test": "echo 'Tests would go here'"
   },
-  "workspaces": [
-    "client"
-  ],
   "keywords": [
     "influencer-marketing",
     "platform",
