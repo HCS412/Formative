@@ -116,3 +116,4 @@ function showShortcutsHelp() {
   alert(`Keyboard Shortcuts:\n\n${shortcuts}\n\n(Mac: ⌘, Windows/Linux: Ctrl)`)
 }
 
+

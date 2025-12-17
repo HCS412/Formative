@@ -152,3 +152,4 @@ export function OpportunityCard({ opportunity, onViewDetails, onApply }) {
   )
 }
 
+

@@ -37,7 +37,7 @@ export function Navbar() {
           </div>
 
           {/* Auth Buttons */}
-          <div className="flex items-center gap-3 pointer-events-auto">
+          <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <>
                 <span className="text-[var(--text-secondary)] hidden sm:block">
@@ -52,21 +52,23 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => navigate('/login')}
-                  type="button"
-                >
-                  Sign In
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={() => navigate('/register')}
-                  type="button"
-                >
-                  Get Started
-                </Button>
+                <Link to="/login">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    type="button"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button 
+                    size="sm"
+                    type="button"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
               </>
             )}
           </div>
