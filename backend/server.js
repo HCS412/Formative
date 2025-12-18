@@ -38,6 +38,13 @@ app.use(express.json());
 const distPath = path.join(__dirname, '../dist');
 const fs = require('fs');
 
+console.log('📂 Checking dist folder at:', distPath);
+if (fs.existsSync(distPath)) {
+  console.log('✅ dist folder found. Contents:', fs.readdirSync(distPath));
+} else {
+  console.log('❌ dist folder NOT FOUND!');
+}
+
 // ONLY serve React app assets - never serve old static HTML files
 if (fs.existsSync(distPath)) {
   // Serve static assets (JS, CSS, images) from dist folder
