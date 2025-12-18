@@ -25,7 +25,7 @@ function DebugInfo() {
   const location = useLocation();
   return (
     <div className="fixed bottom-4 left-4 z-[9999] bg-black/80 text-teal-400 px-3 py-1 rounded-full text-xs font-mono border border-teal-500/30 pointer-events-none">
-      v2.4 (Hash) | {location.pathname}
+      v2.5 (FOOLPROOF) | {location.pathname}
     </div>
   );
 }

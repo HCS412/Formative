@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "cd client && npm run dev",
-    "build": "cd client && npm install && npm run build",
+    "build": "cd client && npm install --include=dev && ./node_modules/.bin/vite build",
     "test": "echo 'Tests would go here'"
   },
   "keywords": [
