@@ -3778,7 +3778,15 @@ app.get('*', (req, res) => {
   
   // Always try to serve React app first
   if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
+    // NUCLEAR OPTION: Read the file, inject a random ID to bust cache, and send
+    let html = fs.readFileSync(indexPath, 'utf8');
+    const versionBuster = Date.now();
+    html = html.replace('</head>', `<meta name="version" content="v2.7-${versionBuster}"></head>`);
+    
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.send(html);
   } else {
     // If React build doesn't exist, return error (don't fall back to old HTML)
     res.status(500).send(`

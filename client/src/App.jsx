@@ -24,8 +24,8 @@ const queryClient = new QueryClient({
 function DebugInfo() {
   const location = useLocation();
   return (
-    <div className="fixed bottom-4 left-4 z-[9999] bg-teal-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none">
-      v2.6 (FINAL RESET) | {location.pathname}
+    <div className="fixed bottom-4 left-4 z-[9999] bg-orange-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none animate-bounce">
+      v2.7 (NUCLEAR FIX) | {location.pathname}
     </div>
   );
 }
