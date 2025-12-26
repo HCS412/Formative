@@ -25,7 +25,7 @@ function DebugInfo() {
   const location = useLocation();
   return (
     <div className="fixed bottom-4 left-4 z-[9999] bg-orange-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none animate-bounce">
-      v3.0 (LINK FIX) | {location.pathname}
+      v4.0 (FRESH BUILD) | {location.pathname}
     </div>
   );
 }
