@@ -11,11 +11,6 @@ export function Navbar() {
     navigate('/')
   }
 
-  // Force navigation with page reload to ensure React Router state syncs
-  const handleNavigation = (path) => {
-    window.location.href = `${window.location.origin}${window.location.pathname}#${path}`
-  }
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-[9999] bg-[rgba(15,20,25,0.98)] backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -28,7 +23,7 @@ export function Navbar() {
             <span className="text-xl font-bold text-white">Formative</span>
           </Link>
 
-          {/* Navigation Links - Desktop (use JavaScript scroll instead of hash links) */}
+          {/* Navigation Links - Desktop */}
           <div className="hidden md:flex items-center gap-8">
             <button 
               onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
@@ -50,7 +45,7 @@ export function Navbar() {
             </button>
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons - Using standard Link components with BrowserRouter */}
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <>
@@ -60,18 +55,20 @@ export function Navbar() {
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   Sign Out
                 </Button>
-                <Button size="sm" onClick={() => handleNavigation('/dashboard')}>
-                  Dashboard →
-                </Button>
+                <Link to="/dashboard">
+                  <Button size="sm" as="span">
+                    Dashboard →
+                  </Button>
+                </Link>
               </>
             ) : (
               <>
-                <Link to="/login" className="no-underline">
+                <Link to="/login">
                   <Button variant="ghost" size="sm" as="span">
                     Sign In
                   </Button>
                 </Link>
-                <Link to="/register" className="no-underline">
+                <Link to="/register">
                   <Button size="sm" as="span">
                     Get Started
                   </Button>
