@@ -1,6 +1,6 @@
 # Formative
 
-A modern influencer marketing platform connecting brands, influencers, and freelancers for authentic collaborations. Built with React and Node.js, featuring crypto payment integration, smart contract escrow, enterprise-grade security, and role-based access control.
+A modern influencer marketing platform connecting brands, influencers, and freelancers for authentic collaborations. Built with React and Node.js, featuring crypto payment integration, smart contract escrow, creator e-commerce shops, enterprise-grade security, and role-based access control.
 
 **Live URL**: [chic-patience-production.up.railway.app](https://chic-patience-production.up.railway.app)
 
@@ -82,6 +82,23 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 - Display connected social accounts with follower counts
 - Call-to-action for brand collaboration
 - One-click copy and share functionality
+
+### Creator Shop (E-Commerce)
+- **Shop Management Dashboard**: Create and manage digital products
+- **Product Types**: Digital files, courses, templates
+- **Product Features**:
+  - Name, descriptions (short + full)
+  - Pricing with compare-at prices for sales
+  - Cover images and gallery
+  - Tags for categorization
+  - Download limits per purchase
+- **Public Shop Pages**: Beautiful storefronts at `/shop/:username`
+- **Product Detail Pages**: Full product views with checkout
+- **Sales Analytics**: Revenue tracking, sales counts, monthly metrics
+- **Order Management**: View all sales and customer orders
+- **Download System**: Secure token-based file delivery
+- **Platform Fees**: Automatic 8% fee calculation
+- **Shareable Shop Links**: One-click copy and share
 
 ### Payments
 - Stripe Connect integration for fiat payments (USD, EUR, card payments)
@@ -499,6 +516,27 @@ OAUTH_REDIRECT_BASE=https://your-production-domain.com
 | GET | `/api/payments/history` | Get payment history |
 | POST | `/api/payments/stripe/connect` | Connect Stripe account |
 
+### Shop / E-Commerce
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/shop/settings` | Get shop settings |
+| PUT | `/api/shop/settings` | Update shop settings |
+| GET | `/api/shop/products` | List creator's products |
+| POST | `/api/shop/products` | Create new product |
+| GET | `/api/shop/products/:id` | Get single product (for editing) |
+| PUT | `/api/shop/products/:id` | Update product |
+| DELETE | `/api/shop/products/:id` | Delete product |
+| POST | `/api/shop/products/:id/files` | Add file to product |
+| DELETE | `/api/shop/products/:productId/files/:fileId` | Remove file from product |
+| GET | `/api/shop/orders` | Get creator's sales/orders |
+| GET | `/api/shop/stats` | Get shop statistics (sales, revenue) |
+| GET | `/api/shop/public/:username` | Get public shop data |
+| GET | `/api/shop/public/:username/products/:slug` | Get public product details |
+| POST | `/api/shop/checkout/:productId` | Create checkout session |
+| POST | `/api/shop/orders/:orderNumber/complete` | Complete order (payment success) |
+| GET | `/api/shop/download/:token` | Download purchased files |
+
 ### Public
 
 | Method | Endpoint | Description |
@@ -734,6 +772,74 @@ applications
 
 conversations, messages, notifications, payment_methods, payments
 (see previous schema)
+
+products
+├── id
+├── creator_id (foreign key)
+├── name
+├── slug (unique per creator)
+├── description
+├── short_description
+├── type (digital | course | template)
+├── price (in cents)
+├── compare_at_price (in cents)
+├── currency
+├── cover_image
+├── gallery_images (JSONB)
+├── is_active
+├── is_featured
+├── download_limit
+├── metadata (JSONB)
+├── tags (ARRAY)
+├── sales_count
+├── created_at
+└── updated_at
+
+product_files
+├── id
+├── product_id (foreign key)
+├── file_name
+├── file_url
+├── file_size
+├── file_type
+└── sort_order
+
+shop_settings
+├── id
+├── user_id (unique, foreign key)
+├── shop_name
+├── shop_description
+├── shop_logo
+├── shop_banner
+├── stripe_account_id
+├── stripe_onboarding_complete
+├── currency
+├── theme (JSONB)
+├── social_links (JSONB)
+├── is_active
+├── created_at
+└── updated_at
+
+shop_orders
+├── id
+├── order_number (unique)
+├── product_id (foreign key)
+├── creator_id (foreign key)
+├── customer_email
+├── customer_name
+├── amount (in cents)
+├── currency
+├── platform_fee (in cents)
+├── creator_payout (in cents)
+├── status (pending | completed | refunded)
+├── stripe_payment_intent_id
+├── stripe_checkout_session_id
+├── download_count
+├── download_token (unique)
+├── download_expires_at
+├── metadata (JSONB)
+├── created_at
+└── updated_at
 ```
 
 ---
@@ -768,6 +874,8 @@ conversations, messages, notifications, payment_methods, payments
 - [x] **Enhanced public creator pages (Media Kit)**
 - [x] **UTM Link Builder**
 - [x] **Calendly booking integration**
+- [x] **Creator Shop system (e-commerce)**
+- [x] **Product management and public shop pages**
 - [x] Keyboard shortcuts
 - [x] Global search
 - [x] Twitter OAuth integration
@@ -811,6 +919,7 @@ conversations, messages, notifications, payment_methods, payments
 - UTM Link Builder
 - Enhanced Creator Page (Media Kit)
 - Calendly booking integration
+- Creator Shop system for selling digital products
 
 ### Phase 4: Integrations (In Progress)
 - Complete OAuth social connections
