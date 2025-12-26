@@ -58,18 +58,32 @@ export const CAMPAIGN_ESCROW_ABI = [
   }
 ]
 
-// Contract addresses (update after deployment)
+// Contract addresses - UPDATE THESE AFTER DEPLOYMENT
 export const CONTRACT_ADDRESSES = {
-  // Testnet (Sepolia)
-  11155111: '0x0000000000000000000000000000000000000000', // TODO: Deploy and update
-  // Mainnet
-  1: '0x0000000000000000000000000000000000000000', // TODO: Deploy and update
-  // Base (recommended for lower fees)
-  8453: '0x0000000000000000000000000000000000000000', // TODO: Deploy and update
+  // Base Sepolia (Testnet) - Deploy here first for testing
+  84532: import.meta.env.VITE_ESCROW_CONTRACT_SEPOLIA || '0x0000000000000000000000000000000000000000',
+  
+  // Base Mainnet - Production deployment
+  8453: import.meta.env.VITE_ESCROW_CONTRACT_MAINNET || '0x0000000000000000000000000000000000000000',
+  
+  // Ethereum Sepolia (Testnet) - Alternative testnet
+  11155111: '0x0000000000000000000000000000000000000000',
+  
+  // Ethereum Mainnet - Not recommended (high gas fees)
+  1: '0x0000000000000000000000000000000000000000',
+}
+
+// Check if contract is deployed on a given chain
+export function isContractDeployed(chainId) {
+  const address = CONTRACT_ADDRESSES[chainId]
+  return address && address !== '0x0000000000000000000000000000000000000000'
 }
 
 export function getContractAddress(chainId) {
-  return CONTRACT_ADDRESSES[chainId] || CONTRACT_ADDRESSES[11155111]
+  return CONTRACT_ADDRESSES[chainId] || null
 }
+
+// Supported chains for escrow (only chains with deployed contracts)
+export const SUPPORTED_ESCROW_CHAINS = [84532, 8453] // Base Sepolia, Base Mainnet
 
 
