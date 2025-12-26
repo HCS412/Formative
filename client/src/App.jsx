@@ -21,14 +21,7 @@ const queryClient = new QueryClient({
   },
 })
 
-function DebugInfo() {
-  const location = useLocation();
-  return (
-    <div className="fixed bottom-4 left-4 z-[9999] bg-orange-500 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none animate-bounce">
-      v6.0 (ROUTER v6 FIX) | {location.pathname}
-    </div>
-  );
-}
+// Debug component removed - routing is working!
 
 function ActivityMonitor({ children }) {
   useActivityTimeout()
@@ -102,7 +95,6 @@ function App() {
             <ActivityMonitor>
               <SearchHandler />
               <AppRoutes />
-              <DebugInfo />
             </ActivityMonitor>
           </ToastProvider>
         </AuthProvider>
