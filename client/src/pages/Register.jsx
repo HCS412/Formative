@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/components/ui/Toast'
@@ -11,6 +11,15 @@ const userTypes = [
   { id: 'freelancer', icon: '🎨', label: 'Freelancer' },
 ]
 
+// Password requirements
+const passwordRequirements = [
+  { id: 'length', label: 'At least 8 characters', test: (p) => p.length >= 8 },
+  { id: 'uppercase', label: 'One uppercase letter', test: (p) => /[A-Z]/.test(p) },
+  { id: 'lowercase', label: 'One lowercase letter', test: (p) => /[a-z]/.test(p) },
+  { id: 'number', label: 'One number', test: (p) => /[0-9]/.test(p) },
+  { id: 'special', label: 'One special character (!@#$%^&*)', test: (p) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
+]
+
 export function Register() {
   const [formData, setFormData] = useState({
     name: '',
@@ -19,15 +28,34 @@ export function Register() {
     userType: '',
   })
   const [loading, setLoading] = useState(false)
+  const [showPasswordHints, setShowPasswordHints] = useState(false)
   const { register } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
+
+  // Check password strength in real-time
+  const passwordStrength = useMemo(() => {
+    const passed = passwordRequirements.filter(req => req.test(formData.password))
+    return {
+      passed,
+      total: passwordRequirements.length,
+      isValid: passed.length === passwordRequirements.length,
+      percentage: (passed.length / passwordRequirements.length) * 100
+    }
+  }, [formData.password])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     if (!formData.userType) {
       addToast('Please select your account type', 'error')
+      return
+    }
+
+    // Client-side password validation
+    if (!passwordStrength.isValid) {
+      addToast('Please meet all password requirements', 'error')
+      setShowPasswordHints(true)
       return
     }
 
@@ -42,7 +70,13 @@ export function Register() {
         addToast('Account created! Let\'s set up your profile.', 'success')
         navigate('/onboarding')
       } else {
-        addToast(result.error || 'Registration failed', 'error')
+        // Handle password requirement errors from server
+        if (result.requirements) {
+          addToast(result.error, 'error')
+          setShowPasswordHints(true)
+        } else {
+          addToast(result.error || 'Registration failed', 'error')
+        }
       }
     } catch (error) {
       addToast(error.message || 'Registration failed', 'error')
@@ -68,7 +102,7 @@ export function Register() {
         {/* Form Card */}
         <div className="bg-[var(--bg-card)] rounded-2xl p-8 border border-[var(--border-color)]">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">Create Your Account (v2.1)</h1>
+            <h1 className="text-2xl font-bold mb-2">Create Your Account</h1>
             <p className="text-[var(--text-secondary)]">Join the future of influencer marketing</p>
           </div>
 
@@ -116,14 +150,53 @@ export function Register() {
               required
             />
 
-            <Input
-              type="password"
-              label="Password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              required
-            />
+            <div>
+              <Input
+                type="password"
+                label="Password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                onFocus={() => setShowPasswordHints(true)}
+                required
+              />
+              
+              {/* Password Strength Indicator */}
+              {formData.password && (
+                <div className="mt-2">
+                  <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full transition-all duration-300",
+                        passwordStrength.percentage < 40 ? "bg-red-500" :
+                        passwordStrength.percentage < 80 ? "bg-yellow-500" : "bg-green-500"
+                      )}
+                      style={{ width: `${passwordStrength.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Password Requirements */}
+              {showPasswordHints && (
+                <div className="mt-3 p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+                  <p className="text-xs text-[var(--text-muted)] mb-2">Password must contain:</p>
+                  <ul className="space-y-1">
+                    {passwordRequirements.map((req) => (
+                      <li 
+                        key={req.id}
+                        className={cn(
+                          "text-xs flex items-center gap-2",
+                          req.test(formData.password) ? "text-green-400" : "text-[var(--text-muted)]"
+                        )}
+                      >
+                        {req.test(formData.password) ? "✓" : "○"} {req.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
 
             <Button type="submit" className="w-full" loading={loading}>
               Create Account

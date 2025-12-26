@@ -1,5 +1,5 @@
 // Backend API server for Formative Platform with OAuth Support
-// Updated with complete database schema initialization
+// Updated with complete database schema initialization and security features
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -7,6 +7,9 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const path = require('path');
 const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
 
 // Use node-fetch for Node.js < 18, native fetch for Node.js >= 18
 let fetch;
@@ -19,20 +22,217 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============================================
+// SECURITY: Rate Limiting
+// ============================================
+
+// General API rate limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict rate limiter for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 login attempts per 15 minutes
+  message: { error: 'Too many login attempts, please try again in 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful logins
+});
+
+// Very strict limiter for password reset
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 attempts per hour
+  message: { error: 'Too many password reset attempts, please try again later' },
+});
+
+// ============================================
+// SECURITY: Account Lockout Tracking
+// ============================================
+const loginAttempts = new Map(); // In production, use Redis
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+function recordFailedLogin(email) {
+  const attempts = loginAttempts.get(email) || { count: 0, firstAttempt: Date.now() };
+  attempts.count++;
+  attempts.lastAttempt = Date.now();
+  loginAttempts.set(email, attempts);
+  return attempts.count;
+}
+
+function isAccountLocked(email) {
+  const attempts = loginAttempts.get(email);
+  if (!attempts) return false;
+  
+  // Reset if lockout period has passed
+  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+    const timeSinceLast = Date.now() - attempts.lastAttempt;
+    if (timeSinceLast > LOCKOUT_DURATION) {
+      loginAttempts.delete(email);
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function clearFailedLogins(email) {
+  loginAttempts.delete(email);
+}
+
+function getRemainingLockoutTime(email) {
+  const attempts = loginAttempts.get(email);
+  if (!attempts) return 0;
+  const remaining = LOCKOUT_DURATION - (Date.now() - attempts.lastAttempt);
+  return Math.max(0, Math.ceil(remaining / 1000 / 60)); // Return minutes
+}
+
+// ============================================
+// SECURITY: Password Strength Validation
+// ============================================
+function validatePasswordStrength(password) {
+  const errors = [];
+  
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+// ============================================
+// SECURITY: Input Sanitization
+// ============================================
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  
+  // Remove potential XSS vectors
+  return input
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+    .trim();
+}
+
+function sanitizeObject(obj) {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  
+  const sanitized = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      sanitized[key] = sanitizeInput(value);
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeObject(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
+// ============================================
+// SECURITY: Audit Logging
+// ============================================
+async function logAuditEvent(pool, eventType, userId, details, ipAddress) {
+  try {
+    await pool.query(`
+      INSERT INTO audit_logs (event_type, user_id, details, ip_address, created_at)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+    `, [eventType, userId, JSON.stringify(details), ipAddress]);
+  } catch (error) {
+    console.error('Failed to log audit event:', error.message);
+  }
+}
+
+// Get client IP address
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+         req.headers['x-real-ip'] || 
+         req.socket?.remoteAddress || 
+         'unknown';
+}
+
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+// ============================================
+// SECURITY: Helmet Security Headers
+// ============================================
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for React
+      connectSrc: ["'self'", "https:", "wss:"],
+      frameSrc: ["'self'", "https://verify.walletconnect.com", "https://verify.walletconnect.org"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Required for some wallet connections
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }, // Required for OAuth popups
+}));
+
+// Additional security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://formativeunites.us', 'https://www.formativeunites.us', 'https://hcs412.github.io', 'https://formative-production.up.railway.app']
+    ? ['https://formativeunites.us', 'https://www.formativeunites.us', 'https://hcs412.github.io', 'https://formative-production.up.railway.app', 'https://chic-patience-production.up.railway.app']
     : '*',
   credentials: true
 }));
-app.use(express.json());
+
+// Apply general rate limiting to all routes
+app.use('/api/', generalLimiter);
+
+// Parse JSON with size limit
+app.use(express.json({ limit: '10kb' })); // Prevent large payload attacks
+
+// Sanitize all incoming request bodies
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    req.body = sanitizeObject(req.body);
+  }
+  next();
+});
 
 // Serve React app from dist folder (built by Vite)
 const distPath = path.join(__dirname, '../dist');
@@ -602,7 +802,34 @@ async function initializeDatabase() {
       // Columns might already exist
     }
 
-    console.log('✅ All tables created/verified');
+    // Add account lockout columns
+    try {
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0`);
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP`);
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP`);
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip VARCHAR(45)`);
+    } catch (e) {
+      // Columns might already exist
+    }
+
+    // 17. AUDIT LOGS TABLE (Security)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        event_type VARCHAR(100) NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        details JSONB DEFAULT '{}',
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_logs(event_type)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)`);
+
+    console.log('✅ All tables created/verified (including security tables)');
 
     // Insert sample opportunities if none exist
     const existingOpportunities = await client.query('SELECT COUNT(*) FROM opportunities');
@@ -826,7 +1053,10 @@ app.get('/api/health', async (req, res) => {
 // ============================================
 
 // User Registration
-app.post('/api/auth/register', async (req, res) => {
+// Apply rate limiting to registration
+app.post('/api/auth/register', authLimiter, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
   try {
     const { name, email, password, userType } = req.body;
 
@@ -834,12 +1064,34 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: 'Password does not meet security requirements',
+        requirements: passwordValidation.errors
+      });
+    }
+
+    // Validate user type
+    const validUserTypes = ['influencer', 'brand', 'freelancer'];
+    if (!validUserTypes.includes(userType.toLowerCase())) {
+      return res.status(400).json({ error: 'Invalid user type' });
+    }
+
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1',
-      [email]
+      [email.toLowerCase()]
     );
 
     if (existingUser.rows.length > 0) {
+      await logAuditEvent(pool, 'REGISTER_DUPLICATE_EMAIL', null, { email }, clientIP);
       return res.status(400).json({ error: 'User already exists with this email' });
     }
 
@@ -848,7 +1100,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
-      [name, email, passwordHash, userType]
+      [sanitizeInput(name), email.toLowerCase(), passwordHash, userType.toLowerCase()]
     );
 
     const user = result.rows[0];
@@ -865,6 +1117,7 @@ app.post('/api/auth/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    await logAuditEvent(pool, 'USER_REGISTERED', user.id, { email: user.email, userType: user.user_type }, clientIP);
     console.log(`✅ New user registered: ${email} (${userType})`);
 
     res.status(201).json({
@@ -886,7 +1139,10 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // User Login
-app.post('/api/auth/login', async (req, res) => {
+// Apply strict rate limiting to login
+app.post('/api/auth/login', authLimiter, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
   try {
     const { email, password } = req.body;
 
@@ -894,33 +1150,82 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Ensure 2FA columns exist
-    try {
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255)`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE`);
-    } catch (e) {
-      // Columns may already exist
+    // Check if account is locked (in-memory check for quick response)
+    if (isAccountLocked(email)) {
+      const remainingMinutes = getRemainingLockoutTime(email);
+      await logAuditEvent(pool, 'LOGIN_BLOCKED_LOCKOUT', null, { email, remainingMinutes }, clientIP);
+      return res.status(423).json({ 
+        error: `Account temporarily locked due to too many failed attempts. Try again in ${remainingMinutes} minutes.`,
+        lockedFor: remainingMinutes
+      });
     }
 
     const result = await pool.query(
-      'SELECT id, name, email, password_hash, user_type, profile_data, two_factor_enabled FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, user_type, profile_data, two_factor_enabled, locked_until FROM users WHERE email = $1',
       [email]
     );
 
     if (result.rows.length === 0) {
+      // Record failed attempt even for non-existent users (prevents user enumeration timing attacks)
+      recordFailedLogin(email);
+      await logAuditEvent(pool, 'LOGIN_FAILED_UNKNOWN_USER', null, { email }, clientIP);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const user = result.rows[0];
+
+    // Check database-level lockout (more persistent)
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const remainingMinutes = Math.ceil((new Date(user.locked_until) - new Date()) / 1000 / 60);
+      await logAuditEvent(pool, 'LOGIN_BLOCKED_DB_LOCKOUT', user.id, { email }, clientIP);
+      return res.status(423).json({ 
+        error: `Account temporarily locked. Try again in ${remainingMinutes} minutes.`,
+        lockedFor: remainingMinutes
+      });
+    }
+
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      const attempts = recordFailedLogin(email);
+      
+      // Also update database for persistence across server restarts
+      await pool.query(
+        'UPDATE users SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1 WHERE id = $1',
+        [user.id]
+      );
+      
+      // Lock account after max attempts
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        const lockUntil = new Date(Date.now() + LOCKOUT_DURATION);
+        await pool.query(
+          'UPDATE users SET locked_until = $1 WHERE id = $2',
+          [lockUntil, user.id]
+        );
+        await logAuditEvent(pool, 'ACCOUNT_LOCKED', user.id, { email, attempts }, clientIP);
+        return res.status(423).json({ 
+          error: `Account locked due to ${MAX_LOGIN_ATTEMPTS} failed attempts. Try again in 15 minutes.`,
+          lockedFor: 15
+        });
+      }
+      
+      await logAuditEvent(pool, 'LOGIN_FAILED_WRONG_PASSWORD', user.id, { email, attempts }, clientIP);
+      return res.status(401).json({ 
+        error: 'Invalid email or password',
+        attemptsRemaining: MAX_LOGIN_ATTEMPTS - attempts
+      });
     }
+
+    // Successful login - clear lockout
+    clearFailedLogins(email);
+    await pool.query(
+      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login_at = CURRENT_TIMESTAMP, last_login_ip = $1 WHERE id = $2',
+      [clientIP, user.id]
+    );
 
     // Check if 2FA is enabled
     if (user.two_factor_enabled) {
-      // Return that 2FA is required
+      await logAuditEvent(pool, 'LOGIN_2FA_REQUIRED', user.id, { email }, clientIP);
       return res.json({
         requires2FA: true,
         userId: user.id
@@ -933,6 +1238,7 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    await logAuditEvent(pool, 'LOGIN_SUCCESS', user.id, { email }, clientIP);
     console.log(`✅ User logged in: ${email}`);
 
     res.json({
@@ -1048,13 +1354,15 @@ app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
 
 // Verify and enable 2FA
 app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
   try {
     const userId = req.user.userId;
     const { code } = req.body;
     
     // Get secret
     const result = await pool.query(
-      'SELECT two_factor_secret FROM users WHERE id = $1',
+      'SELECT two_factor_secret, email FROM users WHERE id = $1',
       [userId]
     );
     
@@ -1066,6 +1374,7 @@ app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
     
     // Verify code
     if (!verifyTOTP(secret, code)) {
+      await logAuditEvent(pool, '2FA_ENABLE_FAILED', userId, { reason: 'invalid_code' }, clientIP);
       return res.status(400).json({ error: 'Invalid verification code' });
     }
     
@@ -1075,6 +1384,7 @@ app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
       [userId]
     );
     
+    await logAuditEvent(pool, '2FA_ENABLED', userId, { email: result.rows[0].email }, clientIP);
     res.json({ success: true });
   } catch (error) {
     console.error('2FA verify error:', error);
@@ -1084,13 +1394,15 @@ app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
 
 // Disable 2FA
 app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
   try {
     const userId = req.user.userId;
     const { code } = req.body;
     
     // Get secret
     const result = await pool.query(
-      'SELECT two_factor_secret FROM users WHERE id = $1',
+      'SELECT two_factor_secret, email FROM users WHERE id = $1',
       [userId]
     );
     
@@ -1100,6 +1412,7 @@ app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
     
     // Verify code
     if (!verifyTOTP(result.rows[0].two_factor_secret, code)) {
+      await logAuditEvent(pool, '2FA_DISABLE_FAILED', userId, { reason: 'invalid_code' }, clientIP);
       return res.status(400).json({ error: 'Invalid verification code' });
     }
     
@@ -1109,6 +1422,7 @@ app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
       [userId]
     );
     
+    await logAuditEvent(pool, '2FA_DISABLED', userId, { email: result.rows[0].email }, clientIP);
     res.json({ success: true });
   } catch (error) {
     console.error('2FA disable error:', error);
@@ -1117,7 +1431,10 @@ app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
 });
 
 // 2FA Login verification
-app.post('/api/auth/2fa/login', async (req, res) => {
+// Apply rate limiting to 2FA login
+app.post('/api/auth/2fa/login', authLimiter, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
   try {
     const { userId, code, rememberMe } = req.body;
     
@@ -1135,8 +1452,15 @@ app.post('/api/auth/2fa/login', async (req, res) => {
     
     // Verify code
     if (!verifyTOTP(user.two_factor_secret, code)) {
+      await logAuditEvent(pool, '2FA_LOGIN_FAILED', user.id, { email: user.email, reason: 'invalid_code' }, clientIP);
       return res.status(400).json({ error: 'Invalid verification code' });
     }
+    
+    // Update last login
+    await pool.query(
+      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP, last_login_ip = $1 WHERE id = $2',
+      [clientIP, user.id]
+    );
     
     // Generate token
     const token = jwt.sign(
@@ -1144,6 +1468,8 @@ app.post('/api/auth/2fa/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: rememberMe ? '30d' : '1d' }
     );
+    
+    await logAuditEvent(pool, 'LOGIN_SUCCESS_2FA', user.id, { email: user.email }, clientIP);
     
     res.json({
       success: true,

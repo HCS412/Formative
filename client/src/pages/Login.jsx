@@ -40,7 +40,14 @@ export function Login() {
         addToast('Welcome back!', 'success')
         navigate('/dashboard')
       } else {
-        addToast(result.error || 'Login failed', 'error')
+        // Handle account lockout
+        if (result.lockedFor) {
+          addToast(`Account locked. Try again in ${result.lockedFor} minutes.`, 'error')
+        } else if (result.attemptsRemaining !== undefined) {
+          addToast(`${result.error}. ${result.attemptsRemaining} attempts remaining.`, 'error')
+        } else {
+          addToast(result.error || 'Login failed', 'error')
+        }
       }
     } catch (error) {
       addToast(error.message || 'Login failed', 'error')
