@@ -177,14 +177,18 @@ function getClientIP(req) {
          'unknown';
 }
 
-// Database connection with secure SSL configuration
+// Database connection with SSL configuration
+// Railway's PostgreSQL uses internal networking with SSL
 const sslConfig = (() => {
   if (process.env.NODE_ENV !== 'production') {
     return false; // No SSL in development
   }
   
-  // Allow override via environment variable if Railway's certs cause issues
-  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false';
+  // Railway internal PostgreSQL requires SSL but self-signed certs
+  // Use rejectUnauthorized: false for Railway's internal network
+  // This is acceptable because Railway's internal network is isolated
+  // For external databases, set DATABASE_SSL_REJECT_UNAUTHORIZED=true
+  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'true';
   
   return { rejectUnauthorized };
 })();
