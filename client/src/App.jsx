@@ -3,12 +3,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 
 import { AuthProvider, useAuth } from '@/context/AuthContext'
+import { PermissionProvider } from '@/context/PermissionContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SearchModal } from '@/components/SearchModal'
 import { Navbar } from '@/components/layout/Navbar'
-import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links } from '@/pages'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
 const queryClient = new QueryClient({
@@ -79,6 +80,7 @@ function AppRoutes() {
           <Route path="/dashboard/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsWrapper /></ProtectedRoute>} />
           <Route path="/dashboard/links" element={<ProtectedRoute><Links /></ProtectedRoute>} />
+          <Route path="/dashboard/teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -92,12 +94,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <AuthProvider>
-          <ToastProvider>
-            <ActivityMonitor>
-              <SearchHandler />
-              <AppRoutes />
-            </ActivityMonitor>
-          </ToastProvider>
+          <PermissionProvider>
+            <ToastProvider>
+              <ActivityMonitor>
+                <SearchHandler />
+                <AppRoutes />
+              </ActivityMonitor>
+            </ToastProvider>
+          </PermissionProvider>
         </AuthProvider>
       </Router>
     </QueryClientProvider>

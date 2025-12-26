@@ -831,7 +831,346 @@ async function initializeDatabase() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_logs(event_type)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)`);
 
-    console.log('✅ All tables created/verified (including security tables)');
+    // ========================================
+    // RBAC: ROLES & PERMISSIONS TABLES
+    // ========================================
+    
+    // 18. ROLES TABLE - System roles
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        display_name VARCHAR(100) NOT NULL,
+        description TEXT,
+        is_system_role BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 19. PERMISSIONS TABLE - Granular permissions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS permissions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        display_name VARCHAR(150) NOT NULL,
+        description TEXT,
+        category VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 20. ROLE_PERMISSIONS TABLE - Maps roles to permissions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        id SERIAL PRIMARY KEY,
+        role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+        UNIQUE(role_id, permission_id)
+      )
+    `);
+    
+    // 21. USER_ROLES TABLE - Assigns roles to users
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        assigned_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, role_id)
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id)`);
+    
+    // ========================================
+    // TEAMS & ORGANIZATIONS
+    // ========================================
+    
+    // 22. TEAMS TABLE - Organizations/Teams
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS teams (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        logo_url VARCHAR(500),
+        owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        team_type VARCHAR(50) DEFAULT 'brand',
+        settings JSONB DEFAULT '{}',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams(owner_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_teams_slug ON teams(slug)`);
+    
+    // 23. TEAM_ROLES TABLE - Team-specific roles
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS team_roles (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        name VARCHAR(50) NOT NULL,
+        display_name VARCHAR(100) NOT NULL,
+        permissions JSONB DEFAULT '[]',
+        is_default BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(team_id, name)
+      )
+    `);
+    
+    // 24. TEAM_MEMBERS TABLE - Team membership
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS team_members (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        team_role_id INTEGER REFERENCES team_roles(id) ON DELETE SET NULL,
+        status VARCHAR(50) DEFAULT 'active',
+        invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        invited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        joined_at TIMESTAMP,
+        UNIQUE(team_id, user_id)
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id)`);
+    
+    // ========================================
+    // FEATURE FLAGS
+    // ========================================
+    
+    // 25. FEATURE_FLAGS TABLE - Feature toggles
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS feature_flags (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        display_name VARCHAR(150) NOT NULL,
+        description TEXT,
+        is_enabled BOOLEAN DEFAULT FALSE,
+        rollout_percentage INTEGER DEFAULT 0,
+        allowed_user_types TEXT[] DEFAULT '{}',
+        allowed_roles TEXT[] DEFAULT '{}',
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 26. USER_FEATURE_FLAGS TABLE - Per-user overrides
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_feature_flags (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        feature_flag_id INTEGER NOT NULL REFERENCES feature_flags(id) ON DELETE CASCADE,
+        is_enabled BOOLEAN NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, feature_flag_id)
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_features_user ON user_feature_flags(user_id)`);
+    
+    // ========================================
+    // SUBSCRIPTION TIERS & ENTITLEMENTS
+    // ========================================
+    
+    // 27. SUBSCRIPTION_TIERS TABLE - Plans
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS subscription_tiers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        display_name VARCHAR(100) NOT NULL,
+        description TEXT,
+        price_monthly INTEGER DEFAULT 0,
+        price_yearly INTEGER DEFAULT 0,
+        features JSONB DEFAULT '[]',
+        limits JSONB DEFAULT '{}',
+        is_active BOOLEAN DEFAULT TRUE,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 28. USER_SUBSCRIPTIONS TABLE - User subscription status
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tier_id INTEGER NOT NULL REFERENCES subscription_tiers(id),
+        status VARCHAR(50) DEFAULT 'active',
+        billing_cycle VARCHAR(20) DEFAULT 'monthly',
+        current_period_start TIMESTAMP,
+        current_period_end TIMESTAMP,
+        stripe_subscription_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_user_subs_user ON user_subscriptions(user_id)`);
+    
+    // 29. ENTITLEMENTS TABLE - Feature entitlements per tier
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS entitlements (
+        id SERIAL PRIMARY KEY,
+        tier_id INTEGER NOT NULL REFERENCES subscription_tiers(id) ON DELETE CASCADE,
+        feature_name VARCHAR(100) NOT NULL,
+        limit_value INTEGER,
+        is_unlimited BOOLEAN DEFAULT FALSE,
+        metadata JSONB DEFAULT '{}',
+        UNIQUE(tier_id, feature_name)
+      )
+    `);
+    
+    // ========================================
+    // SEED DEFAULT ROLES & PERMISSIONS
+    // ========================================
+    
+    // Insert default system roles
+    await client.query(`
+      INSERT INTO roles (name, display_name, description, is_system_role) VALUES
+        ('admin', 'Administrator', 'Full system access', TRUE),
+        ('creator', 'Creator', 'Content creator / influencer', TRUE),
+        ('brand', 'Brand', 'Brand or business account', TRUE),
+        ('agency', 'Agency', 'Agency managing multiple creators or brands', TRUE),
+        ('moderator', 'Moderator', 'Content and community moderation', TRUE)
+      ON CONFLICT (name) DO NOTHING
+    `);
+    
+    // Insert default permissions
+    await client.query(`
+      INSERT INTO permissions (name, display_name, description, category) VALUES
+        -- User permissions
+        ('users.view', 'View Users', 'View user profiles', 'users'),
+        ('users.edit', 'Edit Users', 'Edit user profiles', 'users'),
+        ('users.delete', 'Delete Users', 'Delete user accounts', 'users'),
+        ('users.manage_roles', 'Manage User Roles', 'Assign and remove user roles', 'users'),
+        
+        -- Campaign permissions
+        ('campaigns.view', 'View Campaigns', 'View campaigns', 'campaigns'),
+        ('campaigns.create', 'Create Campaigns', 'Create new campaigns', 'campaigns'),
+        ('campaigns.edit', 'Edit Campaigns', 'Edit campaign details', 'campaigns'),
+        ('campaigns.delete', 'Delete Campaigns', 'Delete campaigns', 'campaigns'),
+        ('campaigns.manage_participants', 'Manage Participants', 'Add/remove campaign participants', 'campaigns'),
+        
+        -- Opportunity permissions
+        ('opportunities.view', 'View Opportunities', 'View opportunities', 'opportunities'),
+        ('opportunities.create', 'Create Opportunities', 'Post new opportunities', 'opportunities'),
+        ('opportunities.edit', 'Edit Opportunities', 'Edit opportunity details', 'opportunities'),
+        ('opportunities.delete', 'Delete Opportunities', 'Delete opportunities', 'opportunities'),
+        
+        -- Team permissions
+        ('teams.view', 'View Teams', 'View team information', 'teams'),
+        ('teams.create', 'Create Teams', 'Create new teams', 'teams'),
+        ('teams.edit', 'Edit Teams', 'Edit team settings', 'teams'),
+        ('teams.delete', 'Delete Teams', 'Delete teams', 'teams'),
+        ('teams.manage_members', 'Manage Team Members', 'Add/remove team members', 'teams'),
+        
+        -- Payment permissions
+        ('payments.view', 'View Payments', 'View payment history', 'payments'),
+        ('payments.create', 'Create Payments', 'Initiate payments', 'payments'),
+        ('payments.manage', 'Manage Payments', 'Full payment management', 'payments'),
+        
+        -- Analytics permissions
+        ('analytics.view', 'View Analytics', 'View analytics dashboards', 'analytics'),
+        ('analytics.export', 'Export Analytics', 'Export analytics data', 'analytics'),
+        
+        -- Admin permissions
+        ('admin.dashboard', 'Admin Dashboard', 'Access admin dashboard', 'admin'),
+        ('admin.settings', 'Admin Settings', 'Manage system settings', 'admin'),
+        ('admin.feature_flags', 'Manage Feature Flags', 'Enable/disable features', 'admin'),
+        ('admin.audit_logs', 'View Audit Logs', 'Access security audit logs', 'admin')
+      ON CONFLICT (name) DO NOTHING
+    `);
+    
+    // Assign permissions to admin role
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'admin'
+      ON CONFLICT DO NOTHING
+    `);
+    
+    // Assign permissions to creator role
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      SELECT r.id, p.id FROM roles r, permissions p 
+      WHERE r.name = 'creator' 
+      AND p.name IN ('opportunities.view', 'campaigns.view', 'payments.view', 'analytics.view', 'teams.view')
+      ON CONFLICT DO NOTHING
+    `);
+    
+    // Assign permissions to brand role
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      SELECT r.id, p.id FROM roles r, permissions p 
+      WHERE r.name = 'brand' 
+      AND p.name IN (
+        'opportunities.view', 'opportunities.create', 'opportunities.edit', 'opportunities.delete',
+        'campaigns.view', 'campaigns.create', 'campaigns.edit', 'campaigns.manage_participants',
+        'payments.view', 'payments.create', 'analytics.view', 'analytics.export',
+        'teams.view', 'teams.create', 'teams.edit', 'teams.manage_members'
+      )
+      ON CONFLICT DO NOTHING
+    `);
+    
+    // Assign permissions to agency role
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      SELECT r.id, p.id FROM roles r, permissions p 
+      WHERE r.name = 'agency' 
+      AND p.name IN (
+        'users.view', 'opportunities.view', 'opportunities.create', 'opportunities.edit',
+        'campaigns.view', 'campaigns.create', 'campaigns.edit', 'campaigns.manage_participants',
+        'payments.view', 'payments.create', 'payments.manage', 'analytics.view', 'analytics.export',
+        'teams.view', 'teams.create', 'teams.edit', 'teams.delete', 'teams.manage_members'
+      )
+      ON CONFLICT DO NOTHING
+    `);
+    
+    // Insert default subscription tiers
+    await client.query(`
+      INSERT INTO subscription_tiers (name, display_name, description, price_monthly, price_yearly, features, limits, sort_order) VALUES
+        ('free', 'Free', 'Basic features for getting started', 0, 0, 
+         '["Basic profile", "Apply to opportunities", "5 applications/month", "Basic analytics"]'::jsonb,
+         '{"applications_per_month": 5, "campaigns": 1, "team_members": 1, "storage_mb": 100}'::jsonb, 0),
+        ('starter', 'Starter', 'Essential tools for growing creators', 1900, 19000,
+         '["Everything in Free", "Unlimited applications", "Advanced analytics", "Priority support", "Custom media kit"]'::jsonb,
+         '{"applications_per_month": -1, "campaigns": 5, "team_members": 3, "storage_mb": 1000}'::jsonb, 1),
+        ('pro', 'Pro', 'Professional tools for serious creators', 4900, 49000,
+         '["Everything in Starter", "Team collaboration", "API access", "White-label options", "Dedicated support"]'::jsonb,
+         '{"applications_per_month": -1, "campaigns": 25, "team_members": 10, "storage_mb": 10000}'::jsonb, 2),
+        ('enterprise', 'Enterprise', 'Custom solutions for agencies and brands', 0, 0,
+         '["Everything in Pro", "Custom integrations", "Unlimited everything", "SLA guarantee", "Account manager"]'::jsonb,
+         '{"applications_per_month": -1, "campaigns": -1, "team_members": -1, "storage_mb": -1}'::jsonb, 3)
+      ON CONFLICT (name) DO NOTHING
+    `);
+    
+    // Insert default entitlements
+    await client.query(`
+      INSERT INTO entitlements (tier_id, feature_name, limit_value, is_unlimited) 
+      SELECT t.id, 'campaigns', 1, FALSE FROM subscription_tiers t WHERE t.name = 'free'
+      ON CONFLICT DO NOTHING
+    `);
+    
+    // Insert default feature flags
+    await client.query(`
+      INSERT INTO feature_flags (name, display_name, description, is_enabled, allowed_user_types) VALUES
+        ('smart_contracts', 'Smart Contract Escrow', 'Enable blockchain escrow for campaigns', FALSE, '{"brand", "agency"}'::text[]),
+        ('ai_matching', 'AI Creator Matching', 'AI-powered brand-creator matching', FALSE, '{"brand", "agency"}'::text[]),
+        ('advanced_analytics', 'Advanced Analytics', 'Detailed performance analytics', TRUE, '{"creator", "brand", "agency"}'::text[]),
+        ('team_collaboration', 'Team Collaboration', 'Multi-user team features', TRUE, '{"brand", "agency"}'::text[]),
+        ('api_access', 'API Access', 'External API access', FALSE, '{"brand", "agency"}'::text[]),
+        ('white_label', 'White Label', 'Custom branding options', FALSE, '{"agency"}'::text[]),
+        ('bulk_messaging', 'Bulk Messaging', 'Send messages to multiple users', FALSE, '{"brand", "agency"}'::text[]),
+        ('calendar_integration', 'Calendar Integration', 'Sync with external calendars', TRUE, '{"creator", "brand", "agency"}'::text[])
+      ON CONFLICT (name) DO NOTHING
+    `);
+
+    console.log('✅ All tables created/verified (including RBAC & permissions)');
 
     // Insert sample opportunities if none exist
     const existingOpportunities = await client.query('SELECT COUNT(*) FROM opportunities');
@@ -916,6 +1255,387 @@ const authenticateTokenFlexible = (req, res, next) => {
     next();
   });
 };
+
+// ============================================
+// RBAC: Permission & Role Middleware
+// ============================================
+
+// Check if user has specific permission(s)
+const requirePermission = (...requiredPermissions) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user.userId;
+      
+      // Get user's permissions through their roles
+      const result = await pool.query(`
+        SELECT DISTINCT p.name 
+        FROM permissions p
+        JOIN role_permissions rp ON p.id = rp.permission_id
+        JOIN user_roles ur ON rp.role_id = ur.role_id
+        WHERE ur.user_id = $1
+      `, [userId]);
+      
+      const userPermissions = result.rows.map(r => r.name);
+      
+      // Check if user has all required permissions
+      const hasAllPermissions = requiredPermissions.every(perm => 
+        userPermissions.includes(perm)
+      );
+      
+      if (!hasAllPermissions) {
+        return res.status(403).json({ 
+          error: 'Insufficient permissions',
+          required: requiredPermissions,
+          message: 'You do not have permission to perform this action'
+        });
+      }
+      
+      req.userPermissions = userPermissions;
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error);
+      res.status(500).json({ error: 'Permission verification failed' });
+    }
+  };
+};
+
+// Check if user has any of the specified permissions
+const requireAnyPermission = (...requiredPermissions) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user.userId;
+      
+      const result = await pool.query(`
+        SELECT DISTINCT p.name 
+        FROM permissions p
+        JOIN role_permissions rp ON p.id = rp.permission_id
+        JOIN user_roles ur ON rp.role_id = ur.role_id
+        WHERE ur.user_id = $1
+      `, [userId]);
+      
+      const userPermissions = result.rows.map(r => r.name);
+      
+      const hasAnyPermission = requiredPermissions.some(perm => 
+        userPermissions.includes(perm)
+      );
+      
+      if (!hasAnyPermission) {
+        return res.status(403).json({ 
+          error: 'Insufficient permissions',
+          required: requiredPermissions,
+          message: 'You do not have permission to perform this action'
+        });
+      }
+      
+      req.userPermissions = userPermissions;
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error);
+      res.status(500).json({ error: 'Permission verification failed' });
+    }
+  };
+};
+
+// Check if user has specific role(s)
+const requireRole = (...requiredRoles) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user.userId;
+      
+      const result = await pool.query(`
+        SELECT r.name 
+        FROM roles r
+        JOIN user_roles ur ON r.id = ur.role_id
+        WHERE ur.user_id = $1
+      `, [userId]);
+      
+      const userRoles = result.rows.map(r => r.name);
+      
+      // Also check user_type from JWT for backward compatibility
+      if (req.user.userType) {
+        userRoles.push(req.user.userType);
+      }
+      
+      const hasRequiredRole = requiredRoles.some(role => 
+        userRoles.includes(role)
+      );
+      
+      if (!hasRequiredRole) {
+        return res.status(403).json({ 
+          error: 'Insufficient role',
+          required: requiredRoles,
+          message: 'You do not have the required role to perform this action'
+        });
+      }
+      
+      req.userRoles = userRoles;
+      next();
+    } catch (error) {
+      console.error('Role check error:', error);
+      res.status(500).json({ error: 'Role verification failed' });
+    }
+  };
+};
+
+// Check if user is team member with specific role
+const requireTeamRole = (teamIdParam, ...requiredTeamRoles) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user.userId;
+      const teamId = req.params[teamIdParam] || req.body.teamId;
+      
+      if (!teamId) {
+        return res.status(400).json({ error: 'Team ID required' });
+      }
+      
+      const result = await pool.query(`
+        SELECT tm.*, tr.name as role_name, tr.permissions as role_permissions, t.owner_id
+        FROM team_members tm
+        LEFT JOIN team_roles tr ON tm.team_role_id = tr.id
+        JOIN teams t ON tm.team_id = t.id
+        WHERE tm.team_id = $1 AND tm.user_id = $2 AND tm.status = 'active'
+      `, [teamId, userId]);
+      
+      if (result.rows.length === 0) {
+        // Check if user is team owner
+        const ownerCheck = await pool.query(
+          'SELECT id FROM teams WHERE id = $1 AND owner_id = $2',
+          [teamId, userId]
+        );
+        
+        if (ownerCheck.rows.length === 0) {
+          return res.status(403).json({ 
+            error: 'Not a team member',
+            message: 'You are not a member of this team'
+          });
+        }
+        
+        // Owner has all permissions
+        req.teamMember = { isOwner: true, permissions: ['*'] };
+        return next();
+      }
+      
+      const member = result.rows[0];
+      const roleName = member.role_name || 'member';
+      
+      if (requiredTeamRoles.length > 0 && !requiredTeamRoles.includes(roleName) && !requiredTeamRoles.includes('*')) {
+        return res.status(403).json({ 
+          error: 'Insufficient team role',
+          required: requiredTeamRoles,
+          message: 'You do not have the required team role'
+        });
+      }
+      
+      req.teamMember = {
+        ...member,
+        permissions: member.role_permissions || []
+      };
+      next();
+    } catch (error) {
+      console.error('Team role check error:', error);
+      res.status(500).json({ error: 'Team role verification failed' });
+    }
+  };
+};
+
+// Check if feature flag is enabled for user
+const requireFeatureFlag = (featureName) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user?.userId;
+      const userType = req.user?.userType;
+      
+      // Check user-specific override first
+      if (userId) {
+        const userOverride = await pool.query(`
+          SELECT uff.is_enabled 
+          FROM user_feature_flags uff
+          JOIN feature_flags ff ON uff.feature_flag_id = ff.id
+          WHERE ff.name = $1 AND uff.user_id = $2
+        `, [featureName, userId]);
+        
+        if (userOverride.rows.length > 0) {
+          if (!userOverride.rows[0].is_enabled) {
+            return res.status(403).json({ 
+              error: 'Feature not available',
+              feature: featureName,
+              message: 'This feature is not enabled for your account'
+            });
+          }
+          return next();
+        }
+      }
+      
+      // Check global feature flag
+      const flagResult = await pool.query(`
+        SELECT * FROM feature_flags WHERE name = $1
+      `, [featureName]);
+      
+      if (flagResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Feature not found' });
+      }
+      
+      const flag = flagResult.rows[0];
+      
+      // Check if globally disabled
+      if (!flag.is_enabled) {
+        return res.status(403).json({ 
+          error: 'Feature not available',
+          feature: featureName,
+          message: 'This feature is currently disabled'
+        });
+      }
+      
+      // Check user type restriction
+      if (flag.allowed_user_types && flag.allowed_user_types.length > 0) {
+        if (!flag.allowed_user_types.includes(userType)) {
+          return res.status(403).json({ 
+            error: 'Feature not available',
+            feature: featureName,
+            message: 'This feature is not available for your account type'
+          });
+        }
+      }
+      
+      // Check rollout percentage
+      if (flag.rollout_percentage > 0 && flag.rollout_percentage < 100 && userId) {
+        const hash = crypto.createHash('md5').update(`${userId}-${featureName}`).digest('hex');
+        const userBucket = parseInt(hash.substring(0, 8), 16) % 100;
+        
+        if (userBucket >= flag.rollout_percentage) {
+          return res.status(403).json({ 
+            error: 'Feature not available',
+            feature: featureName,
+            message: 'This feature is being rolled out gradually'
+          });
+        }
+      }
+      
+      req.featureFlag = flag;
+      next();
+    } catch (error) {
+      console.error('Feature flag check error:', error);
+      res.status(500).json({ error: 'Feature flag verification failed' });
+    }
+  };
+};
+
+// Check subscription entitlement
+const requireEntitlement = (featureName, requiredLimit = null) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user.userId;
+      
+      // Get user's subscription and entitlements
+      const result = await pool.query(`
+        SELECT st.*, us.status as subscription_status, e.limit_value, e.is_unlimited
+        FROM user_subscriptions us
+        JOIN subscription_tiers st ON us.tier_id = st.id
+        LEFT JOIN entitlements e ON st.id = e.tier_id AND e.feature_name = $2
+        WHERE us.user_id = $1 AND us.status = 'active'
+      `, [userId, featureName]);
+      
+      // Default to free tier if no subscription
+      if (result.rows.length === 0) {
+        const freeTier = await pool.query(`
+          SELECT st.*, e.limit_value, e.is_unlimited
+          FROM subscription_tiers st
+          LEFT JOIN entitlements e ON st.id = e.tier_id AND e.feature_name = $1
+          WHERE st.name = 'free'
+        `, [featureName]);
+        
+        if (freeTier.rows.length > 0) {
+          req.subscription = { tier: 'free', ...freeTier.rows[0] };
+        } else {
+          req.subscription = { tier: 'free', limit_value: 0, is_unlimited: false };
+        }
+      } else {
+        req.subscription = result.rows[0];
+      }
+      
+      const { limit_value, is_unlimited } = req.subscription;
+      
+      // Check if feature is available at this tier
+      if (!is_unlimited && limit_value === null) {
+        return res.status(403).json({ 
+          error: 'Feature not available',
+          feature: featureName,
+          message: 'Upgrade your subscription to access this feature'
+        });
+      }
+      
+      // Check limit if required
+      if (requiredLimit !== null && !is_unlimited && limit_value !== null) {
+        if (requiredLimit > limit_value) {
+          return res.status(403).json({ 
+            error: 'Limit exceeded',
+            feature: featureName,
+            limit: limit_value,
+            requested: requiredLimit,
+            message: 'You have reached the limit for this feature. Upgrade to increase your limit.'
+          });
+        }
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Entitlement check error:', error);
+      res.status(500).json({ error: 'Entitlement verification failed' });
+    }
+  };
+};
+
+// Helper: Get all user permissions
+async function getUserPermissions(userId) {
+  const result = await pool.query(`
+    SELECT DISTINCT p.name, p.display_name, p.category
+    FROM permissions p
+    JOIN role_permissions rp ON p.id = rp.permission_id
+    JOIN user_roles ur ON rp.role_id = ur.role_id
+    WHERE ur.user_id = $1
+  `, [userId]);
+  return result.rows;
+}
+
+// Helper: Get all user roles
+async function getUserRoles(userId) {
+  const result = await pool.query(`
+    SELECT r.name, r.display_name, r.description
+    FROM roles r
+    JOIN user_roles ur ON r.id = ur.role_id
+    WHERE ur.user_id = $1
+  `, [userId]);
+  return result.rows;
+}
+
+// Helper: Check feature flag status
+async function isFeatureEnabled(featureName, userId = null, userType = null) {
+  // Check user override
+  if (userId) {
+    const override = await pool.query(`
+      SELECT uff.is_enabled 
+      FROM user_feature_flags uff
+      JOIN feature_flags ff ON uff.feature_flag_id = ff.id
+      WHERE ff.name = $1 AND uff.user_id = $2
+    `, [featureName, userId]);
+    
+    if (override.rows.length > 0) {
+      return override.rows[0].is_enabled;
+    }
+  }
+  
+  // Check global flag
+  const flag = await pool.query('SELECT * FROM feature_flags WHERE name = $1', [featureName]);
+  if (flag.rows.length === 0) return false;
+  
+  const f = flag.rows[0];
+  if (!f.is_enabled) return false;
+  if (f.allowed_user_types?.length > 0 && userType && !f.allowed_user_types.includes(userType)) {
+    return false;
+  }
+  
+  return true;
+}
 
 // ============================================
 // OAUTH HELPER FUNCTIONS
@@ -4112,6 +4832,743 @@ app.get('/api/payments/history', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get payment history error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// RBAC: ROLES & PERMISSIONS API
+// ============================================
+
+// Get current user's permissions and roles
+app.get('/api/auth/permissions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get user roles
+    const roles = await getUserRoles(userId);
+    
+    // Get user permissions
+    const permissions = await getUserPermissions(userId);
+    
+    // Get user's teams
+    const teams = await pool.query(`
+      SELECT t.*, tm.team_role_id, tr.name as role_name, tr.permissions as role_permissions
+      FROM teams t
+      JOIN team_members tm ON t.id = tm.team_id
+      LEFT JOIN team_roles tr ON tm.team_role_id = tr.id
+      WHERE tm.user_id = $1 AND tm.status = 'active'
+      UNION
+      SELECT t.*, NULL as team_role_id, 'owner' as role_name, '["*"]'::jsonb as role_permissions
+      FROM teams t WHERE t.owner_id = $1
+    `, [userId]);
+    
+    // Get subscription info
+    const subscription = await pool.query(`
+      SELECT st.*, us.status, us.current_period_end
+      FROM user_subscriptions us
+      JOIN subscription_tiers st ON us.tier_id = st.id
+      WHERE us.user_id = $1
+    `, [userId]);
+    
+    // Get enabled feature flags
+    const features = await pool.query(`
+      SELECT ff.name, ff.display_name,
+        CASE 
+          WHEN uff.is_enabled IS NOT NULL THEN uff.is_enabled
+          ELSE ff.is_enabled
+        END as is_enabled
+      FROM feature_flags ff
+      LEFT JOIN user_feature_flags uff ON ff.id = uff.feature_flag_id AND uff.user_id = $1
+      WHERE ff.is_enabled = TRUE OR uff.is_enabled = TRUE
+    `, [userId]);
+    
+    res.json({
+      success: true,
+      roles: roles.map(r => r.name),
+      rolesDetail: roles,
+      permissions: permissions.map(p => p.name),
+      permissionsDetail: permissions,
+      teams: teams.rows,
+      subscription: subscription.rows[0] || { tier: 'free' },
+      features: features.rows.filter(f => f.is_enabled).map(f => f.name)
+    });
+  } catch (error) {
+    console.error('Get permissions error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// TEAMS API
+// ============================================
+
+// Get user's teams
+app.get('/api/teams', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT t.*, tm.team_role_id, tr.name as role_name, 
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id AND status = 'active') as member_count
+      FROM teams t
+      LEFT JOIN team_members tm ON t.id = tm.team_id AND tm.user_id = $1
+      LEFT JOIN team_roles tr ON tm.team_role_id = tr.id
+      WHERE tm.user_id = $1 OR t.owner_id = $1
+      ORDER BY t.created_at DESC
+    `, [req.user.userId]);
+    
+    res.json({
+      success: true,
+      teams: result.rows
+    });
+  } catch (error) {
+    console.error('Get teams error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a team
+app.post('/api/teams', authenticateToken, async (req, res) => {
+  try {
+    const { name, description, teamType } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Team name is required' });
+    }
+    
+    // Generate slug
+    const slug = name.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+    
+    const result = await pool.query(`
+      INSERT INTO teams (name, slug, description, team_type, owner_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [name, slug, description, teamType || 'brand', req.user.userId]);
+    
+    // Create default roles for the team
+    await pool.query(`
+      INSERT INTO team_roles (team_id, name, display_name, permissions, is_default) VALUES
+        ($1, 'admin', 'Administrator', '["*"]'::jsonb, FALSE),
+        ($1, 'manager', 'Manager', '["campaigns.manage", "members.view", "analytics.view"]'::jsonb, FALSE),
+        ($1, 'member', 'Member', '["campaigns.view", "analytics.view"]'::jsonb, TRUE)
+    `, [result.rows[0].id]);
+    
+    // Log audit event
+    await logAuditEvent(pool, 'TEAM_CREATED', req.user.userId, { teamId: result.rows[0].id, name }, req.ip);
+    
+    res.json({
+      success: true,
+      team: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Create team error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get team details
+app.get('/api/teams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if user is member or owner
+    const accessCheck = await pool.query(`
+      SELECT 1 FROM teams WHERE id = $1 AND owner_id = $2
+      UNION
+      SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2 AND status = 'active'
+    `, [id, req.user.userId]);
+    
+    if (accessCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const team = await pool.query('SELECT * FROM teams WHERE id = $1', [id]);
+    
+    if (team.rows.length === 0) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    
+    // Get team members
+    const members = await pool.query(`
+      SELECT tm.*, u.name, u.email, u.avatar_url, tr.name as role_name, tr.display_name as role_display
+      FROM team_members tm
+      JOIN users u ON tm.user_id = u.id
+      LEFT JOIN team_roles tr ON tm.team_role_id = tr.id
+      WHERE tm.team_id = $1
+      ORDER BY tm.joined_at DESC
+    `, [id]);
+    
+    // Get team roles
+    const roles = await pool.query('SELECT * FROM team_roles WHERE team_id = $1', [id]);
+    
+    res.json({
+      success: true,
+      team: team.rows[0],
+      members: members.rows,
+      roles: roles.rows,
+      isOwner: team.rows[0].owner_id === req.user.userId
+    });
+  } catch (error) {
+    console.error('Get team error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update team
+app.put('/api/teams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, logoUrl, settings } = req.body;
+    
+    // Verify ownership
+    const team = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [id]);
+    if (team.rows.length === 0 || team.rows[0].owner_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE teams SET
+        name = COALESCE($1, name),
+        description = COALESCE($2, description),
+        logo_url = COALESCE($3, logo_url),
+        settings = COALESCE($4, settings),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [name, description, logoUrl, settings ? JSON.stringify(settings) : null, id]);
+    
+    res.json({
+      success: true,
+      team: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update team error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete team
+app.delete('/api/teams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify ownership
+    const team = await pool.query('SELECT owner_id, name FROM teams WHERE id = $1', [id]);
+    if (team.rows.length === 0 || team.rows[0].owner_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await pool.query('DELETE FROM teams WHERE id = $1', [id]);
+    
+    // Log audit event
+    await logAuditEvent(pool, 'TEAM_DELETED', req.user.userId, { teamId: id, name: team.rows[0].name }, req.ip);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete team error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Invite user to team
+app.post('/api/teams/:id/invite', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, roleId } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    // Verify ownership or admin role
+    const accessCheck = await pool.query(`
+      SELECT 1 FROM teams WHERE id = $1 AND owner_id = $2
+      UNION
+      SELECT 1 FROM team_members tm 
+      JOIN team_roles tr ON tm.team_role_id = tr.id 
+      WHERE tm.team_id = $1 AND tm.user_id = $2 AND tr.name = 'admin'
+    `, [id, req.user.userId]);
+    
+    if (accessCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Find user by email
+    const user = await pool.query('SELECT id, name FROM users WHERE email = $1', [email.toLowerCase()]);
+    
+    if (user.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found. They must create an account first.' });
+    }
+    
+    const invitedUserId = user.rows[0].id;
+    
+    // Check if already a member
+    const existingMember = await pool.query(
+      'SELECT status FROM team_members WHERE team_id = $1 AND user_id = $2',
+      [id, invitedUserId]
+    );
+    
+    if (existingMember.rows.length > 0) {
+      if (existingMember.rows[0].status === 'active') {
+        return res.status(400).json({ error: 'User is already a team member' });
+      }
+      // Update existing invitation
+      await pool.query(`
+        UPDATE team_members SET status = 'invited', invited_at = CURRENT_TIMESTAMP, invited_by = $1
+        WHERE team_id = $2 AND user_id = $3
+      `, [req.user.userId, id, invitedUserId]);
+    } else {
+      // Get default role if none specified
+      let teamRoleId = roleId;
+      if (!teamRoleId) {
+        const defaultRole = await pool.query(
+          'SELECT id FROM team_roles WHERE team_id = $1 AND is_default = TRUE',
+          [id]
+        );
+        teamRoleId = defaultRole.rows[0]?.id;
+      }
+      
+      // Create invitation
+      await pool.query(`
+        INSERT INTO team_members (team_id, user_id, team_role_id, status, invited_by)
+        VALUES ($1, $2, $3, 'invited', $4)
+      `, [id, invitedUserId, teamRoleId, req.user.userId]);
+    }
+    
+    // Get team name for notification
+    const team = await pool.query('SELECT name FROM teams WHERE id = $1', [id]);
+    
+    // Create notification
+    await pool.query(`
+      INSERT INTO notifications (user_id, type, title, content, link)
+      VALUES ($1, 'team', 'Team Invitation', $2, '/dashboard/teams')
+    `, [invitedUserId, `You've been invited to join "${team.rows[0].name}"`]);
+    
+    res.json({
+      success: true,
+      message: `Invitation sent to ${user.rows[0].name}`
+    });
+  } catch (error) {
+    console.error('Team invite error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Accept/decline team invitation
+app.put('/api/teams/:id/respond', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { accept } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE team_members
+      SET status = $1, joined_at = $2
+      WHERE team_id = $3 AND user_id = $4 AND status = 'invited'
+      RETURNING *
+    `, [accept ? 'active' : 'declined', accept ? new Date() : null, id, req.user.userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+    
+    res.json({
+      success: true,
+      member: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Team respond error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Remove team member
+app.delete('/api/teams/:teamId/members/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, userId } = req.params;
+    
+    // Verify ownership or admin
+    const team = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [teamId]);
+    if (team.rows.length === 0) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    
+    // Can't remove owner
+    if (parseInt(userId) === team.rows[0].owner_id) {
+      return res.status(400).json({ error: 'Cannot remove team owner' });
+    }
+    
+    // Check access
+    const isOwner = team.rows[0].owner_id === req.user.userId;
+    const isSelf = parseInt(userId) === req.user.userId;
+    
+    if (!isOwner && !isSelf) {
+      // Check if admin
+      const adminCheck = await pool.query(`
+        SELECT 1 FROM team_members tm
+        JOIN team_roles tr ON tm.team_role_id = tr.id
+        WHERE tm.team_id = $1 AND tm.user_id = $2 AND tr.name = 'admin'
+      `, [teamId, req.user.userId]);
+      
+      if (adminCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+    
+    await pool.query('DELETE FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove team member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update team member role
+app.put('/api/teams/:teamId/members/:userId/role', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, userId } = req.params;
+    const { roleId } = req.body;
+    
+    // Verify ownership
+    const team = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [teamId]);
+    if (team.rows.length === 0 || team.rows[0].owner_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Only team owner can change roles' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE team_members SET team_role_id = $1 WHERE team_id = $2 AND user_id = $3 RETURNING *
+    `, [roleId, teamId, userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+    
+    res.json({
+      success: true,
+      member: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update member role error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// FEATURE FLAGS API
+// ============================================
+
+// Get all feature flags (for current user)
+app.get('/api/features', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userType = req.user.userType;
+    
+    const result = await pool.query(`
+      SELECT ff.*,
+        CASE 
+          WHEN uff.is_enabled IS NOT NULL THEN uff.is_enabled
+          ELSE ff.is_enabled
+        END as user_enabled
+      FROM feature_flags ff
+      LEFT JOIN user_feature_flags uff ON ff.id = uff.feature_flag_id AND uff.user_id = $1
+      ORDER BY ff.name
+    `, [userId]);
+    
+    // Filter based on user type
+    const features = result.rows.map(f => ({
+      name: f.name,
+      displayName: f.display_name,
+      description: f.description,
+      isEnabled: f.user_enabled && 
+        (f.allowed_user_types.length === 0 || f.allowed_user_types.includes(userType)),
+      metadata: f.metadata
+    }));
+    
+    res.json({
+      success: true,
+      features
+    });
+  } catch (error) {
+    console.error('Get features error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Check specific feature flag
+app.get('/api/features/:name', authenticateToken, async (req, res) => {
+  try {
+    const { name } = req.params;
+    const isEnabled = await isFeatureEnabled(name, req.user.userId, req.user.userType);
+    
+    res.json({
+      success: true,
+      feature: name,
+      isEnabled
+    });
+  } catch (error) {
+    console.error('Check feature error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin: Manage feature flags
+app.put('/api/admin/features/:name', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { name } = req.params;
+    const { isEnabled, rolloutPercentage, allowedUserTypes, allowedRoles, metadata } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE feature_flags SET
+        is_enabled = COALESCE($1, is_enabled),
+        rollout_percentage = COALESCE($2, rollout_percentage),
+        allowed_user_types = COALESCE($3, allowed_user_types),
+        allowed_roles = COALESCE($4, allowed_roles),
+        metadata = COALESCE($5, metadata),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE name = $6
+      RETURNING *
+    `, [isEnabled, rolloutPercentage, allowedUserTypes, allowedRoles, metadata ? JSON.stringify(metadata) : null, name]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Feature flag not found' });
+    }
+    
+    await logAuditEvent(pool, 'FEATURE_FLAG_UPDATED', req.user.userId, { feature: name, isEnabled }, req.ip);
+    
+    res.json({
+      success: true,
+      feature: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update feature error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// SUBSCRIPTION API
+// ============================================
+
+// Get subscription tiers
+app.get('/api/subscriptions/tiers', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT * FROM subscription_tiers WHERE is_active = TRUE ORDER BY sort_order
+    `);
+    
+    res.json({
+      success: true,
+      tiers: result.rows
+    });
+  } catch (error) {
+    console.error('Get tiers error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user's subscription
+app.get('/api/subscriptions/me', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT us.*, st.name as tier_name, st.display_name as tier_display, st.features, st.limits
+      FROM user_subscriptions us
+      JOIN subscription_tiers st ON us.tier_id = st.id
+      WHERE us.user_id = $1
+    `, [req.user.userId]);
+    
+    if (result.rows.length === 0) {
+      // Return free tier
+      const freeTier = await pool.query(`
+        SELECT * FROM subscription_tiers WHERE name = 'free'
+      `);
+      
+      return res.json({
+        success: true,
+        subscription: {
+          tier: 'free',
+          ...freeTier.rows[0]
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      subscription: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Get subscription error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Check entitlement
+app.get('/api/subscriptions/entitlement/:feature', authenticateToken, async (req, res) => {
+  try {
+    const { feature } = req.params;
+    
+    // Get user's subscription and entitlement
+    const result = await pool.query(`
+      SELECT st.name as tier, e.limit_value, e.is_unlimited, st.limits
+      FROM user_subscriptions us
+      JOIN subscription_tiers st ON us.tier_id = st.id
+      LEFT JOIN entitlements e ON st.id = e.tier_id AND e.feature_name = $2
+      WHERE us.user_id = $1 AND us.status = 'active'
+    `, [req.user.userId, feature]);
+    
+    if (result.rows.length === 0) {
+      // Default to free tier limits
+      const freeTier = await pool.query(`
+        SELECT st.limits, e.limit_value, e.is_unlimited
+        FROM subscription_tiers st
+        LEFT JOIN entitlements e ON st.id = e.tier_id AND e.feature_name = $1
+        WHERE st.name = 'free'
+      `, [feature]);
+      
+      const limits = freeTier.rows[0]?.limits || {};
+      
+      return res.json({
+        success: true,
+        feature,
+        tier: 'free',
+        limit: freeTier.rows[0]?.limit_value || limits[feature] || 0,
+        isUnlimited: freeTier.rows[0]?.is_unlimited || false
+      });
+    }
+    
+    const sub = result.rows[0];
+    const limits = sub.limits || {};
+    
+    res.json({
+      success: true,
+      feature,
+      tier: sub.tier,
+      limit: sub.limit_value !== null ? sub.limit_value : (limits[feature] || null),
+      isUnlimited: sub.is_unlimited || limits[feature] === -1
+    });
+  } catch (error) {
+    console.error('Check entitlement error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// ADMIN: ROLE MANAGEMENT API
+// ============================================
+
+// Get all roles (admin only)
+app.get('/api/admin/roles', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const roles = await pool.query(`
+      SELECT r.*, 
+        (SELECT COUNT(*) FROM user_roles WHERE role_id = r.id) as user_count,
+        (SELECT array_agg(p.name) FROM permissions p 
+         JOIN role_permissions rp ON p.id = rp.permission_id 
+         WHERE rp.role_id = r.id) as permissions
+      FROM roles r
+      ORDER BY r.name
+    `);
+    
+    res.json({
+      success: true,
+      roles: roles.rows
+    });
+  } catch (error) {
+    console.error('Get roles error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all permissions (admin only)
+app.get('/api/admin/permissions', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const permissions = await pool.query(`
+      SELECT * FROM permissions ORDER BY category, name
+    `);
+    
+    // Group by category
+    const grouped = permissions.rows.reduce((acc, p) => {
+      if (!acc[p.category]) acc[p.category] = [];
+      acc[p.category].push(p);
+      return acc;
+    }, {});
+    
+    res.json({
+      success: true,
+      permissions: permissions.rows,
+      grouped
+    });
+  } catch (error) {
+    console.error('Get permissions error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Assign role to user (admin only)
+app.post('/api/admin/users/:userId/roles', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { roleId, roleName } = req.body;
+    
+    let finalRoleId = roleId;
+    if (!roleId && roleName) {
+      const role = await pool.query('SELECT id FROM roles WHERE name = $1', [roleName]);
+      if (role.rows.length === 0) {
+        return res.status(404).json({ error: 'Role not found' });
+      }
+      finalRoleId = role.rows[0].id;
+    }
+    
+    await pool.query(`
+      INSERT INTO user_roles (user_id, role_id, assigned_by)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, role_id) DO NOTHING
+    `, [userId, finalRoleId, req.user.userId]);
+    
+    await logAuditEvent(pool, 'USER_ROLE_ASSIGNED', req.user.userId, { targetUserId: userId, roleId: finalRoleId }, req.ip);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Assign role error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Remove role from user (admin only)
+app.delete('/api/admin/users/:userId/roles/:roleId', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId, roleId } = req.params;
+    
+    await pool.query('DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2', [userId, roleId]);
+    
+    await logAuditEvent(pool, 'USER_ROLE_REMOVED', req.user.userId, { targetUserId: userId, roleId }, req.ip);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove role error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user's roles (admin only)
+app.get('/api/admin/users/:userId/roles', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const roles = await pool.query(`
+      SELECT r.*, ur.assigned_at, u.name as assigned_by_name
+      FROM roles r
+      JOIN user_roles ur ON r.id = ur.role_id
+      LEFT JOIN users u ON ur.assigned_by = u.id
+      WHERE ur.user_id = $1
+    `, [userId]);
+    
+    res.json({
+      success: true,
+      roles: roles.rows
+    });
+  } catch (error) {
+    console.error('Get user roles error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
