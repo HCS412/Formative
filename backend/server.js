@@ -26,6 +26,209 @@ try {
 // Centralized error handling utilities
 const { ApiError, asyncHandler, errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
+// ============================================
+// SECURITY: Rate Limiting
+// ============================================
+
+// General API rate limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict rate limiter for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 login attempts per 15 minutes
+  message: { error: 'Too many login attempts, please try again in 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful logins
+});
+
+// Very strict limiter for password reset
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 attempts per hour
+  message: { error: 'Too many password reset attempts, please try again later' },
+});
+
+// ============================================
+// SECURITY: Account Lockout Tracking
+// ============================================
+const loginAttempts = new Map(); // In production, use Redis
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+function recordFailedLogin(email) {
+  const attempts = loginAttempts.get(email) || { count: 0, firstAttempt: Date.now() };
+  attempts.count++;
+  attempts.lastAttempt = Date.now();
+  loginAttempts.set(email, attempts);
+  return attempts.count;
+}
+
+function isAccountLocked(email) {
+  const attempts = loginAttempts.get(email);
+  if (!attempts) return false;
+  
+  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+    const timeSinceLast = Date.now() - attempts.lastAttempt;
+    if (timeSinceLast > LOCKOUT_DURATION) {
+      loginAttempts.delete(email);
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function clearFailedLogins(email) {
+  loginAttempts.delete(email);
+}
+
+function getRemainingLockoutTime(email) {
+  const attempts = loginAttempts.get(email);
+  if (!attempts) return 0;
+  const remaining = LOCKOUT_DURATION - (Date.now() - attempts.lastAttempt);
+  return Math.max(0, Math.ceil(remaining / 1000 / 60));
+}
+
+// ============================================
+// SECURITY: Password Strength Validation
+// ============================================
+function validatePasswordStrength(password) {
+  const errors = [];
+  if (password.length < 8) errors.push('Password must be at least 8 characters long');
+  if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
+  if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
+  if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain at least one special character');
+  return { isValid: errors.length === 0, errors };
+}
+
+// ============================================
+// SECURITY: Input Sanitization
+// ============================================
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  return input.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').trim();
+}
+
+function sanitizeObject(obj) {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  const sanitized = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') sanitized[key] = sanitizeInput(value);
+    else if (typeof value === 'object' && value !== null) sanitized[key] = sanitizeObject(value);
+    else sanitized[key] = value;
+  }
+  return sanitized;
+}
+
+// ============================================
+// SECURITY: Audit Logging
+// ============================================
+async function logAuditEvent(pool, eventType, userId, details, ipAddress) {
+  try {
+    await pool.query(`INSERT INTO audit_logs (event_type, user_id, details, ip_address, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`, [eventType, userId, JSON.stringify(details), ipAddress]);
+  } catch (error) {
+    console.error('Failed to log audit event:', error.message);
+  }
+}
+
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown';
+}
+
+// ============================================
+// DATABASE CONNECTION
+// ============================================
+const sslConfig = (() => {
+  if (process.env.NODE_ENV !== 'production') return false;
+  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'true';
+  return { rejectUnauthorized };
+})();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: sslConfig,
+  max: 20,
+  min: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected database pool error:', err.message);
+});
+
+// ============================================
+// SECURITY: JWT & Encryption
+// ============================================
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction) {
+  const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
+  const missing = requiredEnvVars.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && isProduction) {
+  console.error('FATAL: JWT_SECRET environment variable is required');
+  process.exit(1);
+}
+const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'dev-only-insecure-secret';
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16;
+const encryptionAvailable = ENCRYPTION_KEY && ENCRYPTION_KEY.length === 64;
+
+function encryptToken(plaintext) {
+  if (!encryptionAvailable || !plaintext) return plaintext;
+  try {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+    const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
+    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+    return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+  } catch (error) {
+    console.error('Encryption error:', error.message);
+    return plaintext;
+  }
+}
+
+function decryptToken(ciphertext) {
+  if (!ciphertext) return ciphertext;
+  const parts = ciphertext.split(':');
+  if (parts.length !== 3 || !encryptionAvailable) return ciphertext;
+  try {
+    const [ivHex, authTagHex, encryptedHex] = parts;
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+    const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    console.warn('Token decryption failed, treating as legacy unencrypted token');
+    return ciphertext;
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
