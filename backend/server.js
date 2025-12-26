@@ -330,6 +330,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
+        username VARCHAR(100) UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
         user_type VARCHAR(50) NOT NULL,
         profile_data JSONB DEFAULT '{}',
@@ -338,6 +339,7 @@ async function initializeDatabase() {
         location VARCHAR(255),
         bio TEXT,
         website VARCHAR(500),
+        is_public BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -3545,21 +3547,48 @@ app.get('/api/user/username', authenticateToken, async (req, res) => {
 });
 
 // PUBLIC: Get media kit by username (no authentication required!)
-app.get('/api/kit/:username', async (req, res) => {
+app.get('/api/kit/:identifier', async (req, res) => {
   try {
-    const { username } = req.params;
+    const { identifier } = req.params;
     
-    // Get user profile
-    const userResult = await pool.query(`
+    // Try to find user by username first, then by ID
+    let userResult = await pool.query(`
       SELECT 
         id, name, username, user_type, bio, location, website, avatar_url, 
-        is_public, created_at
+        is_public, created_at, email,
+        profile_data
       FROM users 
       WHERE LOWER(username) = LOWER($1)
-    `, [username]);
+    `, [identifier]);
+    
+    // If not found by username, try by ID (for backwards compatibility)
+    if (userResult.rows.length === 0 && !isNaN(identifier)) {
+      userResult = await pool.query(`
+        SELECT 
+          id, name, username, user_type, bio, location, website, avatar_url, 
+          is_public, created_at, email,
+          profile_data
+        FROM users 
+        WHERE id = $1
+      `, [identifier]);
+    }
+    
+    // If still not found, try by name (slug format: john-doe)
+    if (userResult.rows.length === 0) {
+      const nameFromSlug = identifier.replace(/-/g, ' ');
+      userResult = await pool.query(`
+        SELECT 
+          id, name, username, user_type, bio, location, website, avatar_url, 
+          is_public, created_at, email,
+          profile_data
+        FROM users 
+        WHERE LOWER(REPLACE(name, ' ', '-')) = LOWER($1)
+           OR LOWER(name) = LOWER($2)
+      `, [identifier, nameFromSlug]);
+    }
     
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Media kit not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
     
     const user = userResult.rows[0];
@@ -3572,7 +3601,7 @@ app.get('/api/kit/:username', async (req, res) => {
     // Get connected social accounts with stats
     const socialResult = await pool.query(`
       SELECT 
-        platform, username, stats, is_verified, last_synced_at
+        id, platform, username, stats, is_verified, last_synced_at
       FROM social_accounts 
       WHERE user_id = $1
       ORDER BY 

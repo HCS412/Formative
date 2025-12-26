@@ -100,6 +100,10 @@ export function Settings() {
     showStats: true,
   })
   
+  // Booking/Calendly settings
+  const [calendlyUrl, setCalendlyUrl] = useState('')
+  const [savingCalendly, setSavingCalendly] = useState(false)
+  
   // Password change
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
@@ -326,10 +330,31 @@ export function Settings() {
 
   const tabs = [
     { id: 'accounts', label: 'Social Accounts', icon: Link2 },
+    { id: 'booking', label: 'Booking', icon: ExternalLink },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'account', label: 'Account', icon: User },
   ]
+  
+  // Save Calendly URL
+  const handleSaveCalendly = async () => {
+    setSavingCalendly(true)
+    try {
+      // Save to localStorage for now (would be API in production)
+      localStorage.setItem('formative_calendly_url', calendlyUrl)
+      addToast('Booking link saved!', 'success')
+    } catch (error) {
+      addToast('Failed to save booking link', 'error')
+    } finally {
+      setSavingCalendly(false)
+    }
+  }
+  
+  // Load Calendly URL on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('formative_calendly_url')
+    if (saved) setCalendlyUrl(saved)
+  }, [])
 
   return (
     <DashboardLayout>
@@ -483,6 +508,98 @@ export function Settings() {
                 </div>
               </Card>
             </>
+          )}
+
+          {/* Booking Tab */}
+          {activeTab === 'booking' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ExternalLink className="w-5 h-5 text-teal-400" />
+                  Booking & Scheduling
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <p className="text-[var(--text-secondary)]">
+                  Add your booking link to let brands schedule calls with you directly from your creator page.
+                </p>
+
+                {/* Calendly Integration */}
+                <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                      <span className="text-xl">📅</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Calendly</p>
+                      <p className="text-sm text-[var(--text-secondary)]">Add your Calendly scheduling link</p>
+                    </div>
+                  </div>
+                  
+                  <Input
+                    placeholder="https://calendly.com/your-username"
+                    value={calendlyUrl}
+                    onChange={(e) => setCalendlyUrl(e.target.value)}
+                    className="mb-3"
+                  />
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleSaveCalendly} 
+                      loading={savingCalendly}
+                      disabled={!calendlyUrl.trim()}
+                    >
+                      Save Link
+                    </Button>
+                    {calendlyUrl && (
+                      <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Test Link
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* How it works */}
+                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20">
+                  <h4 className="font-medium text-teal-400 mb-2">How it works</h4>
+                  <ul className="text-sm text-[var(--text-secondary)] space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-teal-400 mt-0.5">1.</span>
+                      <span>Create a free account at <a href="https://calendly.com" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline">calendly.com</a></span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-teal-400 mt-0.5">2.</span>
+                      <span>Set up your availability and meeting types</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-teal-400 mt-0.5">3.</span>
+                      <span>Paste your Calendly link here</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-teal-400 mt-0.5">4.</span>
+                      <span>Brands can book calls directly from your creator page!</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Other booking services */}
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] mb-3">
+                    Don't use Calendly? You can also paste links from:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {['Cal.com', 'Acuity', 'HubSpot', 'TidyCal', 'SavvyCal'].map(service => (
+                      <span key={service} className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] text-sm text-[var(--text-secondary)]">
+                        {service}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Notifications Tab */}

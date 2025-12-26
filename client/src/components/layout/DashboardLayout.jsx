@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   Target,
-  Wallet
+  Wallet,
+  Link2
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar, Button } from '@/components/ui'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
   { name: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase },
   { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
+  { name: 'Links', href: '/dashboard/links', icon: Link2 },
   { name: 'Payments', href: '/dashboard/payments', icon: Wallet },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },

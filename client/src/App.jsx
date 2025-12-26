@@ -8,7 +8,7 @@ import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SearchModal } from '@/components/SearchModal'
 import { Navbar } from '@/components/layout/Navbar'
-import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit } from '@/pages'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
 const queryClient = new QueryClient({
@@ -78,6 +78,7 @@ function AppRoutes() {
           <Route path="/dashboard/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
           <Route path="/dashboard/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsWrapper /></ProtectedRoute>} />
+          <Route path="/dashboard/links" element={<ProtectedRoute><Links /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
