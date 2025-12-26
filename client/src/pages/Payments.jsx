@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 
 const PLATFORM_FEE_PERCENT = 8 // 8% platform fee
 
-export function Payments() {
+export function Payments({ walletEnabled = true }) {
   const { user } = useAuth()
   const { addToast } = useToast()
   
@@ -188,7 +188,27 @@ export function Payments() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {isConnected ? (
+              {!walletEnabled ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
+                    <Wallet className="w-8 h-8 text-yellow-400" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Wallet Setup Required</h3>
+                  <p className="text-sm text-[var(--text-secondary)] mb-4 max-w-sm mx-auto">
+                    Crypto wallet connections require configuration.
+                  </p>
+                  <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-left max-w-md mx-auto">
+                    <p className="text-sm text-yellow-400 mb-2">To enable wallet connections:</p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Set <code className="bg-[var(--bg-secondary)] px-1 rounded">VITE_WALLETCONNECT_PROJECT_ID</code> in environment variables.
+                      Get a free project ID at{' '}
+                      <a href="https://cloud.walletconnect.com" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline">
+                        cloud.walletconnect.com
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              ) : isConnected ? (
                 <div className="space-y-4">
                   {/* Connected Wallet Display */}
                   <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-teal-500/10 to-purple-500/10 border border-teal-500/20">

@@ -1,20 +1,19 @@
-// Wallet configuration - lazy loaded to avoid bundling if not needed
+// Wallet configuration for RainbowKit/wagmi
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { mainnet, polygon, optimism, arbitrum, base } from 'wagmi/chains'
 
 // Get a free project ID at https://cloud.walletconnect.com
-// If not set, wallet features will be disabled
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
 
-// Only create config if project ID is set, otherwise return null
-export const config = projectId && projectId !== 'demo-project-id' 
-  ? getDefaultConfig({
-      appName: 'Formative',
-      projectId,
-      chains: [mainnet, polygon, optimism, arbitrum, base],
-      ssr: false,
-    })
-  : null
+// Check if wallet features should be fully enabled
+export const isWalletEnabled = !!projectId && projectId !== 'demo-project-id'
 
-export const isWalletEnabled = !!config
+// Always create a config (use a placeholder if no real project ID)
+// This ensures wagmi hooks don't crash, but wallet connect won't work without real ID
+export const config = getDefaultConfig({
+  appName: 'Formative',
+  projectId: projectId || 'placeholder-id-for-build',
+  chains: [mainnet, polygon, optimism, arbitrum, base],
+  ssr: false,
+})
 
