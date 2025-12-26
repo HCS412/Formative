@@ -1,6 +1,6 @@
 # Formative
 
-A modern influencer marketing platform connecting brands, influencers, and freelancers for authentic collaborations. Built with React and Node.js, featuring crypto payment integration and smart contract escrow.
+A modern influencer marketing platform connecting brands, influencers, and freelancers for authentic collaborations. Built with React and Node.js, featuring crypto payment integration, smart contract escrow, enterprise-grade security, and role-based access control.
 
 **Live URL**: [chic-patience-production.up.railway.app](https://chic-patience-production.up.railway.app)
 
@@ -9,6 +9,8 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 ## Table of Contents
 
 - [Features](#features)
+- [Security](#security)
+- [Authorization and Access Control](#authorization-and-access-control)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -31,6 +33,8 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 - Auto-logout after 15 minutes of inactivity
 - Session management with "Remember Me" option
 - Password hashing with bcrypt
+- Account lockout after 5 failed login attempts
+- Strong password requirements enforcement
 
 ### User Onboarding
 - Multi-step onboarding flow tailored by user type
@@ -46,6 +50,13 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 - Global keyboard shortcuts (Cmd+K for search, Cmd+1-8 for navigation)
 - Responsive design for all device sizes
 
+### Teams and Collaboration
+- Create and manage teams (Brand, Agency, Creator Collective)
+- Invite team members by email
+- Role-based team permissions (Admin, Manager, Member)
+- Accept/decline team invitations
+- Team analytics and performance tracking
+
 ### Opportunities Marketplace
 - Browse and filter opportunities by type, industry, and platform
 - Detailed opportunity views with requirements and budgets
@@ -57,6 +68,20 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 - Milestone-based deliverables
 - Smart contract escrow integration (optional)
 - Campaign performance tracking
+
+### Creator Tools
+- UTM Link Builder for tracking marketing links
+- Quick presets for major platforms (Instagram, Twitter, TikTok, YouTube)
+- Link click analytics
+- Calendly booking integration for scheduling
+
+### Public Creator Page (Media Kit)
+- Shareable public profile pages at `/kit/:username`
+- Beautiful gradient design with social proof
+- Showcase social stats across all platforms
+- Display connected social accounts with follower counts
+- Call-to-action for brand collaboration
+- One-click copy and share functionality
 
 ### Payments
 - Stripe Connect integration for fiat payments (USD, EUR, card payments)
@@ -76,6 +101,7 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 - In-app notification center
 - Application status updates
 - Collaboration alerts
+- Team invitations
 - Mark as read functionality
 
 ### Social Media Integration
@@ -84,16 +110,123 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 - Verified account badges
 - Automatic stats refresh
 
-### Public Media Kit
-- Shareable public profile pages at `/kit/:username`
-- Showcase social stats, portfolio, and collaboration history
-- Professional presentation for brand outreach
-
 ### Smart Contracts
 - Solidity-based Campaign Escrow contract
 - Milestone-based payment releases
 - Built-in dispute resolution mechanism
 - Target deployment: Base (Ethereum L2)
+
+---
+
+## Security
+
+Formative implements enterprise-grade security measures designed for SOC 2 compliance readiness.
+
+### Rate Limiting
+- General API: 100 requests per 15 minutes
+- Authentication endpoints: 10 attempts per 15 minutes
+- Password reset: 3 attempts per hour
+
+### Account Protection
+- **Account Lockout**: Accounts are locked for 15 minutes after 5 failed login attempts
+- **Password Requirements**:
+  - Minimum 8 characters
+  - At least one uppercase letter
+  - At least one lowercase letter
+  - At least one number
+  - At least one special character (!@#$%^&*)
+- Real-time password strength indicator during registration
+
+### Security Headers
+Implemented via Helmet middleware:
+- Content Security Policy (CSP)
+- HTTP Strict Transport Security (HSTS)
+- X-Frame-Options (clickjacking protection)
+- X-Content-Type-Options (MIME sniffing protection)
+- X-XSS-Protection
+- Referrer-Policy
+
+### Audit Logging
+Comprehensive logging of security-sensitive actions:
+- User registration
+- Login attempts (success/failure)
+- 2FA setup, verification, and disabling
+- Password resets
+- Role changes
+
+Each audit log captures:
+- Event type
+- User ID
+- IP address
+- User agent
+- Timestamp
+- Event details (JSON)
+
+### Input Sanitization
+- Request body size limited to 10KB
+- Input trimming and escaping via express-validator
+- SQL injection protection via parameterized queries
+
+---
+
+## Authorization and Access Control
+
+Formative includes a comprehensive Role-Based Access Control (RBAC) system.
+
+### System Roles
+
+| Role | Description |
+|------|-------------|
+| Admin | Full system access to all features and settings |
+| Creator | Content creator/influencer with standard access |
+| Brand | Business account with campaign and team management |
+| Agency | Multi-client management with extended permissions |
+| Moderator | Content and community moderation capabilities |
+
+### Permission Categories
+
+**Users**: view, edit, delete, manage_roles  
+**Campaigns**: view, create, edit, delete, manage_participants  
+**Opportunities**: view, create, edit, delete  
+**Teams**: view, create, edit, delete, manage_members  
+**Payments**: view, create, manage  
+**Analytics**: view, export  
+**Admin**: dashboard, settings, feature_flags, audit_logs
+
+### Teams
+
+Users can create and manage teams with:
+- Three team types: Brand, Agency, Creator Collective
+- Built-in roles: Admin (full access), Manager (campaigns + analytics), Member (view only)
+- Email-based invitations
+- Pending invitation management
+
+### Feature Flags
+
+Control feature rollout with:
+- Global enable/disable
+- Percentage-based rollout
+- User type restrictions
+- Per-user overrides
+
+Pre-configured flags:
+- `smart_contracts` - Blockchain escrow
+- `ai_matching` - AI creator-brand matching
+- `advanced_analytics` - Detailed performance analytics
+- `team_collaboration` - Multi-user team features
+- `api_access` - External API access
+- `white_label` - Custom branding options
+- `bulk_messaging` - Mass outreach
+- `calendar_integration` - Calendar sync
+
+### Subscription Tiers
+
+| Tier | Price | Limits |
+|------|-------|--------|
+| Free | $0/mo | 5 applications/month, 1 campaign, 100MB storage |
+| Starter | $19/mo | Unlimited applications, 5 campaigns, 1GB storage |
+| Pro | $49/mo | Everything + team collaboration, API access, 10GB |
+| Enterprise | Custom | Unlimited everything, custom integrations, SLA |
 
 ---
 
@@ -107,6 +240,7 @@ A modern influencer marketing platform connecting brands, influencers, and freel
 | Backend | Node.js, Express.js |
 | Database | PostgreSQL |
 | Authentication | JWT, bcrypt, TOTP (2FA) |
+| Security | Helmet, express-rate-limit, express-validator |
 | OAuth | Twitter API v2, Instagram, TikTok, YouTube |
 | Payments | Stripe Connect, WalletConnect |
 | Smart Contracts | Solidity |
@@ -125,9 +259,21 @@ Formative/
 │   │   │   ├── layout/         # Layout components (Navbar, DashboardLayout)
 │   │   │   └── ui/             # Base UI components (Button, Card, Modal)
 │   │   ├── context/            # React context providers
+│   │   │   ├── AuthContext.jsx       # Authentication state
+│   │   │   └── PermissionContext.jsx # RBAC permissions
 │   │   ├── hooks/              # Custom React hooks
+│   │   │   ├── useActivityTimeout.js
+│   │   │   ├── useKeyboardShortcuts.js
+│   │   │   └── useCampaignEscrow.js
 │   │   ├── lib/                # Utilities and configurations
+│   │   │   ├── wagmi.js        # Web3 config
+│   │   │   └── contracts.js    # Smart contract ABIs
 │   │   ├── pages/              # Page components
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Teams.jsx
+│   │   │   ├── Links.jsx       # UTM Link Builder
+│   │   │   ├── MediaKit.jsx    # Public Creator Page
+│   │   │   └── ...
 │   │   ├── App.jsx             # Main app component with routing
 │   │   ├── main.jsx            # Entry point
 │   │   └── index.css           # Global styles
@@ -136,11 +282,11 @@ Formative/
 │   ├── vite.config.js
 │   └── tailwind.config.js
 ├── backend/
-│   ├── server.js               # Express API server
+│   ├── server.js               # Express API server with RBAC
 │   └── init-db.js              # Database initialization
 ├── contracts/
 │   ├── CampaignEscrow.sol      # Smart contract source
-│   └── README.md               # Contract documentation
+│   └── README.md               # Contract deployment guide
 ├── package.json                # Root package.json
 ├── railway.json                # Railway deployment config
 ├── nixpacks.toml               # Build configuration
@@ -246,12 +392,13 @@ OAUTH_REDIRECT_BASE=https://your-production-domain.com
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Create new account |
-| POST | `/api/auth/login` | Login and receive JWT |
+| POST | `/api/auth/register` | Create new account (password strength enforced) |
+| POST | `/api/auth/login` | Login and receive JWT (rate limited) |
 | POST | `/api/auth/2fa/setup` | Initialize 2FA setup |
 | POST | `/api/auth/2fa/verify` | Verify and enable 2FA |
 | POST | `/api/auth/2fa/login` | Login with 2FA code |
 | POST | `/api/auth/2fa/disable` | Disable 2FA |
+| GET | `/api/auth/permissions` | Get current user's permissions and roles |
 
 ### User and Profile
 
@@ -260,6 +407,46 @@ OAUTH_REDIRECT_BASE=https://your-production-domain.com
 | GET | `/api/user/profile` | Get current user profile |
 | PUT | `/api/user/profile` | Update profile |
 | GET | `/api/user/social-accounts` | List connected social accounts |
+
+### Teams
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/teams` | List user's teams |
+| POST | `/api/teams` | Create new team |
+| GET | `/api/teams/:id` | Get team details with members |
+| PUT | `/api/teams/:id` | Update team settings |
+| DELETE | `/api/teams/:id` | Delete team |
+| POST | `/api/teams/:id/invite` | Invite member by email |
+| PUT | `/api/teams/:id/respond` | Accept/decline invitation |
+| DELETE | `/api/teams/:teamId/members/:userId` | Remove team member |
+| PUT | `/api/teams/:teamId/members/:userId/role` | Change member role |
+
+### Feature Flags
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/features` | Get enabled features for user |
+| GET | `/api/features/:name` | Check specific feature status |
+| PUT | `/api/admin/features/:name` | Update feature flag (admin) |
+
+### Subscriptions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/subscriptions/tiers` | Get all subscription plans |
+| GET | `/api/subscriptions/me` | Get user's current subscription |
+| GET | `/api/subscriptions/entitlement/:feature` | Check feature entitlement |
+
+### Admin (requires admin role)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/roles` | List all system roles |
+| GET | `/api/admin/permissions` | List all permissions |
+| POST | `/api/admin/users/:userId/roles` | Assign role to user |
+| DELETE | `/api/admin/users/:userId/roles/:roleId` | Remove role from user |
+| GET | `/api/admin/users/:userId/roles` | Get user's assigned roles |
 
 ### OAuth
 
@@ -312,6 +499,12 @@ OAUTH_REDIRECT_BASE=https://your-production-domain.com
 | GET | `/api/payments/history` | Get payment history |
 | POST | `/api/payments/stripe/connect` | Connect Stripe account |
 
+### Public
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/kit/:username` | Get public creator page data |
+
 ---
 
 ## Database Schema
@@ -320,8 +513,9 @@ OAUTH_REDIRECT_BASE=https://your-production-domain.com
 
 ```
 users
-├── id (UUID, primary key)
+├── id (SERIAL, primary key)
 ├── email (unique)
+├── username (unique)
 ├── password_hash
 ├── name
 ├── user_type (influencer | brand | freelancer)
@@ -331,10 +525,159 @@ users
 ├── website
 ├── two_factor_enabled
 ├── two_factor_secret
+├── failed_login_attempts
+├── locked_until
+├── is_public
 ├── onboarding_completed
 ├── created_at
 └── updated_at
+```
 
+### RBAC Tables
+
+```
+roles
+├── id
+├── name (unique)
+├── display_name
+├── description
+├── is_system_role
+└── created_at
+
+permissions
+├── id
+├── name (unique)
+├── display_name
+├── description
+├── category
+└── created_at
+
+role_permissions
+├── id
+├── role_id (foreign key)
+└── permission_id (foreign key)
+
+user_roles
+├── id
+├── user_id (foreign key)
+├── role_id (foreign key)
+├── assigned_by (foreign key)
+└── assigned_at
+```
+
+### Teams Tables
+
+```
+teams
+├── id
+├── name
+├── slug (unique)
+├── description
+├── logo_url
+├── owner_id (foreign key)
+├── team_type (brand | agency | creator)
+├── settings (JSONB)
+├── is_active
+├── created_at
+└── updated_at
+
+team_roles
+├── id
+├── team_id (foreign key)
+├── name
+├── display_name
+├── permissions (JSONB)
+├── is_default
+└── created_at
+
+team_members
+├── id
+├── team_id (foreign key)
+├── user_id (foreign key)
+├── team_role_id (foreign key)
+├── status (invited | active | declined)
+├── invited_by (foreign key)
+├── invited_at
+└── joined_at
+```
+
+### Feature Flags Tables
+
+```
+feature_flags
+├── id
+├── name (unique)
+├── display_name
+├── description
+├── is_enabled
+├── rollout_percentage
+├── allowed_user_types (ARRAY)
+├── allowed_roles (ARRAY)
+├── metadata (JSONB)
+├── created_at
+└── updated_at
+
+user_feature_flags
+├── id
+├── user_id (foreign key)
+├── feature_flag_id (foreign key)
+├── is_enabled
+└── created_at
+```
+
+### Subscription Tables
+
+```
+subscription_tiers
+├── id
+├── name (unique)
+├── display_name
+├── description
+├── price_monthly
+├── price_yearly
+├── features (JSONB)
+├── limits (JSONB)
+├── is_active
+├── sort_order
+└── created_at
+
+user_subscriptions
+├── id
+├── user_id (unique, foreign key)
+├── tier_id (foreign key)
+├── status
+├── billing_cycle
+├── current_period_start
+├── current_period_end
+├── stripe_subscription_id
+├── created_at
+└── updated_at
+
+entitlements
+├── id
+├── tier_id (foreign key)
+├── feature_name
+├── limit_value
+├── is_unlimited
+└── metadata (JSONB)
+```
+
+### Security Tables
+
+```
+audit_logs
+├── id
+├── event_type
+├── user_id (foreign key)
+├── details (JSONB)
+├── ip_address
+├── user_agent
+└── created_at
+```
+
+### Other Tables
+
+```
 social_accounts
 ├── id
 ├── user_id (foreign key)
@@ -366,8 +709,8 @@ opportunities
 
 campaigns
 ├── id
-├── user_id (foreign key)
-├── title
+├── brand_id (foreign key)
+├── name
 ├── description
 ├── budget
 ├── status
@@ -389,51 +732,8 @@ applications
 ├── response_message
 └── responded_at
 
-conversations
-├── id
-├── user1_id (foreign key)
-├── user2_id (foreign key)
-├── created_at
-└── updated_at
-
-messages
-├── id
-├── conversation_id (foreign key)
-├── sender_id (foreign key)
-├── content
-├── is_read
-├── read_at
-└── created_at
-
-notifications
-├── id
-├── user_id (foreign key)
-├── type
-├── title
-├── message
-├── related_id
-├── related_type
-├── is_read
-└── created_at
-
-payment_methods
-├── id
-├── user_id (foreign key)
-├── type (stripe | crypto)
-├── details (JSONB)
-├── is_primary
-└── created_at
-
-payments
-├── id
-├── user_id (foreign key)
-├── campaign_id (foreign key)
-├── amount
-├── currency
-├── method
-├── status
-├── transaction_id
-└── created_at
+conversations, messages, notifications, payment_methods, payments
+(see previous schema)
 ```
 
 ---
@@ -449,13 +749,25 @@ payments
 - [x] Session management with Remember Me
 - [x] Multi-step user onboarding
 - [x] Role-based dashboards
+- [x] **RBAC system (roles, permissions)**
+- [x] **Teams management**
+- [x] **Feature flags system**
+- [x] **Subscription tiers and entitlements**
+- [x] **Account lockout after failed logins**
+- [x] **Password strength requirements**
+- [x] **Security headers (Helmet)**
+- [x] **Rate limiting**
+- [x] **Audit logging**
+- [x] **Input sanitization**
 - [x] Opportunities marketplace
 - [x] Campaign management
 - [x] Messaging system
 - [x] Notification system
 - [x] Payments page with Stripe and crypto wallet UI
 - [x] RainbowKit wallet integration
-- [x] Public media kit pages
+- [x] **Enhanced public creator pages (Media Kit)**
+- [x] **UTM Link Builder**
+- [x] **Calendly booking integration**
 - [x] Keyboard shortcuts
 - [x] Global search
 - [x] Twitter OAuth integration
@@ -485,20 +797,35 @@ payments
 - Basic messaging and notifications
 - Payment infrastructure UI
 
-### Phase 2: Integrations (In Progress)
+### Phase 2: Security and Access Control (Completed)
+- Rate limiting and account lockout
+- Password strength enforcement
+- Security headers
+- Audit logging
+- RBAC system with roles and permissions
+- Teams and collaboration
+- Feature flags
+- Subscription tiers
+
+### Phase 3: Creator Tools (Completed)
+- UTM Link Builder
+- Enhanced Creator Page (Media Kit)
+- Calendly booking integration
+
+### Phase 4: Integrations (In Progress)
 - Complete OAuth social connections
 - Email notifications
 - File uploads for profiles and campaigns
 - Stripe Connect payments
 
-### Phase 3: Advanced Features (Planned)
+### Phase 5: Advanced Features (Planned)
 - Smart contract deployment and integration
 - Real-time messaging with WebSocket
 - Analytics dashboard
 - Content calendar
 - Campaign performance tracking
 
-### Phase 4: Scale (Future)
+### Phase 6: Scale (Future)
 - Mobile application
 - AI-powered matching
 - Advanced analytics
