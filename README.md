@@ -163,6 +163,23 @@ Implemented via Helmet middleware:
 - X-XSS-Protection
 - Referrer-Policy
 
+### Token Security
+- JWT tokens with configurable expiration (7 days default, 30 days with "Remember Me")
+- Server fails to start in production if JWT_SECRET is not configured
+- No hardcoded fallback secrets in production mode
+
+### OAuth Token Encryption
+- OAuth access and refresh tokens encrypted at rest using AES-256-GCM
+- Encryption key configured via ENCRYPTION_KEY environment variable
+- Graceful handling of legacy unencrypted tokens during migration
+- Authenticated encryption prevents tampering
+
+### Smart Contract Security
+- ReentrancyGuard protection on all payment functions
+- Checks-Effects-Interactions pattern for state changes
+- Event logging for all fund movements
+- Platform fee update events for transparency
+
 ### Audit Logging
 Comprehensive logging of security-sensitive actions:
 - User registration
@@ -283,6 +300,7 @@ Formative/
 │   │   │   ├── useKeyboardShortcuts.js
 │   │   │   └── useCampaignEscrow.js
 │   │   ├── lib/                # Utilities and configurations
+│   │   │   ├── api.js          # API client
 │   │   │   ├── wagmi.js        # Web3 config
 │   │   │   └── contracts.js    # Smart contract ABIs
 │   │   ├── pages/              # Page components
@@ -290,19 +308,31 @@ Formative/
 │   │   │   ├── Teams.jsx
 │   │   │   ├── Links.jsx       # UTM Link Builder
 │   │   │   ├── MediaKit.jsx    # Public Creator Page
+│   │   │   ├── Shop.jsx        # Creator Shop management
+│   │   │   ├── PublicShop.jsx  # Public storefront
 │   │   │   └── ...
 │   │   ├── App.jsx             # Main app component with routing
 │   │   ├── main.jsx            # Entry point
 │   │   └── index.css           # Global styles
 │   ├── index.html              # HTML template
 │   ├── package.json
-│   ├── vite.config.js
-│   └── tailwind.config.js
+│   └── vite.config.js
 ├── backend/
-│   ├── server.js               # Express API server with RBAC
+│   ├── config/                 # Configuration modules
+│   │   ├── database.js         # PostgreSQL pool configuration
+│   │   └── security.js         # JWT and encryption configuration
+│   ├── middleware/             # Express middleware
+│   │   ├── auth.js             # Authentication and RBAC middleware
+│   │   ├── errorHandler.js     # Centralized error handling
+│   │   └── rateLimiter.js      # Rate limiting configuration
+│   ├── routes/                 # Route modules (for future migration)
+│   │   └── auth.js             # Authentication routes
+│   ├── utils/                  # Utility functions
+│   │   └── security.js         # Security helpers (sanitization, audit)
+│   ├── server.js               # Main Express API server
 │   └── init-db.js              # Database initialization
 ├── contracts/
-│   ├── CampaignEscrow.sol      # Smart contract source
+│   ├── CampaignEscrow.sol      # Smart contract with ReentrancyGuard
 │   └── README.md               # Contract deployment guide
 ├── package.json                # Root package.json
 ├── railway.json                # Railway deployment config
