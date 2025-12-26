@@ -13,7 +13,8 @@ import {
   Target,
   Wallet,
   Link2,
-  Users
+  Users,
+  Store
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar, Button } from '@/components/ui'
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase },
   { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
   { name: 'Teams', href: '/dashboard/teams', icon: Users },
+  { name: 'Shop', href: '/dashboard/shop', icon: Store },
   { name: 'Links', href: '/dashboard/links', icon: Link2 },
   { name: 'Payments', href: '/dashboard/payments', icon: Wallet },
   { name: 'Profile', href: '/dashboard/profile', icon: User },

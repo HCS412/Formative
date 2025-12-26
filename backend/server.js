@@ -1025,6 +1025,107 @@ async function initializeDatabase() {
         UNIQUE(tier_id, feature_name)
       )
     `);
+
+    // ========================================
+    // SHOP / E-COMMERCE TABLES
+    // ========================================
+    
+    // 30. PRODUCTS TABLE - Digital products, services, etc.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) NOT NULL,
+        description TEXT,
+        short_description VARCHAR(500),
+        type VARCHAR(50) DEFAULT 'digital',
+        price INTEGER NOT NULL,
+        compare_at_price INTEGER,
+        currency VARCHAR(10) DEFAULT 'USD',
+        cover_image VARCHAR(500),
+        gallery_images JSONB DEFAULT '[]',
+        is_active BOOLEAN DEFAULT TRUE,
+        is_featured BOOLEAN DEFAULT FALSE,
+        download_limit INTEGER,
+        metadata JSONB DEFAULT '{}',
+        tags TEXT[] DEFAULT '{}',
+        sales_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(creator_id, slug)
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_creator ON products(creator_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_products_type ON products(type)`);
+    
+    // 31. PRODUCT_FILES TABLE - Downloadable files for digital products
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS product_files (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        file_name VARCHAR(255) NOT NULL,
+        file_url VARCHAR(1000) NOT NULL,
+        file_size INTEGER,
+        file_type VARCHAR(100),
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_product_files_product ON product_files(product_id)`);
+    
+    // 32. SHOP_SETTINGS TABLE - Creator shop configuration
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shop_settings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        shop_name VARCHAR(255),
+        shop_description TEXT,
+        shop_logo VARCHAR(500),
+        shop_banner VARCHAR(500),
+        stripe_account_id VARCHAR(255),
+        stripe_onboarding_complete BOOLEAN DEFAULT FALSE,
+        currency VARCHAR(10) DEFAULT 'USD',
+        theme JSONB DEFAULT '{"primary_color": "#14b8a6", "style": "modern"}',
+        social_links JSONB DEFAULT '{}',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 33. SHOP_ORDERS TABLE - Purchase records
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shop_orders (
+        id SERIAL PRIMARY KEY,
+        order_number VARCHAR(50) UNIQUE NOT NULL,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE SET NULL,
+        creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        customer_email VARCHAR(255) NOT NULL,
+        customer_name VARCHAR(255),
+        amount INTEGER NOT NULL,
+        currency VARCHAR(10) DEFAULT 'USD',
+        platform_fee INTEGER DEFAULT 0,
+        creator_payout INTEGER DEFAULT 0,
+        status VARCHAR(50) DEFAULT 'pending',
+        stripe_payment_intent_id VARCHAR(255),
+        stripe_checkout_session_id VARCHAR(255),
+        download_count INTEGER DEFAULT 0,
+        download_token VARCHAR(255) UNIQUE,
+        download_expires_at TIMESTAMP,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_creator ON shop_orders(creator_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_product ON shop_orders(product_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_status ON shop_orders(status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_token ON shop_orders(download_token)`);
     
     // ========================================
     // SEED DEFAULT ROLES & PERMISSIONS
@@ -5569,6 +5670,684 @@ app.get('/api/admin/users/:userId/roles', authenticateToken, requireRole('admin'
     });
   } catch (error) {
     console.error('Get user roles error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// SHOP / E-COMMERCE API
+// ============================================
+
+// Helper: Generate unique slug
+function generateSlug(name, existingSlugs = []) {
+  let slug = name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  
+  if (existingSlugs.includes(slug)) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+  return slug;
+}
+
+// Helper: Generate order number
+function generateOrderNumber() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `ORD-${timestamp}-${random}`;
+}
+
+// Helper: Generate download token
+function generateDownloadToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Get shop settings for current user
+app.get('/api/shop/settings', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM shop_settings WHERE user_id = $1',
+      [req.user.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      // Return defaults if no settings exist
+      return res.json({
+        success: true,
+        settings: {
+          shop_name: null,
+          shop_description: null,
+          stripe_onboarding_complete: false,
+          is_active: false,
+          currency: 'USD'
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      settings: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Get shop settings error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update shop settings
+app.put('/api/shop/settings', authenticateToken, async (req, res) => {
+  try {
+    const { shopName, shopDescription, shopLogo, shopBanner, currency, theme, socialLinks, isActive } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO shop_settings (user_id, shop_name, shop_description, shop_logo, shop_banner, currency, theme, social_links, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (user_id) DO UPDATE SET
+        shop_name = COALESCE($2, shop_settings.shop_name),
+        shop_description = COALESCE($3, shop_settings.shop_description),
+        shop_logo = COALESCE($4, shop_settings.shop_logo),
+        shop_banner = COALESCE($5, shop_settings.shop_banner),
+        currency = COALESCE($6, shop_settings.currency),
+        theme = COALESCE($7, shop_settings.theme),
+        social_links = COALESCE($8, shop_settings.social_links),
+        is_active = COALESCE($9, shop_settings.is_active),
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [
+      req.user.userId, 
+      shopName, 
+      shopDescription, 
+      shopLogo, 
+      shopBanner, 
+      currency || 'USD',
+      theme ? JSON.stringify(theme) : null,
+      socialLinks ? JSON.stringify(socialLinks) : null,
+      isActive
+    ]);
+    
+    res.json({
+      success: true,
+      settings: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update shop settings error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get creator's products (authenticated - for management)
+app.get('/api/shop/products', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.*, 
+        (SELECT COUNT(*) FROM shop_orders WHERE product_id = p.id AND status = 'completed') as total_sales,
+        (SELECT SUM(creator_payout) FROM shop_orders WHERE product_id = p.id AND status = 'completed') as total_revenue
+      FROM products p
+      WHERE p.creator_id = $1
+      ORDER BY p.created_at DESC
+    `, [req.user.userId]);
+    
+    res.json({
+      success: true,
+      products: result.rows
+    });
+  } catch (error) {
+    console.error('Get products error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a new product
+app.post('/api/shop/products', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      name, description, shortDescription, type, price, compareAtPrice, 
+      currency, coverImage, galleryImages, tags, downloadLimit, metadata 
+    } = req.body;
+    
+    if (!name || !price) {
+      return res.status(400).json({ error: 'Name and price are required' });
+    }
+    
+    // Get existing slugs for this creator
+    const existingSlugs = await pool.query(
+      'SELECT slug FROM products WHERE creator_id = $1',
+      [req.user.userId]
+    );
+    const slugs = existingSlugs.rows.map(r => r.slug);
+    const slug = generateSlug(name, slugs);
+    
+    const result = await pool.query(`
+      INSERT INTO products (
+        creator_id, name, slug, description, short_description, type, price, 
+        compare_at_price, currency, cover_image, gallery_images, tags, download_limit, metadata
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      req.user.userId,
+      name,
+      slug,
+      description,
+      shortDescription,
+      type || 'digital',
+      Math.round(price * 100), // Store in cents
+      compareAtPrice ? Math.round(compareAtPrice * 100) : null,
+      currency || 'USD',
+      coverImage,
+      galleryImages ? JSON.stringify(galleryImages) : '[]',
+      tags || [],
+      downloadLimit,
+      metadata ? JSON.stringify(metadata) : '{}'
+    ]);
+    
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get single product (authenticated - for editing)
+app.get('/api/shop/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT p.*, 
+        json_agg(pf.*) FILTER (WHERE pf.id IS NOT NULL) as files
+      FROM products p
+      LEFT JOIN product_files pf ON p.id = pf.product_id
+      WHERE p.id = $1 AND p.creator_id = $2
+      GROUP BY p.id
+    `, [id, req.user.userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Get product error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update product
+app.put('/api/shop/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      name, description, shortDescription, type, price, compareAtPrice, 
+      currency, coverImage, galleryImages, tags, downloadLimit, metadata, isActive, isFeatured 
+    } = req.body;
+    
+    // Verify ownership
+    const check = await pool.query('SELECT creator_id FROM products WHERE id = $1', [id]);
+    if (check.rows.length === 0 || check.rows[0].creator_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const result = await pool.query(`
+      UPDATE products SET
+        name = COALESCE($1, name),
+        description = COALESCE($2, description),
+        short_description = COALESCE($3, short_description),
+        type = COALESCE($4, type),
+        price = COALESCE($5, price),
+        compare_at_price = $6,
+        currency = COALESCE($7, currency),
+        cover_image = COALESCE($8, cover_image),
+        gallery_images = COALESCE($9, gallery_images),
+        tags = COALESCE($10, tags),
+        download_limit = $11,
+        metadata = COALESCE($12, metadata),
+        is_active = COALESCE($13, is_active),
+        is_featured = COALESCE($14, is_featured),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $15
+      RETURNING *
+    `, [
+      name,
+      description,
+      shortDescription,
+      type,
+      price ? Math.round(price * 100) : null,
+      compareAtPrice ? Math.round(compareAtPrice * 100) : null,
+      currency,
+      coverImage,
+      galleryImages ? JSON.stringify(galleryImages) : null,
+      tags,
+      downloadLimit,
+      metadata ? JSON.stringify(metadata) : null,
+      isActive,
+      isFeatured,
+      id
+    ]);
+    
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete product
+app.delete('/api/shop/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify ownership
+    const check = await pool.query('SELECT creator_id FROM products WHERE id = $1', [id]);
+    if (check.rows.length === 0 || check.rows[0].creator_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add file to product
+app.post('/api/shop/products/:id/files', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fileName, fileUrl, fileSize, fileType } = req.body;
+    
+    // Verify ownership
+    const check = await pool.query('SELECT creator_id FROM products WHERE id = $1', [id]);
+    if (check.rows.length === 0 || check.rows[0].creator_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Get next sort order
+    const orderResult = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM product_files WHERE product_id = $1',
+      [id]
+    );
+    
+    const result = await pool.query(`
+      INSERT INTO product_files (product_id, file_name, file_url, file_size, file_type, sort_order)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [id, fileName, fileUrl, fileSize, fileType, orderResult.rows[0].next_order]);
+    
+    res.json({
+      success: true,
+      file: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Add file error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete file from product
+app.delete('/api/shop/products/:productId/files/:fileId', authenticateToken, async (req, res) => {
+  try {
+    const { productId, fileId } = req.params;
+    
+    // Verify ownership
+    const check = await pool.query('SELECT creator_id FROM products WHERE id = $1', [productId]);
+    if (check.rows.length === 0 || check.rows[0].creator_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await pool.query('DELETE FROM product_files WHERE id = $1 AND product_id = $2', [fileId, productId]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete file error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get creator's orders (sales)
+app.get('/api/shop/orders', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT o.*, p.name as product_name, p.cover_image as product_image
+      FROM shop_orders o
+      JOIN products p ON o.product_id = p.id
+      WHERE o.creator_id = $1
+      ORDER BY o.created_at DESC
+      LIMIT 100
+    `, [req.user.userId]);
+    
+    res.json({
+      success: true,
+      orders: result.rows
+    });
+  } catch (error) {
+    console.error('Get orders error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get shop stats
+app.get('/api/shop/stats', authenticateToken, async (req, res) => {
+  try {
+    const stats = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM products WHERE creator_id = $1 AND is_active = TRUE) as active_products,
+        (SELECT COUNT(*) FROM shop_orders WHERE creator_id = $1 AND status = 'completed') as total_sales,
+        (SELECT COALESCE(SUM(creator_payout), 0) FROM shop_orders WHERE creator_id = $1 AND status = 'completed') as total_revenue,
+        (SELECT COUNT(*) FROM shop_orders WHERE creator_id = $1 AND status = 'completed' AND created_at > NOW() - INTERVAL '30 days') as monthly_sales,
+        (SELECT COALESCE(SUM(creator_payout), 0) FROM shop_orders WHERE creator_id = $1 AND status = 'completed' AND created_at > NOW() - INTERVAL '30 days') as monthly_revenue
+    `, [req.user.userId]);
+    
+    res.json({
+      success: true,
+      stats: stats.rows[0]
+    });
+  } catch (error) {
+    console.error('Get shop stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// PUBLIC SHOP API (No auth required)
+// ============================================
+
+// Get public shop by username
+app.get('/api/shop/public/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Find user by username or name
+    let userResult = await pool.query(`
+      SELECT id, name, username, bio, avatar_url, location, website
+      FROM users WHERE username = $1
+    `, [username]);
+    
+    if (userResult.rows.length === 0) {
+      // Try by name
+      userResult = await pool.query(`
+        SELECT id, name, username, bio, avatar_url, location, website
+        FROM users WHERE LOWER(name) = LOWER($1)
+      `, [username]);
+    }
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Get shop settings
+    const settingsResult = await pool.query(
+      'SELECT * FROM shop_settings WHERE user_id = $1',
+      [user.id]
+    );
+    
+    const settings = settingsResult.rows[0] || {
+      shop_name: `${user.name}'s Shop`,
+      is_active: true,
+      theme: { primary_color: '#14b8a6', style: 'modern' }
+    };
+    
+    // Get active products
+    const productsResult = await pool.query(`
+      SELECT id, name, slug, short_description, type, price, compare_at_price, 
+             currency, cover_image, is_featured, sales_count, created_at
+      FROM products
+      WHERE creator_id = $1 AND is_active = TRUE
+      ORDER BY is_featured DESC, created_at DESC
+    `, [user.id]);
+    
+    res.json({
+      success: true,
+      shop: {
+        creator: {
+          name: user.name,
+          username: user.username,
+          bio: user.bio,
+          avatar: user.avatar_url,
+          location: user.location,
+          website: user.website
+        },
+        settings: {
+          name: settings.shop_name || `${user.name}'s Shop`,
+          description: settings.shop_description,
+          logo: settings.shop_logo,
+          banner: settings.shop_banner,
+          theme: settings.theme,
+          socialLinks: settings.social_links
+        },
+        products: productsResult.rows
+      }
+    });
+  } catch (error) {
+    console.error('Get public shop error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get single public product
+app.get('/api/shop/public/:username/products/:slug', async (req, res) => {
+  try {
+    const { username, slug } = req.params;
+    
+    // Find creator
+    let userResult = await pool.query('SELECT id, name FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      userResult = await pool.query('SELECT id, name FROM users WHERE LOWER(name) = LOWER($1)', [username]);
+    }
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+    
+    const creatorId = userResult.rows[0].id;
+    
+    // Get product
+    const result = await pool.query(`
+      SELECT p.*, u.name as creator_name, u.avatar_url as creator_avatar
+      FROM products p
+      JOIN users u ON p.creator_id = u.id
+      WHERE p.slug = $1 AND p.creator_id = $2 AND p.is_active = TRUE
+    `, [slug, creatorId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Get public product error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create checkout session for product purchase
+app.post('/api/shop/checkout/:productId', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { customerEmail, customerName, successUrl, cancelUrl } = req.body;
+    
+    if (!customerEmail) {
+      return res.status(400).json({ error: 'Customer email is required' });
+    }
+    
+    // Get product details
+    const productResult = await pool.query(`
+      SELECT p.*, u.name as creator_name, ss.stripe_account_id
+      FROM products p
+      JOIN users u ON p.creator_id = u.id
+      LEFT JOIN shop_settings ss ON p.creator_id = ss.user_id
+      WHERE p.id = $1 AND p.is_active = TRUE
+    `, [productId]);
+    
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    const product = productResult.rows[0];
+    
+    // Calculate platform fee (8%)
+    const platformFee = Math.round(product.price * 0.08);
+    const creatorPayout = product.price - platformFee;
+    
+    // Generate order
+    const orderNumber = generateOrderNumber();
+    const downloadToken = generateDownloadToken();
+    
+    // Create pending order
+    const orderResult = await pool.query(`
+      INSERT INTO shop_orders (
+        order_number, product_id, creator_id, customer_email, customer_name,
+        amount, currency, platform_fee, creator_payout, status, download_token,
+        download_expires_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, NOW() + INTERVAL '7 days')
+      RETURNING *
+    `, [
+      orderNumber, productId, product.creator_id, customerEmail.toLowerCase(),
+      customerName, product.price, product.currency, platformFee, creatorPayout, downloadToken
+    ]);
+    
+    const order = orderResult.rows[0];
+    
+    // For now, return a simple payment link (in production, use Stripe Checkout)
+    // This is a placeholder - in production you'd create a Stripe Checkout Session
+    const baseUrl = process.env.OAUTH_REDIRECT_BASE || `https://${req.get('host')}`;
+    
+    res.json({
+      success: true,
+      order: {
+        id: order.id,
+        orderNumber: order.order_number,
+        amount: product.price,
+        currency: product.currency
+      },
+      // In production, this would be a Stripe Checkout URL
+      // For now, simulate with a direct purchase link
+      checkoutUrl: `${baseUrl}/shop/complete/${order.order_number}?token=${downloadToken}`,
+      message: 'Order created. In production, this would redirect to Stripe Checkout.'
+    });
+  } catch (error) {
+    console.error('Create checkout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Complete order (simulate payment success - in production, use Stripe webhook)
+app.post('/api/shop/orders/:orderNumber/complete', async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    const { token } = req.body;
+    
+    const orderResult = await pool.query(`
+      SELECT o.*, p.name as product_name
+      FROM shop_orders o
+      JOIN products p ON o.product_id = p.id
+      WHERE o.order_number = $1
+    `, [orderNumber]);
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    const order = orderResult.rows[0];
+    
+    // Verify token
+    if (order.download_token !== token) {
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+    
+    // Mark order as completed
+    await pool.query(`
+      UPDATE shop_orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [order.id]);
+    
+    // Increment product sales count
+    await pool.query(`
+      UPDATE products SET sales_count = sales_count + 1 WHERE id = $1
+    `, [order.product_id]);
+    
+    res.json({
+      success: true,
+      order: {
+        ...order,
+        status: 'completed'
+      },
+      downloadUrl: `/api/shop/download/${order.download_token}`
+    });
+  } catch (error) {
+    console.error('Complete order error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Download purchased files
+app.get('/api/shop/download/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    // Find order by download token
+    const orderResult = await pool.query(`
+      SELECT o.*, p.name as product_name, p.download_limit
+      FROM shop_orders o
+      JOIN products p ON o.product_id = p.id
+      WHERE o.download_token = $1 AND o.status = 'completed'
+    `, [token]);
+    
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Download not found or order not completed' });
+    }
+    
+    const order = orderResult.rows[0];
+    
+    // Check expiration
+    if (order.download_expires_at && new Date(order.download_expires_at) < new Date()) {
+      return res.status(403).json({ error: 'Download link has expired' });
+    }
+    
+    // Check download limit
+    if (order.download_limit && order.download_count >= order.download_limit) {
+      return res.status(403).json({ error: 'Download limit reached' });
+    }
+    
+    // Get product files
+    const filesResult = await pool.query(`
+      SELECT * FROM product_files WHERE product_id = $1 ORDER BY sort_order
+    `, [order.product_id]);
+    
+    // Increment download count
+    await pool.query(`
+      UPDATE shop_orders SET download_count = download_count + 1 WHERE id = $1
+    `, [order.id]);
+    
+    res.json({
+      success: true,
+      productName: order.product_name,
+      files: filesResult.rows.map(f => ({
+        name: f.file_name,
+        url: f.file_url,
+        size: f.file_size,
+        type: f.file_type
+      })),
+      downloadsRemaining: order.download_limit ? order.download_limit - order.download_count - 1 : null
+    });
+  } catch (error) {
+    console.error('Download error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

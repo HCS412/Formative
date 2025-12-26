@@ -14,4 +14,6 @@ export { Payments } from './Payments'
 export { PaymentsWrapper } from './PaymentsWrapper'
 export { Links } from './Links'
 export { Teams } from './Teams'
+export { Shop } from './Shop'
+export { PublicShop } from './PublicShop'
 
