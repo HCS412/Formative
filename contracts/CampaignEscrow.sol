@@ -2,11 +2,40 @@
 pragma solidity ^0.8.20;
 
 /**
+ * @title ReentrancyGuard
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ * Inheriting from `ReentrancyGuard` will make the `nonReentrant` modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ */
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
+
+/**
  * @title CampaignEscrow
  * @dev Smart contract for escrowing campaign payments
  * Funds are locked until deliverables are approved
+ * 
+ * Security features:
+ * - ReentrancyGuard to prevent reentrancy attacks on payment functions
+ * - Checks-Effects-Interactions pattern for state changes
  */
-contract CampaignEscrow {
+contract CampaignEscrow is ReentrancyGuard {
     struct Campaign {
         address brand;           // Brand who created the campaign
         address influencer;      // Influencer receiving payment
@@ -34,8 +63,9 @@ contract CampaignEscrow {
     );
     
     event CampaignApproved(uint256 indexed campaignId);
-    event PaymentReleased(uint256 indexed campaignId, address influencer, uint256 amount);
-    event CampaignCancelled(uint256 indexed campaignId, address refundedTo);
+    event PaymentReleased(uint256 indexed campaignId, address indexed influencer, uint256 amount);
+    event CampaignCancelled(uint256 indexed campaignId, address indexed refundedTo);
+    event PlatformFeeUpdated(uint256 oldFeeBps, uint256 newFeeBps);
     
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -90,7 +120,7 @@ contract CampaignEscrow {
      * @dev Brand approves deliverables and releases payment
      * @param _campaignId Campaign ID
      */
-    function approveAndRelease(uint256 _campaignId) external onlyBrand(_campaignId) {
+    function approveAndRelease(uint256 _campaignId) external onlyBrand(_campaignId) nonReentrant {
         Campaign storage campaign = campaigns[_campaignId];
         require(!campaign.released, "Already released");
         require(!campaign.cancelled, "Campaign cancelled");
@@ -116,7 +146,7 @@ contract CampaignEscrow {
      * @dev Brand cancels campaign before deadline (refund)
      * @param _campaignId Campaign ID
      */
-    function cancelCampaign(uint256 _campaignId) external onlyBrand(_campaignId) {
+    function cancelCampaign(uint256 _campaignId) external onlyBrand(_campaignId) nonReentrant {
         Campaign storage campaign = campaigns[_campaignId];
         require(!campaign.released, "Already released");
         require(!campaign.cancelled, "Already cancelled");
@@ -137,7 +167,7 @@ contract CampaignEscrow {
      * This allows influencers to claim if brand doesn't respond
      * @param _campaignId Campaign ID
      */
-    function claimAfterDeadline(uint256 _campaignId) external {
+    function claimAfterDeadline(uint256 _campaignId) external nonReentrant {
         Campaign storage campaign = campaigns[_campaignId];
         require(msg.sender == campaign.influencer, "Not influencer");
         require(!campaign.released, "Already released");
@@ -166,7 +196,9 @@ contract CampaignEscrow {
      */
     function setPlatformFee(uint256 _newFeeBps) external onlyOwner {
         require(_newFeeBps <= 1000, "Fee cannot exceed 10%");
+        uint256 oldFeeBps = platformFeeBps;
         platformFeeBps = _newFeeBps;
+        emit PlatformFeeUpdated(oldFeeBps, _newFeeBps);
     }
     
     /**

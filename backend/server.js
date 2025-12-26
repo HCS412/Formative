@@ -177,10 +177,31 @@ function getClientIP(req) {
          'unknown';
 }
 
-// Database connection
+// Database connection with secure SSL configuration
+const sslConfig = (() => {
+  if (process.env.NODE_ENV !== 'production') {
+    return false; // No SSL in development
+  }
+  
+  // Allow override via environment variable if Railway's certs cause issues
+  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false';
+  
+  return { rejectUnauthorized };
+})();
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: sslConfig,
+  // Connection pool settings for production stability
+  max: 20,
+  min: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
+
+// Log pool errors
+pool.on('error', (err) => {
+  console.error('Unexpected database pool error:', err.message);
 });
 
 // ============================================
@@ -265,8 +286,105 @@ if (fs.existsSync(distPath)) {
 }
 // NO fallback to old static files - React app is required
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+// ============================================
+// SECURITY: Environment Validation & Secrets
+// ============================================
+
+// Validate required environment variables in production
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction) {
+  const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
+  const missing = requiredEnvVars.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+// JWT Secret - NO FALLBACK in production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (isProduction) {
+    console.error('FATAL: JWT_SECRET environment variable is required');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: JWT_SECRET not set, using insecure default for development only');
+  }
+}
+const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'dev-only-insecure-secret-do-not-use-in-production';
+
+// ============================================
+// SECURITY: Token Encryption for OAuth
+// ============================================
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16;
+const AUTH_TAG_LENGTH = 16;
+
+// Check if encryption is available
+const encryptionAvailable = ENCRYPTION_KEY && ENCRYPTION_KEY.length === 64;
+
+if (isProduction && !encryptionAvailable) {
+  console.warn('WARNING: ENCRYPTION_KEY not set or invalid. OAuth tokens will be stored unencrypted.');
+  console.warn('         Set ENCRYPTION_KEY to a 64-character hex string for token encryption.');
+}
+
+/**
+ * Encrypt sensitive data (OAuth tokens)
+ * Returns format: iv:authTag:encryptedData (all hex encoded)
+ */
+function encryptToken(plaintext) {
+  if (!encryptionAvailable || !plaintext) return plaintext;
+  
+  try {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+    const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
+    
+    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+    
+    return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+  } catch (error) {
+    console.error('Encryption error:', error.message);
+    return plaintext; // Fallback to unencrypted on error
+  }
+}
+
+/**
+ * Decrypt sensitive data (OAuth tokens)
+ * Handles both encrypted (iv:authTag:data) and legacy unencrypted tokens
+ */
+function decryptToken(ciphertext) {
+  if (!ciphertext) return ciphertext;
+  
+  // Check if this looks like an encrypted token (iv:authTag:data format)
+  const parts = ciphertext.split(':');
+  if (parts.length !== 3 || !encryptionAvailable) {
+    // Return as-is (either unencrypted legacy token or encryption not available)
+    return ciphertext;
+  }
+  
+  try {
+    const [ivHex, authTagHex, encryptedHex] = parts;
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+    const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    // If decryption fails, assume it's a legacy unencrypted token
+    console.warn('Token decryption failed, treating as legacy unencrypted token');
+    return ciphertext;
+  }
+}
 
 // OAuth Configuration
 const OAUTH_CONFIG = {
@@ -1317,7 +1435,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, EFFECTIVE_JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
@@ -1347,7 +1465,7 @@ const authenticateTokenFlexible = (req, res, next) => {
     return res.status(403).json({ error: 'Invalid token format. Please log in again.' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, EFFECTIVE_JWT_SECRET, (err, user) => {
     if (err) {
       console.error('Token verification error:', err.message);
       return res.status(403).json({ error: 'Invalid or expired token. Please log in again.' });
@@ -1829,24 +1947,32 @@ async function getValidAccessToken(userId, platform) {
   }
 
   const account = result.rows[0];
+  
+  // Decrypt tokens (handles both encrypted and legacy unencrypted tokens)
+  const accessToken = decryptToken(account.access_token);
+  const refreshToken = decryptToken(account.refresh_token);
 
-  if (isTokenExpired(account.token_expires_at) && account.refresh_token) {
+  if (isTokenExpired(account.token_expires_at) && refreshToken) {
     console.log(`Token expired for ${platform}, refreshing...`);
     
-    const newTokens = await refreshOAuthToken(platform, account.refresh_token);
+    const newTokens = await refreshOAuthToken(platform, refreshToken);
     const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
+    
+    // Encrypt new tokens before storing
+    const encryptedAccessToken = encryptToken(newTokens.access_token);
+    const encryptedRefreshToken = encryptToken(newTokens.refresh_token);
     
     await pool.query(
       `UPDATE social_accounts 
        SET access_token = $1, refresh_token = $2, token_expires_at = $3, updated_at = NOW()
        WHERE user_id = $4 AND platform = $5`,
-      [newTokens.access_token, newTokens.refresh_token, expiresAt, userId, platform]
+      [encryptedAccessToken, encryptedRefreshToken, expiresAt, userId, platform]
     );
 
     return newTokens.access_token;
   }
 
-  return account.access_token;
+  return accessToken;
 }
 
 // ============================================
@@ -1936,7 +2062,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
-      JWT_SECRET,
+      EFFECTIVE_JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -2057,7 +2183,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
-      JWT_SECRET,
+      EFFECTIVE_JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -2164,10 +2290,13 @@ app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
     const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
     const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
     
+    // Note: We return the secret for manual entry use case (users who can't scan QR codes)
+    // The secret is transmitted over HTTPS and should only be displayed once during setup
+    // After 2FA is enabled, the secret is never returned again
     res.json({
       success: true,
-      secret,
-      qrCode
+      qrCode,
+      secret // Kept for manual entry - frontend shows "Can't scan? Enter this code manually"
     });
   } catch (error) {
     console.error('2FA setup error:', error);
@@ -2288,7 +2417,7 @@ app.post('/api/auth/2fa/login', authLimiter, async (req, res) => {
     // Generate token
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.user_type },
-      JWT_SECRET,
+      EFFECTIVE_JWT_SECRET,
       { expiresIn: rememberMe ? '30d' : '1d' }
     );
     
@@ -2704,6 +2833,10 @@ app.get('/api/oauth/twitter/callback', async (req, res) => {
       bio: userData.data.description || null
     };
     
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = encryptToken(tokens.refresh_token);
+    
     await pool.query(
       `INSERT INTO social_accounts 
         (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
@@ -2719,7 +2852,7 @@ app.get('/api/oauth/twitter/callback', async (req, res) => {
          stats = $8,
          last_synced_at = NOW(),
          updated_at = NOW()`,
-      [stateData.userId, 'twitter', username, userData.data.id, tokens.access_token, tokens.refresh_token, expiresAt, JSON.stringify(stats)]
+      [stateData.userId, 'twitter', username, userData.data.id, encryptedAccessToken, encryptedRefreshToken, expiresAt, JSON.stringify(stats)]
     );
 
     console.log(`✅ Twitter connected for user ${stateData.userId}: ${username} (${stats.followers} followers)`);
@@ -2773,6 +2906,9 @@ app.get('/api/oauth/instagram/callback', async (req, res) => {
     const username = '@' + userData.username;
     const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 days
 
+    // Encrypt token before storing
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+
     await pool.query(
       `INSERT INTO social_accounts 
         (user_id, platform, username, platform_user_id, access_token, token_expires_at, is_verified, created_at, updated_at)
@@ -2785,7 +2921,7 @@ app.get('/api/oauth/instagram/callback', async (req, res) => {
          token_expires_at = $6,
          is_verified = TRUE,
          updated_at = NOW()`,
-      [stateData.userId, 'instagram', username, userData.id, tokens.access_token, expiresAt]
+      [stateData.userId, 'instagram', username, userData.id, encryptedAccessToken, expiresAt]
     );
 
     console.log(`✅ Instagram connected for user ${stateData.userId}: ${username}`);
@@ -2841,6 +2977,10 @@ app.get('/api/oauth/tiktok/callback', async (req, res) => {
     const username = '@' + userData.data.user.display_name;
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = encryptToken(tokens.refresh_token);
+
     await pool.query(
       `INSERT INTO social_accounts 
         (user_id, platform, username, access_token, refresh_token, token_expires_at, is_verified, created_at, updated_at)
@@ -2853,7 +2993,7 @@ app.get('/api/oauth/tiktok/callback', async (req, res) => {
          token_expires_at = $6,
          is_verified = TRUE,
          updated_at = NOW()`,
-      [stateData.userId, 'tiktok', username, tokens.access_token, tokens.refresh_token, expiresAt]
+      [stateData.userId, 'tiktok', username, encryptedAccessToken, encryptedRefreshToken, expiresAt]
     );
 
     console.log(`✅ TikTok connected for user ${stateData.userId}: ${username}`);
@@ -2928,6 +3068,10 @@ app.get('/api/oauth/youtube/callback', async (req, res) => {
 
     const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
 
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = encryptToken(tokens.refresh_token);
+
     await pool.query(
       `INSERT INTO social_accounts 
         (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, stats, is_verified, created_at, updated_at)
@@ -2942,7 +3086,7 @@ app.get('/api/oauth/youtube/callback', async (req, res) => {
          stats = $8,
          is_verified = TRUE,
          updated_at = NOW()`,
-      [stateData.userId, 'youtube', username, channelId, tokens.access_token, tokens.refresh_token, expiresAt, JSON.stringify(stats)]
+      [stateData.userId, 'youtube', username, channelId, encryptedAccessToken, encryptedRefreshToken, expiresAt, JSON.stringify(stats)]
     );
 
     console.log(`✅ YouTube connected for user ${stateData.userId}: ${username} (${stats.subscribers} subscribers)`);
