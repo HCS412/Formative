@@ -1,5 +1,5 @@
 // Backend API server for Formative Platform with OAuth Support
-// Updated with complete database schema initialization and security features
+// Modular architecture with centralized error handling
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -19,194 +19,15 @@ try {
   fetch = require('node-fetch');
 }
 
+// ============================================
+// MODULAR IMPORTS
+// ============================================
+
+// Centralized error handling utilities
+const { ApiError, asyncHandler, errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// ============================================
-// SECURITY: Rate Limiting
-// ============================================
-
-// General API rate limiter
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
-  message: { error: 'Too many requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Strict rate limiter for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 login attempts per 15 minutes
-  message: { error: 'Too many login attempts, please try again in 15 minutes' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful logins
-});
-
-// Very strict limiter for password reset
-const passwordResetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 attempts per hour
-  message: { error: 'Too many password reset attempts, please try again later' },
-});
-
-// ============================================
-// SECURITY: Account Lockout Tracking
-// ============================================
-const loginAttempts = new Map(); // In production, use Redis
-
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-
-function recordFailedLogin(email) {
-  const attempts = loginAttempts.get(email) || { count: 0, firstAttempt: Date.now() };
-  attempts.count++;
-  attempts.lastAttempt = Date.now();
-  loginAttempts.set(email, attempts);
-  return attempts.count;
-}
-
-function isAccountLocked(email) {
-  const attempts = loginAttempts.get(email);
-  if (!attempts) return false;
-  
-  // Reset if lockout period has passed
-  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-    const timeSinceLast = Date.now() - attempts.lastAttempt;
-    if (timeSinceLast > LOCKOUT_DURATION) {
-      loginAttempts.delete(email);
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-function clearFailedLogins(email) {
-  loginAttempts.delete(email);
-}
-
-function getRemainingLockoutTime(email) {
-  const attempts = loginAttempts.get(email);
-  if (!attempts) return 0;
-  const remaining = LOCKOUT_DURATION - (Date.now() - attempts.lastAttempt);
-  return Math.max(0, Math.ceil(remaining / 1000 / 60)); // Return minutes
-}
-
-// ============================================
-// SECURITY: Password Strength Validation
-// ============================================
-function validatePasswordStrength(password) {
-  const errors = [];
-  
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-}
-
-// ============================================
-// SECURITY: Input Sanitization
-// ============================================
-function sanitizeInput(input) {
-  if (typeof input !== 'string') return input;
-  
-  // Remove potential XSS vectors
-  return input
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .trim();
-}
-
-function sanitizeObject(obj) {
-  if (typeof obj !== 'object' || obj === null) return obj;
-  
-  const sanitized = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      sanitized[key] = sanitizeInput(value);
-    } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeObject(value);
-    } else {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
-}
-
-// ============================================
-// SECURITY: Audit Logging
-// ============================================
-async function logAuditEvent(pool, eventType, userId, details, ipAddress) {
-  try {
-    await pool.query(`
-      INSERT INTO audit_logs (event_type, user_id, details, ip_address, created_at)
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-    `, [eventType, userId, JSON.stringify(details), ipAddress]);
-  } catch (error) {
-    console.error('Failed to log audit event:', error.message);
-  }
-}
-
-// Get client IP address
-function getClientIP(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-         req.headers['x-real-ip'] || 
-         req.socket?.remoteAddress || 
-         'unknown';
-}
-
-// Database connection with SSL configuration
-// Railway's PostgreSQL uses internal networking with SSL
-const sslConfig = (() => {
-  if (process.env.NODE_ENV !== 'production') {
-    return false; // No SSL in development
-  }
-  
-  // Railway internal PostgreSQL requires SSL but self-signed certs
-  // Use rejectUnauthorized: false for Railway's internal network
-  // This is acceptable because Railway's internal network is isolated
-  // For external databases, set DATABASE_SSL_REJECT_UNAUTHORIZED=true
-  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'true';
-  
-  return { rejectUnauthorized };
-})();
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: sslConfig,
-  // Connection pool settings for production stability
-  max: 20,
-  min: 2,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
-
-// Log pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected database pool error:', err.message);
-});
 
 // ============================================
 // SECURITY: Helmet Security Headers
@@ -289,106 +110,6 @@ if (fs.existsSync(distPath)) {
   }));
 }
 // NO fallback to old static files - React app is required
-
-// ============================================
-// SECURITY: Environment Validation & Secrets
-// ============================================
-
-// Validate required environment variables in production
-const isProduction = process.env.NODE_ENV === 'production';
-
-if (isProduction) {
-  const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
-  const missing = requiredEnvVars.filter(v => !process.env[v]);
-  if (missing.length > 0) {
-    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
-    process.exit(1);
-  }
-}
-
-// JWT Secret - NO FALLBACK in production
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  if (isProduction) {
-    console.error('FATAL: JWT_SECRET environment variable is required');
-    process.exit(1);
-  } else {
-    console.warn('WARNING: JWT_SECRET not set, using insecure default for development only');
-  }
-}
-const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'dev-only-insecure-secret-do-not-use-in-production';
-
-// ============================================
-// SECURITY: Token Encryption for OAuth
-// ============================================
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
-
-// Check if encryption is available
-const encryptionAvailable = ENCRYPTION_KEY && ENCRYPTION_KEY.length === 64;
-
-if (isProduction && !encryptionAvailable) {
-  console.warn('WARNING: ENCRYPTION_KEY not set or invalid. OAuth tokens will be stored unencrypted.');
-  console.warn('         Set ENCRYPTION_KEY to a 64-character hex string for token encryption.');
-}
-
-/**
- * Encrypt sensitive data (OAuth tokens)
- * Returns format: iv:authTag:encryptedData (all hex encoded)
- */
-function encryptToken(plaintext) {
-  if (!encryptionAvailable || !plaintext) return plaintext;
-  
-  try {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
-    const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
-    
-    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    const authTag = cipher.getAuthTag().toString('hex');
-    
-    return `${iv.toString('hex')}:${authTag}:${encrypted}`;
-  } catch (error) {
-    console.error('Encryption error:', error.message);
-    return plaintext; // Fallback to unencrypted on error
-  }
-}
-
-/**
- * Decrypt sensitive data (OAuth tokens)
- * Handles both encrypted (iv:authTag:data) and legacy unencrypted tokens
- */
-function decryptToken(ciphertext) {
-  if (!ciphertext) return ciphertext;
-  
-  // Check if this looks like an encrypted token (iv:authTag:data format)
-  const parts = ciphertext.split(':');
-  if (parts.length !== 3 || !encryptionAvailable) {
-    // Return as-is (either unencrypted legacy token or encryption not available)
-    return ciphertext;
-  }
-  
-  try {
-    const [ivHex, authTagHex, encryptedHex] = parts;
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(authTagHex, 'hex');
-    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
-    const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-    
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (error) {
-    // If decryption fails, assume it's a legacy unencrypted token
-    console.warn('Token decryption failed, treating as legacy unencrypted token');
-    return ciphertext;
-  }
-}
 
 // OAuth Configuration
 const OAUTH_CONFIG = {
@@ -6499,6 +6220,18 @@ app.get('/api/shop/download/:token', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ============================================
+// CENTRALIZED ERROR HANDLER
+// ============================================
+
+// Handle 404 for API routes
+app.use('/api/*', (req, res, next) => {
+  res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.path}` });
+});
+
+// Global error handler - must be last middleware
+app.use(errorHandler);
 
 // ============================================
 // CATCH-ALL FOR REACT ROUTER (SPA)
