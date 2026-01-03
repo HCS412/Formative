@@ -160,6 +160,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
+// TRUST PROXY: Required for Railway/Heroku/etc behind load balancers
+// This allows express-rate-limit to correctly identify users by IP
+// ============================================
+if (isProduction) {
+  app.set('trust proxy', 1); // Trust first proxy (Railway's load balancer)
+}
+
+// ============================================
 // SECURITY: Helmet Security Headers
 // ============================================
 app.use(helmet({
