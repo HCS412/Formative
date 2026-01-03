@@ -178,16 +178,31 @@ export function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-[var(--border-color)] py-8 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-orange-500 relative">
-              <div className="absolute w-5 h-5 rounded-full bg-[var(--bg-primary)] top-1/2 left-1/2 -translate-x-[30%] -translate-y-1/2" />
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-orange-500 relative">
+                <div className="absolute w-5 h-5 rounded-full bg-[var(--bg-primary)] top-1/2 left-1/2 -translate-x-[30%] -translate-y-1/2" />
+              </div>
+              <span className="font-bold">Formative</span>
             </div>
-            <span className="font-bold">Formative</span>
+            <div className="flex items-center gap-6">
+              <Link to="/terms" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/privacy" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm transition-colors">
+                Privacy Policy
+              </Link>
+              <a href="mailto:support@formative.com" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm transition-colors">
+                Contact
+              </a>
+            </div>
           </div>
-          <p className="text-[var(--text-secondary)] text-sm">
-            © 2024 Formative. All rights reserved.
-          </p>
+          <div className="text-center md:text-left">
+            <p className="text-[var(--text-secondary)] text-sm">
+              © 2025 Formative. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
       

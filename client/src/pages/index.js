@@ -16,4 +16,6 @@ export { Links } from './Links'
 export { Teams } from './Teams'
 export { Shop } from './Shop'
 export { PublicShop } from './PublicShop'
+export { TermsOfService } from './TermsOfService'
+export { PrivacyPolicy } from './PrivacyPolicy'
 

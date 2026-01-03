@@ -9,7 +9,7 @@ import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SearchModal } from '@/components/SearchModal'
 import { Navbar } from '@/components/layout/Navbar'
-import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop } from '@/pages'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
 const queryClient = new QueryClient({
@@ -60,13 +60,16 @@ function AppRoutes() {
   const isMediaKit = location.pathname.startsWith('/kit/');
   const isPublicShop = location.pathname.startsWith('/shop/');
   const isAuthPage = ['/login', '/register', '/onboarding'].includes(location.pathname);
+  const isLegalPage = ['/terms', '/privacy'].includes(location.pathname);
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isDashboard && !isMediaKit && !isPublicShop && !isAuthPage && <Navbar />}
+      {!isDashboard && !isMediaKit && !isPublicShop && !isAuthPage && !isLegalPage && <Navbar />}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/kit/:username" element={<MediaKit />} />
           <Route path="/shop/:username" element={<PublicShop />} />
           <Route path="/shop/:username/:productSlug" element={<PublicShop />} />
