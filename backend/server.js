@@ -1,5 +1,5 @@
 // Backend API server for Formative Platform with OAuth Support
-// Modular architecture with centralized error handling
+// Modular architecture with centralized error handling and comprehensive security
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -8,8 +8,8 @@ const { Pool } = require('pg');
 const path = require('path');
 const crypto = require('crypto');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const { body, validationResult } = require('express-validator');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 
 // Use node-fetch for Node.js < 18, native fetch for Node.js >= 18
 let fetch;
@@ -26,124 +26,48 @@ try {
 // Centralized error handling utilities
 const { ApiError, asyncHandler, errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
-// ============================================
-// SECURITY: Rate Limiting
-// ============================================
+// Rate limiters
+const {
+  generalLimiter,
+  authLimiter,
+  passwordResetLimiter,
+  twoFactorLimiter,
+  messageLimiter,
+  conversationLimiter,
+  inviteLimiter,
+  campaignInviteLimiter,
+  checkoutLimiter,
+  productLimiter,
+  downloadLimiter,
+  applicationLimiter,
+  opportunityLimiter,
+  accountModifyLimiter,
+  socialConnectLimiter,
+  searchLimiter
+} = require('./middleware/rateLimiter');
 
-// General API rate limiter
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
-  message: { error: 'Too many requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Input validators
+const validators = require('./middleware/validators');
 
-// Strict rate limiter for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 login attempts per 15 minutes
-  message: { error: 'Too many login attempts, please try again in 15 minutes' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful logins
-});
-
-// Very strict limiter for password reset
-const passwordResetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 attempts per hour
-  message: { error: 'Too many password reset attempts, please try again later' },
-});
-
-// ============================================
-// SECURITY: Account Lockout Tracking
-// ============================================
-const loginAttempts = new Map(); // In production, use Redis
-
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-
-function recordFailedLogin(email) {
-  const attempts = loginAttempts.get(email) || { count: 0, firstAttempt: Date.now() };
-  attempts.count++;
-  attempts.lastAttempt = Date.now();
-  loginAttempts.set(email, attempts);
-  return attempts.count;
-}
-
-function isAccountLocked(email) {
-  const attempts = loginAttempts.get(email);
-  if (!attempts) return false;
-  
-  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-    const timeSinceLast = Date.now() - attempts.lastAttempt;
-    if (timeSinceLast > LOCKOUT_DURATION) {
-      loginAttempts.delete(email);
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-function clearFailedLogins(email) {
-  loginAttempts.delete(email);
-}
-
-function getRemainingLockoutTime(email) {
-  const attempts = loginAttempts.get(email);
-  if (!attempts) return 0;
-  const remaining = LOCKOUT_DURATION - (Date.now() - attempts.lastAttempt);
-  return Math.max(0, Math.ceil(remaining / 1000 / 60));
-}
-
-// ============================================
-// SECURITY: Password Strength Validation
-// ============================================
-function validatePasswordStrength(password) {
-  const errors = [];
-  if (password.length < 8) errors.push('Password must be at least 8 characters long');
-  if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
-  if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
-  if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain at least one special character');
-  return { isValid: errors.length === 0, errors };
-}
-
-// ============================================
-// SECURITY: Input Sanitization
-// ============================================
-function sanitizeInput(input) {
-  if (typeof input !== 'string') return input;
-  return input.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').trim();
-}
-
-function sanitizeObject(obj) {
-  if (typeof obj !== 'object' || obj === null) return obj;
-  const sanitized = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') sanitized[key] = sanitizeInput(value);
-    else if (typeof value === 'object' && value !== null) sanitized[key] = sanitizeObject(value);
-    else sanitized[key] = value;
-  }
-  return sanitized;
-}
-
-// ============================================
-// SECURITY: Audit Logging
-// ============================================
-async function logAuditEvent(pool, eventType, userId, details, ipAddress) {
-  try {
-    await pool.query(`INSERT INTO audit_logs (event_type, user_id, details, ip_address, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`, [eventType, userId, JSON.stringify(details), ipAddress]);
-  } catch (error) {
-    console.error('Failed to log audit event:', error.message);
-  }
-}
-
-function getClientIP(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown';
-}
+// Security utilities
+const {
+  requestIdMiddleware,
+  getClientIP,
+  secureLog,
+  createAuditLogger,
+  sanitizeInput,
+  sanitizeObject,
+  sanitizeBodyMiddleware,
+  validatePasswordStrength,
+  recordFailedLogin,
+  isAccountLocked,
+  clearFailedLogins,
+  getRemainingLockoutTime,
+  additionalSecurityHeaders,
+  verifyOwnership,
+  MAX_LOGIN_ATTEMPTS,
+  LOCKOUT_DURATION
+} = require('./middleware/security');
 
 // ============================================
 // DATABASE CONNECTION
@@ -164,8 +88,11 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected database pool error:', err.message);
+  secureLog('error', 'Unexpected database pool error', { error: err.message });
 });
+
+// Create audit logger with pool reference
+const logAuditEvent = createAuditLogger(pool);
 
 // ============================================
 // SECURITY: JWT & Encryption
@@ -251,15 +178,11 @@ app.use(helmet({
   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }, // Required for OAuth popups
 }));
 
-// Additional security headers
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  next();
-});
+// Additional security headers (from middleware/security.js)
+app.use(additionalSecurityHeaders);
+
+// Request ID tracking for debugging and logging
+app.use(requestIdMiddleware);
 
 // Middleware
 app.use(cors({
@@ -275,13 +198,8 @@ app.use('/api/', generalLimiter);
 // Parse JSON with size limit
 app.use(express.json({ limit: '10kb' })); // Prevent large payload attacks
 
-// Sanitize all incoming request bodies
-app.use((req, res, next) => {
-  if (req.body && typeof req.body === 'object') {
-    req.body = sanitizeObject(req.body);
-  }
-  next();
-});
+// Sanitize all incoming request bodies (from middleware/security.js)
+app.use(sanitizeBodyMiddleware);
 
 // Serve React app from dist folder (built by Vite)
 const distPath = path.join(__dirname, '../dist');
@@ -1906,560 +1824,439 @@ async function getValidAccessToken(userId, platform) {
 // ============================================
 // HEALTH CHECK
 // ============================================
-app.get('/api/health', async (req, res) => {
-  try {
-    // Test database connection
-    const dbResult = await pool.query('SELECT NOW()');
-    res.json({ 
-      status: 'OK', 
-      message: 'Formative API is running',
-      database: 'connected',
-      timestamp: dbResult.rows[0].now
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'ERROR', 
-      message: 'Database connection failed',
-      error: error.message
-    });
-  }
-});
+app.get('/api/health', asyncHandler(async (req, res) => {
+  // Test database connection
+  const dbResult = await pool.query('SELECT NOW()');
+  res.json({
+    status: 'OK',
+    message: 'Formative API is running',
+    database: 'connected',
+    timestamp: dbResult.rows[0].now
+  });
+}));
 
 // ============================================
 // AUTH ENDPOINTS
 // ============================================
 
 // User Registration
-// Apply rate limiting to registration
-app.post('/api/auth/register', authLimiter, async (req, res) => {
+app.post('/api/auth/register', authLimiter, validators.registerValidator, asyncHandler(async (req, res) => {
+  const { name, email, password, userType } = req.body;
+
+  // Validate password strength
+  const passwordValidation = validatePasswordStrength(password);
+  if (!passwordValidation.isValid) {
+    throw ApiError.badRequest('Password does not meet security requirements', passwordValidation.errors);
+  }
+
+  const existingUser = await pool.query(
+    'SELECT id FROM users WHERE email = $1',
+    [email.toLowerCase()]
+  );
+
+  if (existingUser.rows.length > 0) {
+    await logAuditEvent('REGISTER_DUPLICATE_EMAIL', null, {}, req);
+    throw ApiError.conflict('User already exists with this email');
+  }
+
+  const saltRounds = 12;
+  const passwordHash = await bcrypt.hash(password, saltRounds);
+
+  const result = await pool.query(
+    'INSERT INTO users (name, email, password_hash, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
+    [name, email.toLowerCase(), passwordHash, userType.toLowerCase()]
+  );
+
+  const user = result.rows[0];
+
+  // Create default user settings
+  await pool.query(
+    'INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING',
+    [user.id]
+  );
+
+  const token = jwt.sign(
+    { userId: user.id, email: user.email, userType: user.user_type },
+    EFFECTIVE_JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  await logAuditEvent('USER_REGISTERED', user.id, { userType: user.user_type }, req);
+  secureLog('info', 'New user registered', { userId: user.id, userType, requestId: req.id });
+
+  res.status(201).json({
+    success: true,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      userType: user.user_type,
+      createdAt: user.created_at
+    },
+    token
+  });
+}));
+
+// User Login
+app.post('/api/auth/login', authLimiter, validators.loginValidator, asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
   const clientIP = getClientIP(req);
-  
-  try {
-    const { name, email, password, userType } = req.body;
 
-    if (!name || !email || !password || !userType) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
+  // Check if account is locked (in-memory check for quick response)
+  if (isAccountLocked(email)) {
+    const remainingMinutes = getRemainingLockoutTime(email);
+    await logAuditEvent('LOGIN_BLOCKED_LOCKOUT', null, { remainingMinutes }, req);
+    throw ApiError.tooManyRequests(`Account temporarily locked due to too many failed attempts. Try again in ${remainingMinutes} minutes.`);
+  }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Please provide a valid email address' });
-    }
+  const result = await pool.query(
+    'SELECT id, name, email, password_hash, user_type, profile_data, two_factor_enabled, locked_until FROM users WHERE email = $1',
+    [email]
+  );
 
-    // Validate password strength
-    const passwordValidation = validatePasswordStrength(password);
-    if (!passwordValidation.isValid) {
-      return res.status(400).json({ 
-        error: 'Password does not meet security requirements',
-        requirements: passwordValidation.errors
-      });
-    }
+  if (result.rows.length === 0) {
+    // Record failed attempt even for non-existent users (prevents user enumeration timing attacks)
+    recordFailedLogin(email);
+    await logAuditEvent('LOGIN_FAILED_UNKNOWN_USER', null, {}, req);
+    throw ApiError.unauthorized('Invalid email or password');
+  }
 
-    // Validate user type
-    const validUserTypes = ['influencer', 'brand', 'freelancer'];
-    if (!validUserTypes.includes(userType.toLowerCase())) {
-      return res.status(400).json({ error: 'Invalid user type' });
-    }
+  const user = result.rows[0];
 
-    const existingUser = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email.toLowerCase()]
-    );
+  // Check database-level lockout (more persistent)
+  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    const remainingMinutes = Math.ceil((new Date(user.locked_until) - new Date()) / 1000 / 60);
+    await logAuditEvent('LOGIN_BLOCKED_DB_LOCKOUT', user.id, {}, req);
+    throw ApiError.tooManyRequests(`Account temporarily locked. Try again in ${remainingMinutes} minutes.`);
+  }
 
-    if (existingUser.rows.length > 0) {
-      await logAuditEvent(pool, 'REGISTER_DUPLICATE_EMAIL', null, { email }, clientIP);
-      return res.status(400).json({ error: 'User already exists with this email' });
-    }
+  const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+  if (!isValidPassword) {
+    const attempts = recordFailedLogin(email);
 
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password_hash, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
-      [sanitizeInput(name), email.toLowerCase(), passwordHash, userType.toLowerCase()]
-    );
-
-    const user = result.rows[0];
-
-    // Create default user settings
+    // Also update database for persistence across server restarts
     await pool.query(
-      'INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING',
+      'UPDATE users SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1 WHERE id = $1',
       [user.id]
     );
 
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, userType: user.user_type },
-      EFFECTIVE_JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    await logAuditEvent(pool, 'USER_REGISTERED', user.id, { email: user.email, userType: user.user_type }, clientIP);
-    console.log(`✅ New user registered: ${email} (${userType})`);
-
-    res.status(201).json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        userType: user.user_type,
-        createdAt: user.created_at
-      },
-      token
-    });
-
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// User Login
-// Apply strict rate limiting to login
-app.post('/api/auth/login', authLimiter, async (req, res) => {
-  const clientIP = getClientIP(req);
-  
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    // Check if account is locked (in-memory check for quick response)
-    if (isAccountLocked(email)) {
-      const remainingMinutes = getRemainingLockoutTime(email);
-      await logAuditEvent(pool, 'LOGIN_BLOCKED_LOCKOUT', null, { email, remainingMinutes }, clientIP);
-      return res.status(423).json({ 
-        error: `Account temporarily locked due to too many failed attempts. Try again in ${remainingMinutes} minutes.`,
-        lockedFor: remainingMinutes
-      });
-    }
-
-    const result = await pool.query(
-      'SELECT id, name, email, password_hash, user_type, profile_data, two_factor_enabled, locked_until FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      // Record failed attempt even for non-existent users (prevents user enumeration timing attacks)
-      recordFailedLogin(email);
-      await logAuditEvent(pool, 'LOGIN_FAILED_UNKNOWN_USER', null, { email }, clientIP);
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const user = result.rows[0];
-
-    // Check database-level lockout (more persistent)
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      const remainingMinutes = Math.ceil((new Date(user.locked_until) - new Date()) / 1000 / 60);
-      await logAuditEvent(pool, 'LOGIN_BLOCKED_DB_LOCKOUT', user.id, { email }, clientIP);
-      return res.status(423).json({ 
-        error: `Account temporarily locked. Try again in ${remainingMinutes} minutes.`,
-        lockedFor: remainingMinutes
-      });
-    }
-
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-
-    if (!isValidPassword) {
-      const attempts = recordFailedLogin(email);
-      
-      // Also update database for persistence across server restarts
+    // Lock account after max attempts
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      const lockUntil = new Date(Date.now() + LOCKOUT_DURATION);
       await pool.query(
-        'UPDATE users SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1 WHERE id = $1',
-        [user.id]
+        'UPDATE users SET locked_until = $1 WHERE id = $2',
+        [lockUntil, user.id]
       );
-      
-      // Lock account after max attempts
-      if (attempts >= MAX_LOGIN_ATTEMPTS) {
-        const lockUntil = new Date(Date.now() + LOCKOUT_DURATION);
-        await pool.query(
-          'UPDATE users SET locked_until = $1 WHERE id = $2',
-          [lockUntil, user.id]
-        );
-        await logAuditEvent(pool, 'ACCOUNT_LOCKED', user.id, { email, attempts }, clientIP);
-        return res.status(423).json({ 
-          error: `Account locked due to ${MAX_LOGIN_ATTEMPTS} failed attempts. Try again in 15 minutes.`,
-          lockedFor: 15
-        });
-      }
-      
-      await logAuditEvent(pool, 'LOGIN_FAILED_WRONG_PASSWORD', user.id, { email, attempts }, clientIP);
-      return res.status(401).json({ 
-        error: 'Invalid email or password',
-        attemptsRemaining: MAX_LOGIN_ATTEMPTS - attempts
-      });
+      await logAuditEvent('ACCOUNT_LOCKED', user.id, { attempts }, req);
+      throw ApiError.tooManyRequests(`Account locked due to ${MAX_LOGIN_ATTEMPTS} failed attempts. Try again in 15 minutes.`);
     }
 
-    // Successful login - clear lockout
-    clearFailedLogins(email);
-    await pool.query(
-      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login_at = CURRENT_TIMESTAMP, last_login_ip = $1 WHERE id = $2',
-      [clientIP, user.id]
-    );
-
-    // Check if 2FA is enabled
-    if (user.two_factor_enabled) {
-      await logAuditEvent(pool, 'LOGIN_2FA_REQUIRED', user.id, { email }, clientIP);
-      return res.json({
-        requires2FA: true,
-        userId: user.id
-      });
-    }
-
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, userType: user.user_type },
-      EFFECTIVE_JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    await logAuditEvent(pool, 'LOGIN_SUCCESS', user.id, { email }, clientIP);
-    console.log(`✅ User logged in: ${email}`);
-
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        userType: user.user_type,
-        profileData: user.profile_data
-      },
-      token
+    await logAuditEvent('LOGIN_FAILED_WRONG_PASSWORD', user.id, { attempts }, req);
+    return res.status(401).json({
+      error: 'Invalid email or password',
+      attemptsRemaining: MAX_LOGIN_ATTEMPTS - attempts
     });
-
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
   }
-});
+
+  // Successful login - clear lockout
+  clearFailedLogins(email);
+  await pool.query(
+    'UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login_at = CURRENT_TIMESTAMP, last_login_ip = $1 WHERE id = $2',
+    [clientIP, user.id]
+  );
+
+  // Check if 2FA is enabled
+  if (user.two_factor_enabled) {
+    await logAuditEvent('LOGIN_2FA_REQUIRED', user.id, {}, req);
+    return res.json({
+      requires2FA: true,
+      userId: user.id
+    });
+  }
+
+  const token = jwt.sign(
+    { userId: user.id, email: user.email, userType: user.user_type },
+    EFFECTIVE_JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  await logAuditEvent('LOGIN_SUCCESS', user.id, {}, req);
+  secureLog('info', 'User logged in', { userId: user.id, requestId: req.id });
+
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      userType: user.user_type,
+      profileData: user.profile_data
+    },
+    token
+  });
+}));
 
 // ============================================
 // TWO-FACTOR AUTHENTICATION ENDPOINTS
+// Using speakeasy library for secure TOTP implementation
 // ============================================
 
-// Generate a base32 secret for 2FA (simple implementation without external lib)
-function generateSecret() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let secret = '';
-  for (let i = 0; i < 32; i++) {
-    secret += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return secret;
-}
+// Setup 2FA - Generate secret and QR code
+app.post('/api/auth/2fa/setup', authenticateToken, twoFactorLimiter, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
 
-// Generate TOTP code
-function generateTOTP(secret, timeStep = 30) {
-  const crypto = require('crypto');
-  const time = Math.floor(Date.now() / 1000 / timeStep);
-  const timeBuffer = Buffer.alloc(8);
-  timeBuffer.writeBigInt64BE(BigInt(time));
-  
-  // Decode base32 secret
-  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = '';
-  for (const char of secret.toUpperCase()) {
-    const val = base32Chars.indexOf(char);
-    if (val === -1) continue;
-    bits += val.toString(2).padStart(5, '0');
-  }
-  const keyBuffer = Buffer.from(bits.match(/.{8}/g).map(b => parseInt(b, 2)));
-  
-  const hmac = crypto.createHmac('sha1', keyBuffer);
-  hmac.update(timeBuffer);
-  const hash = hmac.digest();
-  
-  const offset = hash[hash.length - 1] & 0xf;
-  const code = ((hash[offset] & 0x7f) << 24 |
-    (hash[offset + 1] & 0xff) << 16 |
-    (hash[offset + 2] & 0xff) << 8 |
-    (hash[offset + 3] & 0xff)) % 1000000;
-  
-  return code.toString().padStart(6, '0');
-}
+  // Get user email for QR code label
+  const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
+  const email = userResult.rows[0]?.email || 'user';
 
-// Verify TOTP code (check current and previous time step for clock drift)
-function verifyTOTP(secret, code) {
-  const current = generateTOTP(secret);
-  const previous = generateTOTP(secret, 30); // Allow for slight clock drift
-  return code === current || code === previous;
-}
+  // Generate secret using speakeasy (cryptographically secure)
+  const secret = speakeasy.generateSecret({
+    name: `Formative:${email}`,
+    issuer: 'Formative',
+    length: 32
+  });
 
-// Setup 2FA
-app.post('/api/auth/2fa/setup', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    
-    // Ensure 2FA columns exist
-    try {
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255)`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE`);
-    } catch (alterError) {
-      console.log('2FA columns may already exist:', alterError.message);
-    }
-    
-    // Generate secret
-    const secret = generateSecret();
-    
-    // Store temporarily (not enabled yet)
-    await pool.query(
-      `UPDATE users SET two_factor_secret = $1, two_factor_enabled = false WHERE id = $2`,
-      [secret, userId]
-    );
-    
-    // Get user email for QR code
-    const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
-    const email = userResult.rows[0]?.email || 'user';
-    
-    // Generate QR code URL (using Google Charts API for simplicity)
-    const issuer = 'Formative';
-    const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
-    const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
-    
-    // Note: We return the secret for manual entry use case (users who can't scan QR codes)
-    // The secret is transmitted over HTTPS and should only be displayed once during setup
-    // After 2FA is enabled, the secret is never returned again
-    res.json({
-      success: true,
-      qrCode,
-      secret // Kept for manual entry - frontend shows "Can't scan? Enter this code manually"
-    });
-  } catch (error) {
-    console.error('2FA setup error:', error);
-    res.status(500).json({ error: 'Failed to setup 2FA' });
-  }
-});
+  // Store secret temporarily (not enabled yet) - store base32 version
+  await pool.query(
+    `UPDATE users SET two_factor_secret = $1, two_factor_enabled = false WHERE id = $2`,
+    [secret.base32, userId]
+  );
+
+  // Generate QR code as data URL
+  const qrCodeDataUrl = await QRCode.toDataURL(secret.otpauth_url);
+
+  secureLog('info', '2FA setup initiated', { userId, requestId: req.id });
+
+  res.json({
+    success: true,
+    qrCode: qrCodeDataUrl, // Data URL for direct display
+    secret: secret.base32, // For manual entry
+    otpauthUrl: secret.otpauth_url // For custom QR handling
+  });
+}));
 
 // Verify and enable 2FA
-app.post('/api/auth/2fa/verify', authenticateToken, async (req, res) => {
-  const clientIP = getClientIP(req);
-  
-  try {
-    const userId = req.user.userId;
-    const { code } = req.body;
-    
-    // Get secret
-    const result = await pool.query(
-      'SELECT two_factor_secret, email FROM users WHERE id = $1',
-      [userId]
-    );
-    
-    if (!result.rows[0]?.two_factor_secret) {
-      return res.status(400).json({ error: 'Please setup 2FA first' });
-    }
-    
-    const secret = result.rows[0].two_factor_secret;
-    
-    // Verify code
-    if (!verifyTOTP(secret, code)) {
-      await logAuditEvent(pool, '2FA_ENABLE_FAILED', userId, { reason: 'invalid_code' }, clientIP);
-      return res.status(400).json({ error: 'Invalid verification code' });
-    }
-    
-    // Enable 2FA
-    await pool.query(
-      'UPDATE users SET two_factor_enabled = true WHERE id = $1',
-      [userId]
-    );
-    
-    await logAuditEvent(pool, '2FA_ENABLED', userId, { email: result.rows[0].email }, clientIP);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('2FA verify error:', error);
-    res.status(500).json({ error: 'Failed to verify 2FA' });
+app.post('/api/auth/2fa/verify', authenticateToken, twoFactorLimiter, validators.twoFactorCodeValidator, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { code } = req.body;
+
+  // Get secret
+  const result = await pool.query(
+    'SELECT two_factor_secret, email FROM users WHERE id = $1',
+    [userId]
+  );
+
+  if (!result.rows[0]?.two_factor_secret) {
+    throw ApiError.badRequest('Please setup 2FA first');
   }
-});
+
+  const secret = result.rows[0].two_factor_secret;
+
+  // Verify code using speakeasy with window for clock drift
+  const verified = speakeasy.totp.verify({
+    secret: secret,
+    encoding: 'base32',
+    token: code,
+    window: 2 // Allow 2 time steps before/after for clock drift
+  });
+
+  if (!verified) {
+    await logAuditEvent('2FA_ENABLE_FAILED', userId, { reason: 'invalid_code' }, req);
+    throw ApiError.badRequest('Invalid verification code');
+  }
+
+  // Enable 2FA
+  await pool.query(
+    'UPDATE users SET two_factor_enabled = true WHERE id = $1',
+    [userId]
+  );
+
+  await logAuditEvent('2FA_ENABLED', userId, {}, req);
+  secureLog('info', '2FA enabled', { userId, requestId: req.id });
+
+  res.json({ success: true });
+}));
 
 // Disable 2FA
-app.post('/api/auth/2fa/disable', authenticateToken, async (req, res) => {
-  const clientIP = getClientIP(req);
-  
-  try {
-    const userId = req.user.userId;
-    const { code } = req.body;
-    
-    // Get secret
-    const result = await pool.query(
-      'SELECT two_factor_secret, email FROM users WHERE id = $1',
-      [userId]
-    );
-    
-    if (!result.rows[0]?.two_factor_secret) {
-      return res.status(400).json({ error: '2FA is not enabled' });
-    }
-    
-    // Verify code
-    if (!verifyTOTP(result.rows[0].two_factor_secret, code)) {
-      await logAuditEvent(pool, '2FA_DISABLE_FAILED', userId, { reason: 'invalid_code' }, clientIP);
-      return res.status(400).json({ error: 'Invalid verification code' });
-    }
-    
-    // Disable 2FA
-    await pool.query(
-      'UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL WHERE id = $1',
-      [userId]
-    );
-    
-    await logAuditEvent(pool, '2FA_DISABLED', userId, { email: result.rows[0].email }, clientIP);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('2FA disable error:', error);
-    res.status(500).json({ error: 'Failed to disable 2FA' });
+app.post('/api/auth/2fa/disable', authenticateToken, twoFactorLimiter, validators.twoFactorCodeValidator, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { code } = req.body;
+
+  // Get secret
+  const result = await pool.query(
+    'SELECT two_factor_secret, email FROM users WHERE id = $1',
+    [userId]
+  );
+
+  if (!result.rows[0]?.two_factor_secret) {
+    throw ApiError.badRequest('2FA is not enabled');
   }
-});
+
+  // Verify code using speakeasy
+  const verified = speakeasy.totp.verify({
+    secret: result.rows[0].two_factor_secret,
+    encoding: 'base32',
+    token: code,
+    window: 2
+  });
+
+  if (!verified) {
+    await logAuditEvent('2FA_DISABLE_FAILED', userId, { reason: 'invalid_code' }, req);
+    throw ApiError.badRequest('Invalid verification code');
+  }
+
+  // Disable 2FA
+  await pool.query(
+    'UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL WHERE id = $1',
+    [userId]
+  );
+
+  await logAuditEvent('2FA_DISABLED', userId, {}, req);
+  secureLog('info', '2FA disabled', { userId, requestId: req.id });
+
+  res.json({ success: true });
+}));
 
 // 2FA Login verification
-// Apply rate limiting to 2FA login
-app.post('/api/auth/2fa/login', authLimiter, async (req, res) => {
-  const clientIP = getClientIP(req);
-  
-  try {
-    const { userId, code, rememberMe } = req.body;
-    
-    // Get user and secret
-    const result = await pool.query(
-      'SELECT id, name, email, user_type, two_factor_secret, profile_data FROM users WHERE id = $1 AND two_factor_enabled = true',
-      [userId]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid request' });
-    }
-    
-    const user = result.rows[0];
-    
-    // Verify code
-    if (!verifyTOTP(user.two_factor_secret, code)) {
-      await logAuditEvent(pool, '2FA_LOGIN_FAILED', user.id, { email: user.email, reason: 'invalid_code' }, clientIP);
-      return res.status(400).json({ error: 'Invalid verification code' });
-    }
-    
-    // Update last login
-    await pool.query(
-      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP, last_login_ip = $1 WHERE id = $2',
-      [clientIP, user.id]
-    );
-    
-    // Generate token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, userType: user.user_type },
-      EFFECTIVE_JWT_SECRET,
-      { expiresIn: rememberMe ? '30d' : '1d' }
-    );
-    
-    await logAuditEvent(pool, 'LOGIN_SUCCESS_2FA', user.id, { email: user.email }, clientIP);
-    
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        user_type: user.user_type,
-        profileData: user.profile_data
-      },
-      token
-    });
-  } catch (error) {
-    console.error('2FA login error:', error);
-    res.status(500).json({ error: 'Verification failed' });
+app.post('/api/auth/2fa/login', twoFactorLimiter, validators.twoFactorLoginValidator, asyncHandler(async (req, res) => {
+  const { userId, code, rememberMe } = req.body;
+
+  // Get user and secret
+  const result = await pool.query(
+    'SELECT id, name, email, user_type, two_factor_secret, profile_data FROM users WHERE id = $1 AND two_factor_enabled = true',
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    throw ApiError.badRequest('Invalid request');
   }
-});
+
+  const user = result.rows[0];
+
+  // Verify code using speakeasy
+  const verified = speakeasy.totp.verify({
+    secret: user.two_factor_secret,
+    encoding: 'base32',
+    token: code,
+    window: 2
+  });
+
+  if (!verified) {
+    await logAuditEvent('2FA_LOGIN_FAILED', user.id, { reason: 'invalid_code' }, req);
+    throw ApiError.badRequest('Invalid verification code');
+  }
+
+  // Clear any failed login attempts on successful 2FA
+  clearFailedLogins(user.email);
+
+  // Update last login
+  const clientIP = getClientIP(req);
+  await pool.query(
+    'UPDATE users SET last_login_at = CURRENT_TIMESTAMP, last_login_ip = $1 WHERE id = $2',
+    [clientIP, user.id]
+  );
+
+  // Generate token
+  const token = jwt.sign(
+    { userId: user.id, email: user.email, userType: user.user_type },
+    EFFECTIVE_JWT_SECRET,
+    { expiresIn: rememberMe ? '30d' : '1d' }
+  );
+
+  await logAuditEvent('LOGIN_SUCCESS_2FA', user.id, {}, req);
+  secureLog('info', '2FA login successful', { userId: user.id, requestId: req.id });
+
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      user_type: user.user_type,
+      profileData: user.profile_data
+    },
+    token
+  });
+}));
 
 // ============================================
 // USER PROFILE ENDPOINTS
 // ============================================
 
 // Search users (for messaging)
-app.get('/api/users/search', authenticateToken, async (req, res) => {
-  try {
-    const { q } = req.query;
-    const currentUserId = req.user.userId;
-    
-    if (!q || q.length < 2) {
-      return res.json({ users: [] });
-    }
-    
-    // Search by name or email (exclude current user)
-    const result = await pool.query(`
-      SELECT id, name, user_type, avatar_url
-      FROM users 
-      WHERE id != $1 
-        AND (
-          LOWER(name) LIKE LOWER($2) 
-          OR LOWER(email) LIKE LOWER($2)
-        )
-      ORDER BY name ASC
-      LIMIT 20
-    `, [currentUserId, `%${q}%`]);
-    
-    res.json({ success: true, users: result.rows });
-  } catch (error) {
-    console.error('User search error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+app.get('/api/users/search', authenticateToken, searchLimiter, asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  const currentUserId = req.user.userId;
+
+  if (!q || q.length < 2) {
+    return res.json({ users: [] });
   }
-});
+
+  // Search by name or email (exclude current user)
+  const result = await pool.query(`
+    SELECT id, name, user_type, avatar_url
+    FROM users
+    WHERE id != $1
+      AND (
+        LOWER(name) LIKE LOWER($2)
+        OR LOWER(email) LIKE LOWER($2)
+      )
+    ORDER BY name ASC
+    LIMIT 20
+  `, [currentUserId, `%${q}%`]);
+
+  res.json({ success: true, users: result.rows });
+}));
 
 // Get user profile
-app.get('/api/user/profile', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT id, name, email, user_type, profile_data, avatar_url, location, bio, website, created_at FROM users WHERE id = $1',
-      [req.user.userId]
-    );
+app.get('/api/user/profile', authenticateToken, asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    'SELECT id, name, email, user_type, profile_data, avatar_url, location, bio, website, created_at FROM users WHERE id = $1',
+    [req.user.userId]
+  );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ success: true, user: result.rows[0] });
-  } catch (error) {
-    console.error('Profile error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (result.rows.length === 0) {
+    throw ApiError.notFound('User not found');
   }
-});
+
+  res.json({ success: true, user: result.rows[0] });
+}));
 
 // Update user profile
-app.put('/api/user/profile', authenticateToken, async (req, res) => {
-  try {
-    const { name, profileData, location, bio, website, avatarUrl } = req.body;
-    
-    const result = await pool.query(
-      `UPDATE users SET 
-        name = COALESCE($1, name),
-        profile_data = COALESCE($2, profile_data),
-        location = COALESCE($3, location),
-        bio = COALESCE($4, bio),
-        website = COALESCE($5, website),
-        avatar_url = COALESCE($6, avatar_url),
-        updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $7 
-      RETURNING id, name, email, user_type, profile_data, location, bio, website, avatar_url`,
-      [name, JSON.stringify(profileData), location, bio, website, avatarUrl, req.user.userId]
-    );
+app.put('/api/user/profile', authenticateToken, validators.updateProfileValidator, asyncHandler(async (req, res) => {
+  const { name, profileData, location, bio, website, avatarUrl } = req.body;
 
-    res.json({ success: true, user: result.rows[0] });
-  } catch (error) {
-    console.error('Profile update error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  const result = await pool.query(
+    `UPDATE users SET
+      name = COALESCE($1, name),
+      profile_data = COALESCE($2, profile_data),
+      location = COALESCE($3, location),
+      bio = COALESCE($4, bio),
+      website = COALESCE($5, website),
+      avatar_url = COALESCE($6, avatar_url),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $7
+    RETURNING id, name, email, user_type, profile_data, location, bio, website, avatar_url`,
+    [name, JSON.stringify(profileData), location, bio, website, avatarUrl, req.user.userId]
+  );
+
+  res.json({ success: true, user: result.rows[0] });
+}));
 
 // Save onboarding data
-app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
+app.post('/api/user/onboarding', authenticateToken, asyncHandler(async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const userId = req.user.userId;
     const { socialAccounts, location, bio, website, ...otherData } = req.body;
-    
+
     // Update user profile
     await client.query(
-      `UPDATE users SET 
+      `UPDATE users SET
         profile_data = $1,
         location = COALESCE($2, location),
         bio = COALESCE($3, bio),
@@ -2468,7 +2265,7 @@ app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
       WHERE id = $5`,
       [JSON.stringify(otherData), location, bio, website, userId]
     );
-    
+
     // Save social accounts
     if (socialAccounts && typeof socialAccounts === 'object') {
       for (const [platform, username] of Object.entries(socialAccounts)) {
@@ -2476,37 +2273,35 @@ app.post('/api/user/onboarding', authenticateToken, async (req, res) => {
           await client.query(
             `INSERT INTO social_accounts (user_id, platform, username, created_at, updated_at)
              VALUES ($1, $2, $3, NOW(), NOW())
-             ON CONFLICT (user_id, platform) 
+             ON CONFLICT (user_id, platform)
              DO UPDATE SET username = $3, updated_at = NOW()`,
             [userId, platform.toLowerCase(), username.trim()]
           );
         }
       }
     }
-    
+
     await client.query('COMMIT');
-    
+
     const result = await client.query(
       'SELECT id, name, email, user_type, profile_data FROM users WHERE id = $1',
       [userId]
     );
-    
-    console.log(`✅ Onboarding completed for user ${userId}`);
-    
-    res.json({ 
-      success: true, 
+
+    secureLog('info', 'Onboarding completed', { userId, requestId: req.id });
+
+    res.json({
+      success: true,
       message: 'Onboarding data saved successfully',
       user: result.rows[0]
     });
-    
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Onboarding save error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    throw error;
   } finally {
     client.release();
   }
-});
+}));
 
 // ============================================
 // SOCIAL ACCOUNTS ENDPOINTS
@@ -3504,295 +3299,253 @@ app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
 // ============================================
 
 // Get all conversations for current user
-app.get('/api/messages/conversations', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    
-    // Get all conversations where user is a participant
-    const result = await pool.query(`
-      SELECT 
-        c.id,
-        c.created_at,
-        c.updated_at,
-        CASE 
-          WHEN c.user1_id = $1 THEN c.user2_id
-          ELSE c.user1_id
-        END as other_user_id,
-        CASE 
-          WHEN c.user1_id = $1 THEN u2.name
-          ELSE u1.name
-        END as other_user_name,
-        CASE 
-          WHEN c.user1_id = $1 THEN u2.user_type
-          ELSE u1.user_type
-        END as other_user_type,
-        CASE 
-          WHEN c.user1_id = $1 THEN u2.avatar_url
-          ELSE u1.avatar_url
-        END as other_user_avatar,
-        (
-          SELECT content FROM messages 
-          WHERE conversation_id = c.id 
-          ORDER BY created_at DESC LIMIT 1
-        ) as last_message_preview,
-        (
-          SELECT created_at FROM messages 
-          WHERE conversation_id = c.id 
-          ORDER BY created_at DESC LIMIT 1
-        ) as last_message_at,
-        (
-          SELECT COUNT(*) FROM messages 
-          WHERE conversation_id = c.id 
-            AND receiver_id = $1 
-            AND is_read = FALSE
-        )::int as unread_count
-      FROM conversations c
-      JOIN users u1 ON c.user1_id = u1.id
-      JOIN users u2 ON c.user2_id = u2.id
-      WHERE c.user1_id = $1 OR c.user2_id = $1
-      ORDER BY c.updated_at DESC
-    `, [userId]);
-    
-    // Transform to include unread boolean
-    const conversations = result.rows.map(conv => ({
-      ...conv,
-      unread: conv.unread_count > 0
-    }));
-    
-    res.json({ success: true, conversations });
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+app.get('/api/messages/conversations', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+
+  // Get all conversations where user is a participant
+  const result = await pool.query(`
+    SELECT
+      c.id,
+      c.created_at,
+      c.updated_at,
+      CASE
+        WHEN c.user1_id = $1 THEN c.user2_id
+        ELSE c.user1_id
+      END as other_user_id,
+      CASE
+        WHEN c.user1_id = $1 THEN u2.name
+        ELSE u1.name
+      END as other_user_name,
+      CASE
+        WHEN c.user1_id = $1 THEN u2.user_type
+        ELSE u1.user_type
+      END as other_user_type,
+      CASE
+        WHEN c.user1_id = $1 THEN u2.avatar_url
+        ELSE u1.avatar_url
+      END as other_user_avatar,
+      (
+        SELECT content FROM messages
+        WHERE conversation_id = c.id
+        ORDER BY created_at DESC LIMIT 1
+      ) as last_message_preview,
+      (
+        SELECT created_at FROM messages
+        WHERE conversation_id = c.id
+        ORDER BY created_at DESC LIMIT 1
+      ) as last_message_at,
+      (
+        SELECT COUNT(*) FROM messages
+        WHERE conversation_id = c.id
+          AND receiver_id = $1
+          AND is_read = FALSE
+      )::int as unread_count
+    FROM conversations c
+    JOIN users u1 ON c.user1_id = u1.id
+    JOIN users u2 ON c.user2_id = u2.id
+    WHERE c.user1_id = $1 OR c.user2_id = $1
+    ORDER BY c.updated_at DESC
+  `, [userId]);
+
+  // Transform to include unread boolean
+  const conversations = result.rows.map(conv => ({
+    ...conv,
+    unread: conv.unread_count > 0
+  }));
+
+  res.json({ success: true, conversations });
+}));
 
 // Get messages for a specific conversation
-app.get('/api/messages/conversation/:conversationId', authenticateToken, async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const userId = req.user.userId;
-    
-    // Verify user is part of this conversation
-    const convCheck = await pool.query(
-      'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
-      [conversationId, userId]
-    );
-    
-    if (convCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied to this conversation' });
-    }
-    
-    // Get messages
-    const result = await pool.query(`
-      SELECT 
-        m.id,
-        m.sender_id,
-        m.receiver_id,
-        m.content,
-        m.is_read,
-        m.created_at,
-        u.name as sender_name
-      FROM messages m
-      JOIN users u ON m.sender_id = u.id
-      WHERE m.conversation_id = $1
-      ORDER BY m.created_at ASC
-    `, [conversationId]);
-    
-    // Mark messages as read
-    await pool.query(`
-      UPDATE messages 
-      SET is_read = TRUE, read_at = NOW() 
-      WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
-    `, [conversationId, userId]);
-    
-    res.json({ success: true, messages: result.rows });
-  } catch (error) {
-    console.error('Get messages error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+app.get('/api/messages/conversation/:conversationId', authenticateToken, asyncHandler(async (req, res) => {
+  const { conversationId } = req.params;
+  const userId = req.user.userId;
+
+  // Verify user is part of this conversation
+  const convCheck = await pool.query(
+    'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
+    [conversationId, userId]
+  );
+
+  if (convCheck.rows.length === 0) {
+    throw ApiError.forbidden('Access denied to this conversation');
   }
-});
+
+  // Get messages
+  const result = await pool.query(`
+    SELECT
+      m.id,
+      m.sender_id,
+      m.receiver_id,
+      m.content,
+      m.is_read,
+      m.created_at,
+      u.name as sender_name
+    FROM messages m
+    JOIN users u ON m.sender_id = u.id
+    WHERE m.conversation_id = $1
+    ORDER BY m.created_at ASC
+  `, [conversationId]);
+
+  // Mark messages as read
+  await pool.query(`
+    UPDATE messages
+    SET is_read = TRUE, read_at = NOW()
+    WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
+  `, [conversationId, userId]);
+
+  res.json({ success: true, messages: result.rows });
+}));
 
 // Send a message
-app.post('/api/messages', authenticateToken, async (req, res) => {
-  try {
-    const { receiverId, content, conversationId } = req.body;
-    const senderId = req.user.userId;
-    
-    if (!content || content.trim() === '') {
-      return res.status(400).json({ error: 'Message content is required' });
-    }
-    
-    if (!receiverId && !conversationId) {
-      return res.status(400).json({ error: 'Receiver ID or conversation ID is required' });
-    }
-    
-    let finalConversationId = conversationId;
-    let finalReceiverId = receiverId;
-    
-    // If conversationId provided, get receiver from conversation
-    if (conversationId && !receiverId) {
-      const convResult = await pool.query(
-        'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
-        [conversationId, senderId]
-      );
-      
-      if (convResult.rows.length === 0) {
-        return res.status(403).json({ error: 'Access denied to this conversation' });
-      }
-      
-      const conv = convResult.rows[0];
-      finalReceiverId = conv.user1_id === senderId ? conv.user2_id : conv.user1_id;
-    }
-    
-    // If no conversationId, find or create conversation
-    if (!finalConversationId) {
-      // Check for existing conversation
-      const existingConv = await pool.query(`
-        SELECT id FROM conversations 
-        WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
-      `, [senderId, finalReceiverId]);
-      
-      if (existingConv.rows.length > 0) {
-        finalConversationId = existingConv.rows[0].id;
-      } else {
-        // Create new conversation
-        const newConv = await pool.query(`
-          INSERT INTO conversations (user1_id, user2_id)
-          VALUES ($1, $2)
-          RETURNING id
-        `, [senderId, finalReceiverId]);
-        finalConversationId = newConv.rows[0].id;
-      }
-    }
-    
-    // Insert message
-    const result = await pool.query(`
-      INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `, [finalConversationId, senderId, finalReceiverId, content.trim()]);
-    
-    // Update conversation timestamp
-    await pool.query(
-      'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
-      [finalConversationId]
-    );
-    
-    // Create notification for receiver
-    await pool.query(`
-      INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
-      VALUES ($1, 'message', 'New Message', $2, $3, 'message')
-    `, [finalReceiverId, `You have a new message`, result.rows[0].id]);
-    
-    res.json({ 
-      success: true, 
-      message: result.rows[0],
-      conversationId: finalConversationId
-    });
-  } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+app.post('/api/messages', authenticateToken, messageLimiter, validators.sendMessageValidator, asyncHandler(async (req, res) => {
+  const { receiverId, content, conversationId } = req.body;
+  const senderId = req.user.userId;
 
-// Start a new conversation (or get existing one)
-app.post('/api/messages/start-conversation', authenticateToken, async (req, res) => {
-  try {
-    const { userId: otherUserId, initialMessage } = req.body;
-    const currentUserId = req.user.userId;
-    
-    if (!otherUserId) {
-      return res.status(400).json({ error: 'User ID is required' });
+  let finalConversationId = conversationId;
+  let finalReceiverId = receiverId;
+
+  // If conversationId provided, get receiver from conversation
+  if (conversationId && !receiverId) {
+    const convResult = await pool.query(
+      'SELECT * FROM conversations WHERE id = $1 AND (user1_id = $2 OR user2_id = $2)',
+      [conversationId, senderId]
+    );
+
+    if (convResult.rows.length === 0) {
+      throw ApiError.forbidden('Access denied to this conversation');
     }
-    
-    if (otherUserId === currentUserId) {
-      return res.status(400).json({ error: 'Cannot start conversation with yourself' });
-    }
-    
-    // Check if user exists
-    const userCheck = await pool.query('SELECT id, name FROM users WHERE id = $1', [otherUserId]);
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Find or create conversation
-    let conversation;
+
+    const conv = convResult.rows[0];
+    finalReceiverId = conv.user1_id === senderId ? conv.user2_id : conv.user1_id;
+  }
+
+  // If no conversationId, find or create conversation
+  if (!finalConversationId) {
+    // Check for existing conversation
     const existingConv = await pool.query(`
-      SELECT * FROM conversations 
+      SELECT id FROM conversations
       WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
-    `, [currentUserId, otherUserId]);
-    
+    `, [senderId, finalReceiverId]);
+
     if (existingConv.rows.length > 0) {
-      conversation = existingConv.rows[0];
+      finalConversationId = existingConv.rows[0].id;
     } else {
+      // Create new conversation
       const newConv = await pool.query(`
         INSERT INTO conversations (user1_id, user2_id)
         VALUES ($1, $2)
-        RETURNING *
-      `, [currentUserId, otherUserId]);
-      conversation = newConv.rows[0];
+        RETURNING id
+      `, [senderId, finalReceiverId]);
+      finalConversationId = newConv.rows[0].id;
     }
-    
-    // If initial message provided, send it
-    if (initialMessage && initialMessage.trim()) {
-      await pool.query(`
-        INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
-        VALUES ($1, $2, $3, $4)
-      `, [conversation.id, currentUserId, otherUserId, initialMessage.trim()]);
-      
-      await pool.query(
-        'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
-        [conversation.id]
-      );
-    }
-    
-    res.json({ 
-      success: true, 
-      conversationId: conversation.id,
-      otherUser: userCheck.rows[0]
-    });
-  } catch (error) {
-    console.error('Start conversation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
   }
-});
+
+  // Insert message
+  const result = await pool.query(`
+    INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+  `, [finalConversationId, senderId, finalReceiverId, content.trim()]);
+
+  // Update conversation timestamp
+  await pool.query(
+    'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
+    [finalConversationId]
+  );
+
+  // Create notification for receiver
+  await pool.query(`
+    INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
+    VALUES ($1, 'message', 'New Message', $2, $3, 'message')
+  `, [finalReceiverId, 'You have a new message', result.rows[0].id]);
+
+  res.json({
+    success: true,
+    message: result.rows[0],
+    conversationId: finalConversationId
+  });
+}));
+
+// Start a new conversation (or get existing one)
+app.post('/api/messages/start-conversation', authenticateToken, conversationLimiter, validators.startConversationValidator, asyncHandler(async (req, res) => {
+  const { userId: otherUserId, initialMessage } = req.body;
+  const currentUserId = req.user.userId;
+
+  if (otherUserId === currentUserId) {
+    throw ApiError.badRequest('Cannot start conversation with yourself');
+  }
+
+  // Check if user exists
+  const userCheck = await pool.query('SELECT id, name FROM users WHERE id = $1', [otherUserId]);
+  if (userCheck.rows.length === 0) {
+    throw ApiError.notFound('User not found');
+  }
+
+  // Find or create conversation
+  let conversation;
+  const existingConv = await pool.query(`
+    SELECT * FROM conversations
+    WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
+  `, [currentUserId, otherUserId]);
+
+  if (existingConv.rows.length > 0) {
+    conversation = existingConv.rows[0];
+  } else {
+    const newConv = await pool.query(`
+      INSERT INTO conversations (user1_id, user2_id)
+      VALUES ($1, $2)
+      RETURNING *
+    `, [currentUserId, otherUserId]);
+    conversation = newConv.rows[0];
+  }
+
+  // If initial message provided, send it
+  if (initialMessage && initialMessage.trim()) {
+    await pool.query(`
+      INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+      VALUES ($1, $2, $3, $4)
+    `, [conversation.id, currentUserId, otherUserId, initialMessage.trim()]);
+
+    await pool.query(
+      'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
+      [conversation.id]
+    );
+  }
+
+  res.json({
+    success: true,
+    conversationId: conversation.id,
+    otherUser: userCheck.rows[0]
+  });
+}));
 
 // Get unread message count
-app.get('/api/messages/unread-count', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND is_read = FALSE',
-      [req.user.userId]
-    );
-    
-    res.json({ 
-      success: true, 
-      unreadCount: parseInt(result.rows[0].count)
-    });
-  } catch (error) {
-    console.error('Unread count error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+app.get('/api/messages/unread-count', authenticateToken, asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    'SELECT COUNT(*) FROM messages WHERE receiver_id = $1 AND is_read = FALSE',
+    [req.user.userId]
+  );
+
+  res.json({
+    success: true,
+    unreadCount: parseInt(result.rows[0].count)
+  });
+}));
 
 // Mark conversation messages as read
-app.put('/api/messages/conversation/:conversationId/read', authenticateToken, async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const userId = req.user.userId;
-    
-    await pool.query(`
-      UPDATE messages 
-      SET is_read = TRUE, read_at = NOW() 
-      WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
-    `, [conversationId, userId]);
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Mark messages read error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+app.put('/api/messages/conversation/:conversationId/read', authenticateToken, asyncHandler(async (req, res) => {
+  const { conversationId } = req.params;
+  const userId = req.user.userId;
+
+  await pool.query(`
+    UPDATE messages
+    SET is_read = TRUE, read_at = NOW()
+    WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = FALSE
+  `, [conversationId, userId]);
+
+  res.json({ success: true });
+}));
 
 // ============================================
 // STATIC FILE SERVING
