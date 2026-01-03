@@ -67,7 +67,8 @@ const twoFactorCodeValidator = [
 const twoFactorLoginValidator = [
   body('userId')
     .notEmpty().withMessage('User ID is required')
-    .isUUID().withMessage('Invalid user ID format'),
+    .isInt({ min: 1 }).withMessage('Invalid user ID format')
+    .toInt(),
   body('code')
     .trim()
     .notEmpty().withMessage('Verification code is required')
