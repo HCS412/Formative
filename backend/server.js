@@ -233,6 +233,9 @@ if (fs.existsSync(distPath)) {
 // NO fallback to old static files - React app is required
 
 // OAuth Configuration
+// IMPORTANT: Set OAUTH_REDIRECT_BASE environment variable in production
+const OAUTH_REDIRECT_BASE = process.env.OAUTH_REDIRECT_BASE || 'https://chic-patience-production.up.railway.app';
+
 const OAUTH_CONFIG = {
   twitter: {
     clientId: process.env.TWITTER_CLIENT_ID,
@@ -241,7 +244,7 @@ const OAUTH_CONFIG = {
     tokenUrl: 'https://api.twitter.com/2/oauth2/token',
     userUrl: 'https://api.twitter.com/2/users/me',
     scopes: ['tweet.read', 'users.read', 'follows.read', 'offline.access'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/twitter/callback`
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/twitter/callback`
   },
   instagram: {
     clientId: process.env.INSTAGRAM_CLIENT_ID,
@@ -250,7 +253,7 @@ const OAUTH_CONFIG = {
     tokenUrl: 'https://api.instagram.com/oauth/access_token',
     userUrl: 'https://graph.instagram.com/me',
     scopes: ['user_profile', 'user_media'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/instagram/callback`
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/instagram/callback`
   },
   tiktok: {
     clientId: process.env.TIKTOK_CLIENT_ID,
@@ -259,7 +262,7 @@ const OAUTH_CONFIG = {
     tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
     userUrl: 'https://open.tiktokapis.com/v2/user/info/',
     scopes: ['user.info.basic', 'user.info.stats', 'video.list'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/tiktok/callback`
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/tiktok/callback`
   },
   youtube: {
     clientId: process.env.YOUTUBE_CLIENT_ID,
@@ -267,12 +270,12 @@ const OAUTH_CONFIG = {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     scopes: ['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/userinfo.profile'],
-    redirectUri: `${process.env.OAUTH_REDIRECT_BASE || 'https://formative-production.up.railway.app'}/api/oauth/youtube/callback`
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/youtube/callback`
   }
 };
 
 // Frontend URL for OAuth redirects (with safety check for misconfigured env var)
-const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://formative-production.up.railway.app').replace(/^FRONTEND_URL=/, '');
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://chic-patience-production.up.railway.app').replace(/^FRONTEND_URL=/, '');
 
 // In-memory store for OAuth state (in production, use Redis)
 const oauthStates = new Map();

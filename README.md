@@ -428,7 +428,8 @@ YOUTUBE_CLIENT_SECRET=
 ### Production
 
 ```env
-OAUTH_REDIRECT_BASE=https://your-production-domain.com
+OAUTH_REDIRECT_BASE=https://chic-patience-production.up.railway.app
+FRONTEND_URL=https://chic-patience-production.up.railway.app
 ```
 
 ---
