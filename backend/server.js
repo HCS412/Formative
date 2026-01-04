@@ -1101,7 +1101,205 @@ async function initializeDatabase() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_product ON shop_orders(product_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_status ON shop_orders(status)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_shop_orders_token ON shop_orders(download_token)`);
-    
+
+    // ========================================
+    // ASSET MANAGEMENT TABLES
+    // ========================================
+
+    // 34. ASSETS TABLE - Core asset records
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS assets (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        platform VARCHAR(50) NOT NULL,
+        format VARCHAR(50) NOT NULL,
+        width INTEGER,
+        height INTEGER,
+        duration_seconds INTEGER,
+        aspect_ratio VARCHAR(20),
+        status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'in_review', 'approved', 'changes_requested', 'scheduled', 'live')),
+        risk_flags JSONB DEFAULT '[]',
+        is_sensitive BOOLEAN DEFAULT FALSE,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_assets_team ON assets(team_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_assets_campaign ON assets(campaign_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_assets_created_by ON assets(created_by)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_assets_platform ON assets(platform)`);
+
+    // 35. ASSET_VERSIONS TABLE - Version history with review workflow
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_versions (
+        id SERIAL PRIMARY KEY,
+        asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+        version_number INTEGER NOT NULL DEFAULT 1,
+        status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'in_review', 'approved', 'changes_requested', 'scheduled', 'live')),
+        review_outcome VARCHAR(50) CHECK (review_outcome IN ('approved', 'changes_requested', 'rejected')),
+        created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        review_notes TEXT,
+        is_current BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at TIMESTAMP,
+        UNIQUE(asset_id, version_number)
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_versions_asset ON asset_versions(asset_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_versions_current ON asset_versions(asset_id, is_current) WHERE is_current = TRUE`);
+
+    // 36. ASSET_VERSION_FILES TABLE - File references per version
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_files (
+        id SERIAL PRIMARY KEY,
+        version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        file_url TEXT NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        mime_type VARCHAR(100),
+        file_size INTEGER,
+        storage_provider VARCHAR(50) DEFAULT 'local',
+        checksum VARCHAR(64),
+        is_primary BOOLEAN DEFAULT FALSE,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_version_files_version ON asset_version_files(version_id)`);
+
+    // 37. ASSET_VERSION_CAPTIONS TABLE - Multi-locale captions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_captions (
+        id SERIAL PRIMARY KEY,
+        version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        locale VARCHAR(10) DEFAULT 'en',
+        caption TEXT NOT NULL,
+        is_primary BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(version_id, locale)
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_version_captions_version ON asset_version_captions(version_id)`);
+
+    // 38. ASSET_VERSION_TAGS TABLE - Flexible tagging
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_tags (
+        id SERIAL PRIMARY KEY,
+        version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        tag VARCHAR(100) NOT NULL,
+        tag_type VARCHAR(50) DEFAULT 'general',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(version_id, tag, tag_type)
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_version_tags_version ON asset_version_tags(version_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_version_tags_tag ON asset_version_tags(tag)`);
+
+    // 39. ASSET_VERSION_PLATFORM_SETTINGS TABLE - Platform-specific config
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_platform_settings (
+        id SERIAL PRIMARY KEY,
+        version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        platform VARCHAR(50) NOT NULL,
+        settings JSONB DEFAULT '{}',
+        is_primary BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(version_id, platform)
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_version_platform_settings_version ON asset_version_platform_settings(version_id)`);
+
+    // 40. ASSET_FEEDBACK TABLE - Review comments and feedback
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_feedback (
+        id SERIAL PRIMARY KEY,
+        version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source VARCHAR(50) DEFAULT 'internal' CHECK (source IN ('internal', 'client', 'creator', 'qa', 'system')),
+        content TEXT NOT NULL,
+        review_outcome VARCHAR(50) CHECK (review_outcome IN ('approved', 'changes_requested', 'rejected')),
+        timecode_start DECIMAL(10,3),
+        timecode_end DECIMAL(10,3),
+        parent_id INTEGER REFERENCES asset_feedback(id) ON DELETE CASCADE,
+        is_resolved BOOLEAN DEFAULT FALSE,
+        resolved_at TIMESTAMP,
+        resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_feedback_version ON asset_feedback(version_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_feedback_user ON asset_feedback(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_feedback_parent ON asset_feedback(parent_id)`);
+
+    // 41. ASSET_SCHEDULE_SLOTS TABLE - Scheduled publishing
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_schedule_slots (
+        id SERIAL PRIMARY KEY,
+        asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+        version_id INTEGER REFERENCES asset_versions(id) ON DELETE SET NULL,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        platform VARCHAR(50) NOT NULL,
+        scheduled_at TIMESTAMP NOT NULL,
+        timezone VARCHAR(50) DEFAULT 'UTC',
+        status VARCHAR(50) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'published', 'failed', 'cancelled')),
+        published_at TIMESTAMP,
+        published_url TEXT,
+        error_message TEXT,
+        metadata JSONB DEFAULT '{}',
+        created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_asset ON asset_schedule_slots(asset_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_scheduled ON asset_schedule_slots(scheduled_at)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_status ON asset_schedule_slots(status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_platform ON asset_schedule_slots(platform)`);
+
+    // 42. ASSET_METRICS TABLE - Performance tracking
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_metrics (
+        id SERIAL PRIMARY KEY,
+        asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+        schedule_slot_id INTEGER REFERENCES asset_schedule_slots(id) ON DELETE SET NULL,
+        platform VARCHAR(50) NOT NULL,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        impressions INTEGER DEFAULT 0,
+        reach INTEGER DEFAULT 0,
+        clicks INTEGER DEFAULT 0,
+        engagements INTEGER DEFAULT 0,
+        saves INTEGER DEFAULT 0,
+        shares INTEGER DEFAULT 0,
+        comments INTEGER DEFAULT 0,
+        likes INTEGER DEFAULT 0,
+        conversions INTEGER DEFAULT 0,
+        conversion_value DECIMAL(10,2) DEFAULT 0,
+        platform_metrics JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_metrics_asset ON asset_metrics(asset_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_metrics_recorded ON asset_metrics(recorded_at)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_metrics_platform ON asset_metrics(platform)`);
+
     // ========================================
     // SEED DEFAULT ROLES & PERMISSIONS
     // ========================================
@@ -1154,7 +1352,15 @@ async function initializeDatabase() {
         -- Analytics permissions
         ('analytics.view', 'View Analytics', 'View analytics dashboards', 'analytics'),
         ('analytics.export', 'Export Analytics', 'Export analytics data', 'analytics'),
-        
+
+        -- Asset permissions
+        ('assets.view', 'View Assets', 'View asset library', 'assets'),
+        ('assets.create', 'Create Assets', 'Upload and create assets', 'assets'),
+        ('assets.edit', 'Edit Assets', 'Edit asset details', 'assets'),
+        ('assets.delete', 'Delete Assets', 'Delete assets', 'assets'),
+        ('assets.review', 'Review Assets', 'Review and approve assets', 'assets'),
+        ('assets.schedule', 'Schedule Assets', 'Schedule assets for publishing', 'assets'),
+
         -- Admin permissions
         ('admin.dashboard', 'Admin Dashboard', 'Access admin dashboard', 'admin'),
         ('admin.settings', 'Admin Settings', 'Manage system settings', 'admin'),
@@ -1270,7 +1476,10 @@ async function initializeDatabase() {
     console.log('✅ Database schema initialized successfully');
     console.log('📊 Tables: users, social_accounts, opportunities, applications, messages, conversations,');
     console.log('           notifications, user_settings, campaigns, campaign_participants, deliverables,');
-    console.log('           reviews, payment_methods, payments, analytics_events, saved_items');
+    console.log('           reviews, payment_methods, payments, analytics_events, saved_items,');
+    console.log('           assets, asset_versions, asset_version_files, asset_version_captions,');
+    console.log('           asset_version_tags, asset_version_platform_settings, asset_feedback,');
+    console.log('           asset_schedule_slots, asset_metrics');
     
   } catch (error) {
     await client.query('ROLLBACK');
