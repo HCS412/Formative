@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -12,29 +12,40 @@ import {
   X,
   Link2,
   Store,
-  FolderKanban
+  FolderKanban,
+  Image as ImageIcon
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { usePermissions } from '@/context/PermissionContext'
 import { Avatar, Button } from '@/components/ui'
 import { NotificationDropdown } from '@/components/NotificationDropdown'
 import { cn } from '@/lib/utils'
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
-  { name: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase },
-  { name: 'Workspace', href: '/dashboard/workspace', icon: FolderKanban, matchPrefix: true },
-  { name: 'Shop', href: '/dashboard/shop', icon: Store },
-  { name: 'Links', href: '/dashboard/links', icon: Link2 },
-  { name: 'Profile', href: '/dashboard/profile', icon: User },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-]
-
 export function DashboardLayout({ children }) {
   const { user, logout } = useAuth()
+  const { isFeatureEnabled, hasAnyPermission, hasTier } = usePermissions()
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const navigation = useMemo(() => {
+    const items = [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
+      { name: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase },
+      { name: 'Workspace', href: '/dashboard/workspace', icon: FolderKanban, matchPrefix: true },
+      { name: 'Shop', href: '/dashboard/shop', icon: Store },
+      { name: 'Links', href: '/dashboard/links', icon: Link2 },
+      { name: 'Profile', href: '/dashboard/profile', icon: User },
+      { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+    ]
+
+    const hasAssetsAccess = isFeatureEnabled('assets') || hasAnyPermission('assets:access', 'library:view') || hasTier('pro')
+    if (hasAssetsAccess) {
+      items.splice(4, 0, { name: 'Assets', href: '/dashboard/assets', icon: ImageIcon, matchPrefix: true })
+    }
+    return items
+  }, [hasAnyPermission, hasTier, isFeatureEnabled])
 
   const handleLogout = () => {
     logout()
@@ -148,4 +159,3 @@ export function DashboardLayout({ children }) {
     </div>
   )
 }
-

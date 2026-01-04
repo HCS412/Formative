@@ -9,7 +9,7 @@ import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SearchModal } from '@/components/SearchModal'
 import { Navbar } from '@/components/layout/Navbar'
-import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy, Workspace } from '@/pages'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy, Workspace, Assets } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
 const queryClient = new QueryClient({
@@ -84,6 +84,8 @@ function AppRoutes() {
           <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/dashboard/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
           <Route path="/dashboard/workspace/:tab" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/dashboard/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+          <Route path="/dashboard/assets/:tab" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
           <Route path="/dashboard/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/dashboard/links" element={<ProtectedRoute><Links /></ProtectedRoute>} />
           <Route path="/dashboard/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
