@@ -4347,6 +4347,233 @@ app.get('/api/kit/:identifier', async (req, res) => {
 });
 
 // ============================================
+// SCHEDULING API ENDPOINTS
+// ============================================
+const scheduleStore = new Map();
+const SCHEDULE_BEST_PRACTICES = {
+  Instagram: { startHour: 9, endHour: 12, label: 'Morning engagement is strongest.' },
+  TikTok: { startHour: 14, endHour: 18, label: 'Afternoons trend better for velocity.' },
+  YouTube: { startHour: 11, endHour: 14, label: 'Lunch hours capture highest watch time.' },
+  Twitter: { startHour: 10, endHour: 12, label: 'Threads land best mid-morning.' },
+  Bluesky: { startHour: 9, endHour: 11, label: 'Early slots work best for discovery.' },
+  default: { startHour: 9, endHour: 17, label: 'Standard business hours keep approvals fast.' }
+};
+
+const scheduleStartOfWeek = (dateInput) => {
+  const date = new Date(dateInput);
+  const day = date.getDay();
+  const diff = date.getDate() - (day === 0 ? 6 : day - 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const ensureScheduleForUser = (userId, weekStart = new Date()) => {
+  if (!scheduleStore.has(userId)) {
+    const base = scheduleStartOfWeek(weekStart);
+    const slot = (offsetDays, hours, minutes = 0) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + offsetDays);
+      d.setHours(hours, minutes, 0, 0);
+      return d.toISOString();
+    };
+
+    const demo = [
+      {
+        id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
+        asset_title: 'Spring Lookbook',
+        asset_version: 'v2',
+        campaign: 'Spring Refresh',
+        status: 'scheduled',
+        duration_minutes: 60,
+        best_time_tip: 'Instagram performs best before lunch.',
+        platformSlots: [
+          { id: 'sched-1-ig', platform: 'Instagram', start: slot(1, 10), status: 'ready', offset_minutes: 0 },
+          { id: 'sched-1-tt', platform: 'TikTok', start: slot(1, 12, 30), status: 'draft', offset_minutes: 150 },
+        ],
+      },
+      {
+        id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
+        asset_title: 'Product Teaser Clips',
+        asset_version: 'v1',
+        campaign: 'Creator Lab',
+        status: 'needs_review',
+        duration_minutes: 45,
+        best_time_tip: 'Short-form reacts fast to late afternoon drops.',
+        platformSlots: [
+          { id: 'sched-2-tt', platform: 'TikTok', start: slot(2, 16), status: 'needs_review', offset_minutes: 0 },
+          { id: 'sched-2-bsky', platform: 'Bluesky', start: slot(2, 15), status: 'draft', offset_minutes: -60 },
+        ],
+      },
+      {
+        id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
+        asset_title: 'Long-form Review',
+        asset_version: 'rc1',
+        campaign: 'Gadget Launch',
+        status: 'draft',
+        duration_minutes: 90,
+        best_time_tip: 'Midday premieres keep completion high.',
+        platformSlots: [
+          { id: 'sched-3-yt', platform: 'YouTube', start: slot(4, 11, 30), status: 'scheduled', offset_minutes: 0 },
+          { id: 'sched-3-twitter', platform: 'Twitter', start: slot(4, 13), status: 'ready', offset_minutes: 90 },
+        ],
+      },
+      {
+        id: crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
+        asset_title: 'Creator Collab Thread',
+        asset_version: 'v3',
+        campaign: 'Collab Week',
+        status: 'scheduled',
+        duration_minutes: 30,
+        best_time_tip: 'Align multi-platform drops within 90 minutes.',
+        platformSlots: [
+          { id: 'sched-4-twitter', platform: 'Twitter', start: slot(0, 9), status: 'ready', offset_minutes: 0 },
+          { id: 'sched-4-instagram', platform: 'Instagram', start: slot(0, 8), status: 'ready', offset_minutes: -60 },
+        ],
+      },
+    ];
+
+    scheduleStore.set(userId, demo);
+  }
+  return scheduleStore.get(userId);
+};
+
+app.get('/api/schedule', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const requestedStart = req.query.weekStart ? new Date(req.query.weekStart) : new Date();
+  const weekStart = isNaN(requestedStart.getTime()) ? scheduleStartOfWeek(new Date()) : scheduleStartOfWeek(requestedStart);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const items = ensureScheduleForUser(userId, weekStart).filter((item) => {
+    return (item.platformSlots || []).some((slot) => {
+      const start = new Date(slot.start || item.start_time || weekStart);
+      return start >= weekStart && start < weekEnd;
+    });
+  });
+
+  res.json({
+    items,
+    weekStart: weekStart.toISOString(),
+    bestPractices: SCHEDULE_BEST_PRACTICES
+  });
+}));
+
+app.post('/api/schedule', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const {
+    asset_title,
+    asset_version = 'v1',
+    campaign = 'Unassigned',
+    status = 'scheduled',
+    duration_minutes = 60,
+    platformSlots = [],
+    start_time
+  } = req.body;
+
+  const schedule = ensureScheduleForUser(userId);
+  const newId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+  const baseStart = start_time ? new Date(start_time) : new Date();
+
+  const normalizedSlots = platformSlots.length > 0 ? platformSlots.map((slot, index) => {
+    const offset = slot.offset_minutes || 0;
+    const slotDate = new Date(baseStart);
+    slotDate.setMinutes(slotDate.getMinutes() + offset);
+    return {
+      id: slot.id || `${newId}-slot-${index}`,
+      platform: slot.platform || 'Platform',
+      start: slot.start || slotDate.toISOString(),
+      status: slot.status || status,
+      offset_minutes: offset
+    };
+  }) : [{
+    id: `${newId}-slot-0`,
+    platform: 'Instagram',
+    start: baseStart.toISOString(),
+    status,
+    offset_minutes: 0
+  }];
+
+  const newItem = {
+    id: newId,
+    asset_title: asset_title || 'Untitled asset',
+    asset_version,
+    campaign,
+    status,
+    duration_minutes,
+    platformSlots: normalizedSlots,
+    start_time: baseStart.toISOString(),
+    created_at: new Date().toISOString()
+  };
+
+  schedule.push(newItem);
+  res.status(201).json({ item: newItem, bestPractices: SCHEDULE_BEST_PRACTICES });
+}));
+
+app.put('/api/schedule/:id', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { id } = req.params;
+  const schedule = ensureScheduleForUser(userId);
+  const index = schedule.findIndex((item) => item.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Schedule item not found' });
+  }
+
+  const item = schedule[index];
+  const {
+    status,
+    campaign,
+    asset_title,
+    asset_version,
+    start_time,
+    duration_minutes,
+    platformSlots
+  } = req.body;
+
+  const updatedItem = { ...item };
+
+  if (status) updatedItem.status = status;
+  if (campaign) updatedItem.campaign = campaign;
+  if (asset_title) updatedItem.asset_title = asset_title;
+  if (asset_version) updatedItem.asset_version = asset_version;
+  if (duration_minutes) updatedItem.duration_minutes = duration_minutes;
+
+  if (start_time) {
+    updatedItem.start_time = start_time;
+    const base = new Date(start_time);
+    updatedItem.platformSlots = (updatedItem.platformSlots || []).map((slot, index) => {
+      const offset = slot.offset_minutes || 0;
+      const slotDate = new Date(base);
+      slotDate.setMinutes(slotDate.getMinutes() + offset);
+      return {
+        ...slot,
+        id: slot.id || `${id}-slot-${index}`,
+        start: slotDate.toISOString()
+      };
+    });
+  }
+
+  if (Array.isArray(platformSlots)) {
+    updatedItem.platformSlots = platformSlots.map((slot, index) => {
+      const fallback = updatedItem.platformSlots?.[index] || {};
+      return {
+        id: slot.id || fallback.id || `${id}-slot-${index}`,
+        platform: slot.platform || fallback.platform || 'Platform',
+        start: slot.start || fallback.start || start_time || item.start_time || new Date().toISOString(),
+        status: slot.status || fallback.status || updatedItem.status,
+        offset_minutes: slot.offset_minutes ?? fallback.offset_minutes ?? 0
+      };
+    });
+  }
+
+  updatedItem.updated_at = new Date().toISOString();
+  schedule[index] = updatedItem;
+
+  res.json({ item: updatedItem, bestPractices: SCHEDULE_BEST_PRACTICES });
+}));
+
+// ============================================
 // CAMPAIGNS API ENDPOINTS
 // ============================================
 

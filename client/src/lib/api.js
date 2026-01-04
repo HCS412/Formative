@@ -219,6 +219,27 @@ class ApiClient {
     })
   }
 
+  // Schedule
+  async getSchedule(filters = {}) {
+    const params = new URLSearchParams(filters)
+    const query = params.toString()
+    return this.request(`/api/schedule${query ? `?${query}` : ''}`)
+  }
+
+  async createScheduleItem(data) {
+    return this.request('/api/schedule', {
+      method: 'POST',
+      body: data,
+    })
+  }
+
+  async updateScheduleItem(id, data) {
+    return this.request(`/api/schedule/${id}`, {
+      method: 'PUT',
+      body: data,
+    })
+  }
+
   async submitDeliverable(campaignId, deliverableId, url) {
     return this.request(`/api/campaigns/${campaignId}/deliverables/${deliverableId}/submit`, {
       method: 'POST',

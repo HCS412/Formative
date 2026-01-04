@@ -41,9 +41,11 @@ import { useToast } from '@/components/ui/Toast'
 import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardContent, Badge, Avatar } from '@/components/ui'
 import api from '@/lib/api'
 import { cn, capitalizeFirst, formatDate, formatNumber } from '@/lib/utils'
+import { ScheduleBoard } from '@/components/ScheduleBoard'
 
 // Tab configuration
 const tabs = [
+  { id: 'schedule', label: 'Schedule', icon: Calendar },
   { id: 'campaigns', label: 'Campaigns', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
   { id: 'payments', label: 'Payments', icon: Wallet },
@@ -1403,6 +1405,8 @@ export function Workspace() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'schedule':
+        return <ScheduleBoard />
       case 'campaigns':
         return <CampaignsPanel />
       case 'projects':
