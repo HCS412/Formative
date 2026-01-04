@@ -9,7 +9,7 @@ import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SearchModal } from '@/components/SearchModal'
 import { Navbar } from '@/components/layout/Navbar'
-import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy } from '@/pages'
+import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy, Workspace } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
 
 const queryClient = new QueryClient({
@@ -82,12 +82,15 @@ function AppRoutes() {
           <Route path="/dashboard/opportunities" element={<ProtectedRoute><Opportunities /></ProtectedRoute>} />
           <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/dashboard/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+          <Route path="/dashboard/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/dashboard/workspace/:tab" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
           <Route path="/dashboard/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-          <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsWrapper /></ProtectedRoute>} />
           <Route path="/dashboard/links" element={<ProtectedRoute><Links /></ProtectedRoute>} />
-          <Route path="/dashboard/teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
           <Route path="/dashboard/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+          {/* Legacy routes - redirect to workspace */}
+          <Route path="/dashboard/campaigns" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/dashboard/payments" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/dashboard/teams" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

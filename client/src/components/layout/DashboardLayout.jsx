@@ -1,20 +1,18 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  Briefcase, 
-  Settings, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Briefcase,
+  Settings,
   User,
   Bell,
   LogOut,
   Menu,
   X,
-  Target,
-  Wallet,
   Link2,
-  Users,
-  Store
+  Store,
+  FolderKanban
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar, Button } from '@/components/ui'
@@ -25,11 +23,9 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
   { name: 'Opportunities', href: '/dashboard/opportunities', icon: Briefcase },
-  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Target },
-  { name: 'Teams', href: '/dashboard/teams', icon: Users },
+  { name: 'Workspace', href: '/dashboard/workspace', icon: FolderKanban, matchPrefix: true },
   { name: 'Shop', href: '/dashboard/shop', icon: Store },
   { name: 'Links', href: '/dashboard/links', icon: Link2 },
-  { name: 'Payments', href: '/dashboard/payments', icon: Wallet },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
@@ -80,7 +76,9 @@ export function DashboardLayout({ children }) {
         {/* Navigation */}
         <nav className="p-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href
+            const isActive = item.matchPrefix
+              ? location.pathname.startsWith(item.href)
+              : location.pathname === item.href
             return (
               <Link
                 key={item.name}
