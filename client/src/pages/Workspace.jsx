@@ -16,6 +16,8 @@ import {
   Upload,
   Link2,
   BarChart3,
+  Eye,
+  MousePointerClick,
   CreditCard,
   Trash2,
   Copy,
@@ -32,7 +34,9 @@ import {
   TrendingUp,
   PieChart,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  FileDown,
+  CloudDownload
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { CampaignCard } from '@/components/CampaignCard'
@@ -42,12 +46,16 @@ import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardConten
 import api from '@/lib/api'
 import { cn, capitalizeFirst, formatDate, formatNumber } from '@/lib/utils'
 
+// Analytics configuration
+const analyticsPalette = ['#ec4899', '#06b6d4', '#22c55e', '#f59e0b', '#8b5cf6']
+
 // Tab configuration
 const tabs = [
   { id: 'campaigns', label: 'Campaigns', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'management', label: 'Management', icon: Users },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
 // ============================================
@@ -1030,6 +1038,416 @@ function PaymentsPanel() {
 }
 
 // ============================================
+// ANALYTICS PANEL
+// ============================================
+function AnalyticsPanel() {
+  const { addToast } = useToast()
+  const [dateRange, setDateRange] = useState('30d')
+  const [dimension, setDimension] = useState('asset')
+  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState({
+    impressions: 0,
+    reach: 0,
+    engagement: 0,
+    clicks: 0,
+    conversions: 0
+  })
+  const [platformMix, setPlatformMix] = useState([])
+  const [timeSeries, setTimeSeries] = useState([])
+  const [topAssets, setTopAssets] = useState([])
+
+  const useApiAnalytics = import.meta.env.VITE_ANALYTICS_USE_API === 'true'
+
+  const placeholderData = {
+    summary: {
+      impressions: 245000,
+      reach: 182000,
+      engagement: 26400,
+      clicks: 12450,
+      conversions: 1860,
+    },
+    platformMix: [
+      { platform: 'Instagram', value: 48, color: '#ec4899' },
+      { platform: 'TikTok', value: 26, color: '#22c55e' },
+      { platform: 'YouTube', value: 16, color: '#06b6d4' },
+      { platform: 'Twitter', value: 10, color: '#f59e0b' },
+    ],
+    timeSeries: {
+      asset: [
+        { label: 'Week 1', value: 4200 },
+        { label: 'Week 2', value: 5600 },
+        { label: 'Week 3', value: 6100 },
+        { label: 'Week 4', value: 7300 },
+        { label: 'Week 5', value: 6900 },
+      ],
+      campaign: [
+        { label: 'Week 1', value: 8500 },
+        { label: 'Week 2', value: 9100 },
+        { label: 'Week 3', value: 10800 },
+        { label: 'Week 4', value: 11200 },
+        { label: 'Week 5', value: 12400 },
+      ],
+    },
+    topAssets: [
+      {
+        id: 'asset-1',
+        name: 'Summer Teaser Reel',
+        status: 'approved',
+        metric: '2.3% CTR',
+        thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=60',
+        link: '/dashboard/workspace/projects',
+      },
+      {
+        id: 'asset-2',
+        name: 'New Product Sneak Peek',
+        status: 'live',
+        metric: '18.6k reach',
+        thumbnail: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=60',
+        link: '/dashboard/workspace/campaigns',
+      },
+      {
+        id: 'asset-3',
+        name: 'Creator Collab',
+        status: 'approved',
+        metric: '4.1% engagement',
+        thumbnail: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=60',
+        link: '/dashboard/workspace/campaigns',
+      },
+    ]
+  }
+
+  const normalizePlatformMix = (data) => {
+    if (!data || data.length === 0) return []
+    const total = data.reduce((sum, item) => sum + (item.value ?? item.percentage ?? 0), 0) || 1
+    return data.map((item, index) => {
+      const percentage = item.percentage ?? Math.round((item.value / total) * 100)
+      return {
+        platform: item.platform || item.name || `Platform ${index + 1}`,
+        percentage,
+        color: item.color || analyticsPalette[index % analyticsPalette.length],
+      }
+    })
+  }
+
+  const loadAnalytics = async () => {
+    setLoading(true)
+    try {
+      if (useApiAnalytics) {
+        const [summaryRes, platformRes, timeRes, assetsRes] = await Promise.all([
+          api.getAnalyticsSummary({ range: dateRange }),
+          api.getAnalyticsPlatformMix({ range: dateRange }),
+          api.getAnalyticsTimeSeries({ range: dateRange, dimension }),
+          api.getAnalyticsTopAssets({ range: dateRange }),
+        ])
+
+        setSummary({
+          impressions: summaryRes.impressions ?? 0,
+          reach: summaryRes.reach ?? 0,
+          engagement: summaryRes.engagement ?? 0,
+          clicks: summaryRes.clicks ?? 0,
+          conversions: summaryRes.conversions ?? 0,
+        })
+        const platformData = normalizePlatformMix(platformRes.platforms || platformRes.data || [])
+        const seriesData = timeRes.series || timeRes.data || []
+        const assetsData = assetsRes.assets || []
+        setPlatformMix(platformData.length ? platformData : normalizePlatformMix(placeholderData.platformMix))
+        setTimeSeries(seriesData.length ? seriesData : placeholderData.timeSeries[dimension])
+        setTopAssets(assetsData.length ? assetsData : placeholderData.topAssets)
+      } else {
+        setSummary(placeholderData.summary)
+        setPlatformMix(normalizePlatformMix(placeholderData.platformMix))
+        setTimeSeries(placeholderData.timeSeries[dimension])
+        setTopAssets(placeholderData.topAssets)
+      }
+    } catch (error) {
+      addToast('Analytics unavailable - showing demo data', 'error')
+      setSummary(placeholderData.summary)
+      setPlatformMix(normalizePlatformMix(placeholderData.platformMix))
+      setTimeSeries(placeholderData.timeSeries[dimension])
+      setTopAssets(placeholderData.topAssets)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAnalytics()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange, dimension])
+
+  const buildGradient = (mix) => {
+    if (!mix.length) return 'conic-gradient(#0f172a, #0f172a)'
+    let current = 0
+    const segments = mix.map(item => {
+      const start = current
+      const end = current + item.percentage
+      current = end
+      return `${item.color} ${start}% ${end}%`
+    })
+    if (current < 100) {
+      segments.push(`#1f2937 ${current}% 100%`)
+    }
+    return `conic-gradient(${segments.join(', ')})`
+  }
+
+  const handleExportCsv = () => {
+    const summaryRows = [
+      ['Metric', 'Value'],
+      ['Impressions', summary.impressions],
+      ['Reach', summary.reach],
+      ['Engagement', summary.engagement],
+      ['Clicks', summary.clicks],
+      ['Conversions', summary.conversions],
+    ]
+    const timeRows = [
+      [],
+      ['Time Series', 'Value'],
+      ...timeSeries.map(point => [point.label, point.value]),
+    ]
+    const csvContent = [...summaryRows, ...timeRows]
+      .map(row => row.join(','))
+      .join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `analytics-${dateRange}-${dimension}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportPdf = () => {
+    const pdfWindow = window.open('', '_blank')
+    pdfWindow.document.write(`
+      <html>
+        <head><title>Analytics Report</title></head>
+        <body>
+          <h1>Analytics Report (${dateRange}, ${dimension})</h1>
+          <ul>
+            <li>Impressions: ${summary.impressions}</li>
+            <li>Reach: ${summary.reach}</li>
+            <li>Engagement: ${summary.engagement}</li>
+            <li>Clicks: ${summary.clicks}</li>
+            <li>Conversions: ${summary.conversions}</li>
+          </ul>
+          <h2>Top Assets</h2>
+          <ul>
+            ${topAssets.map(asset => `<li>${asset.name} - ${asset.metric || ''}</li>`).join('')}
+          </ul>
+        </body>
+      </html>
+    `)
+    pdfWindow.document.close()
+    pdfWindow.focus()
+    pdfWindow.print()
+  }
+
+  const maxValue = Math.max(...timeSeries.map(point => point.value || 0), 1)
+
+  const dateRangeOptions = [
+    { value: '7d', label: 'Last 7 days' },
+    { value: '30d', label: 'Last 30 days' },
+    { value: '90d', label: 'Last 90 days' },
+    { value: 'ytd', label: 'Year to date' },
+  ]
+
+  const summaryCards = [
+    { label: 'Impressions', value: summary.impressions, delta: '+8%', icon: Eye, tone: 'text-cyan-400' },
+    { label: 'Reach', value: summary.reach, delta: '+4%', icon: Target, tone: 'text-teal-400' },
+    { label: 'Engagement', value: summary.engagement, delta: '+12%', icon: Users, tone: 'text-purple-400' },
+    { label: 'Clicks', value: summary.clicks, delta: '+6%', icon: MousePointerClick, tone: 'text-orange-400' },
+    { label: 'Conversions', value: summary.conversions, delta: '+3%', icon: DollarSign, tone: 'text-green-400' },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold">Analytics</h2>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Monitor performance across platforms and campaigns
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="px-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-sm text-white focus:outline-none"
+          >
+            {dateRangeOptions.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <Badge variant={useApiAnalytics ? 'success' : 'default'}>
+            {useApiAnalytics ? 'Live data' : 'Demo data'}
+          </Badge>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportCsv}
+            className="flex items-center gap-2"
+          >
+            <FileDown className="w-4 h-4" />
+            Export CSV
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportPdf}
+            className="flex items-center gap-2"
+          >
+            <CloudDownload className="w-4 h-4" />
+            Download PDF
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full" />
+        </div>
+      ) : (
+        <>
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {summaryCards.map((card, idx) => {
+              const Icon = card.icon
+              return (
+                <Card key={idx} className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-[var(--text-secondary)]">{card.label}</p>
+                    <span className={`text-xs ${card.tone}`}>{card.delta}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[var(--bg-secondary)] flex items-center justify-center">
+                      <Icon className={`w-5 h-5 ${card.tone}`} />
+                    </div>
+                    <p className="text-2xl font-semibold">{formatNumber(card.value)}</p>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Platform mix donut */}
+            <Card className="p-6 lg:col-span-1">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold">Platform mix</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">Share by impressions</p>
+                </div>
+                <div
+                  className="relative w-28 h-28 rounded-full"
+                  style={{ background: buildGradient(platformMix) }}
+                >
+                  <div className="absolute inset-5 rounded-full bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-center">
+                    <p className="text-sm text-[var(--text-secondary)]">100%</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {platformMix.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <p className="text-sm">{item.platform}</p>
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)]">{item.percentage}%</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Time series */}
+            <Card className="p-6 lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold">Performance over time</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Viewing by {dimension === 'asset' ? 'asset' : 'campaign'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={dimension === 'asset' ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => setDimension('asset')}
+                  >
+                    Assets
+                  </Button>
+                  <Button
+                    variant={dimension === 'campaign' ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => setDimension('campaign')}
+                  >
+                    Campaigns
+                  </Button>
+                </div>
+              </div>
+
+              <div className="h-52 flex items-end gap-3">
+                {timeSeries.map((point, idx) => (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                    <div
+                      className="w-full rounded-lg bg-gradient-to-t from-teal-600 to-cyan-500"
+                      style={{ height: `${(point.value / maxValue) * 100}%` }}
+                    />
+                    <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">{point.label}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Top assets strip */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Top performing assets</h3>
+              <p className="text-sm text-[var(--text-secondary)]">Best results by engagement</p>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {topAssets.map((asset) => (
+                <a
+                  key={asset.id}
+                  href={asset.link || '#'}
+                  className="min-w-[220px] rounded-xl overflow-hidden border border-[var(--border-color)] bg-[var(--bg-card)] hover:border-teal-500 transition-colors"
+                >
+                  <div className="relative h-32 bg-[var(--bg-secondary)]">
+                    <img
+                      src={asset.thumbnail}
+                      alt={asset.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <Badge
+                      variant={asset.status === 'live' ? 'success' : 'secondary'}
+                      className="absolute top-2 left-2 capitalize"
+                    >
+                      {asset.status}
+                    </Badge>
+                  </div>
+                  <div className="p-3 space-y-1">
+                    <p className="font-semibold truncate">{asset.name}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{asset.metric}</p>
+                    <div className="flex items-center gap-1 text-xs text-teal-400">
+                      <ExternalLink className="w-3 h-3" />
+                      View detail
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ============================================
 // MANAGEMENT PANEL (Teams + Analytics)
 // ============================================
 function ManagementPanel() {
@@ -1411,6 +1829,8 @@ export function Workspace() {
         return <PaymentsPanel />
       case 'management':
         return <ManagementPanel />
+      case 'analytics':
+        return <AnalyticsPanel />
       default:
         return <CampaignsPanel />
     }

@@ -239,6 +239,31 @@ class ApiClient {
     })
   }
 
+  // Analytics
+  async getAnalyticsSummary(params = {}) {
+    const search = new URLSearchParams(params)
+    const suffix = search.toString() ? `?${search}` : ''
+    return this.request(`/api/analytics/summary${suffix}`)
+  }
+
+  async getAnalyticsTimeSeries(params = {}) {
+    const search = new URLSearchParams(params)
+    const suffix = search.toString() ? `?${search}` : ''
+    return this.request(`/api/analytics/time-series${suffix}`)
+  }
+
+  async getAnalyticsPlatformMix(params = {}) {
+    const search = new URLSearchParams(params)
+    const suffix = search.toString() ? `?${search}` : ''
+    return this.request(`/api/analytics/platform-mix${suffix}`)
+  }
+
+  async getAnalyticsTopAssets(params = {}) {
+    const search = new URLSearchParams(params)
+    const suffix = search.toString() ? `?${search}` : ''
+    return this.request(`/api/analytics/top-assets${suffix}`)
+  }
+
   // 2FA
   async setup2FA() {
     return this.request('/api/auth/2fa/setup', {
