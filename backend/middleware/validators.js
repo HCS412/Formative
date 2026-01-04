@@ -271,14 +271,28 @@ const submitDeliverableValidator = [
     .isInt({ min: 1 }).withMessage('Invalid campaign ID'),
   param('deliverableId')
     .isInt({ min: 1 }).withMessage('Invalid deliverable ID'),
-  body('submittedUrl')
+  body('url')
     .optional()
     .trim()
     .isURL().withMessage('Invalid URL format'),
-  body('submittedContent')
+  body('content')
     .optional()
     .trim()
     .isLength({ max: 10000 }).withMessage('Content must be under 10000 characters'),
+  body('caption')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 }).withMessage('Caption must be under 1000 characters'),
+  body('files')
+    .optional()
+    .isArray({ min: 1 }).withMessage('Files must be an array'),
+  body('files.*.type')
+    .optional()
+    .trim()
+    .isLength({ min: 1 }).withMessage('File type is required'),
+  body('files.*.size')
+    .optional()
+    .isInt({ min: 1 }).withMessage('File size must be greater than zero'),
   handleValidationErrors
 ];
 
@@ -288,9 +302,19 @@ const reviewDeliverableValidator = [
   param('deliverableId')
     .isInt({ min: 1 }).withMessage('Invalid deliverable ID'),
   body('status')
-    .notEmpty().withMessage('Status is required')
+    .optional()
     .isIn(['approved', 'revision_requested', 'rejected'])
     .withMessage('Invalid status'),
+  body('approve')
+    .optional()
+    .isBoolean().withMessage('Approve must be true or false'),
+  body()
+    .custom(body => {
+      if (body.status || typeof body.approve === 'boolean') {
+        return true;
+      }
+      throw new Error('Provide either status or approve flag');
+    }),
   body('feedback')
     .optional()
     .trim()

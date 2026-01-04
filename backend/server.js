@@ -4350,6 +4350,50 @@ app.get('/api/kit/:identifier', async (req, res) => {
 // CAMPAIGNS API ENDPOINTS
 // ============================================
 
+const ALLOWED_UPLOAD_TYPES = ['image/', 'video/', 'application/pdf'];
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB per file
+const MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024; // 50MB per submission
+const PROHIBITED_CAPTION_TERMS = ['nsfw', 'explicit', 'hate', 'violence', 'scam', 'fraud'];
+
+const validateUploadBatch = (files = []) => {
+  if (!Array.isArray(files)) {
+    return 'Files payload must be an array';
+  }
+
+  if (files.length === 0) return null;
+
+  let totalSize = 0;
+  for (const file of files) {
+    const size = Number(file.size) || 0;
+    const type = file.type || '';
+    totalSize += size;
+
+    if (size <= 0) {
+      return 'Each file must include a valid size';
+    }
+
+    if (size > MAX_FILE_SIZE_BYTES) {
+      return `Files must be under ${Math.floor(MAX_FILE_SIZE_BYTES / (1024 * 1024))}MB each`;
+    }
+
+    const isAllowedType = ALLOWED_UPLOAD_TYPES.some(prefix => type.startsWith(prefix));
+    if (!isAllowedType) {
+      return 'Unsupported file type provided';
+    }
+  }
+
+  if (totalSize > MAX_TOTAL_UPLOAD_BYTES) {
+    return 'Combined upload size exceeds limit';
+  }
+
+  return null;
+};
+
+const containsProhibitedCaptionLanguage = (text = '') => {
+  const normalized = text.toLowerCase();
+  return PROHIBITED_CAPTION_TERMS.some(term => normalized.includes(term));
+};
+
 // Get all campaigns for user (as brand owner or participant)
 app.get('/api/campaigns', authenticateToken, async (req, res) => {
   try {
@@ -4506,7 +4550,7 @@ app.put('/api/campaigns/:id', authenticateToken, async (req, res) => {
     const { name, description, status, budget, startDate, endDate, goals } = req.body;
     
     // Verify ownership
-    const campaign = await pool.query('SELECT brand_id FROM campaigns WHERE id = $1', [id]);
+    const campaign = await pool.query('SELECT brand_id, status as current_status, start_date, end_date FROM campaigns WHERE id = $1', [id]);
     if (campaign.rows.length === 0 || campaign.rows[0].brand_id !== req.user.userId) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -4524,6 +4568,30 @@ app.put('/api/campaigns/:id', authenticateToken, async (req, res) => {
       WHERE id = $8
       RETURNING *
     `, [name, description, status, budget, startDate, endDate, goals ? JSON.stringify(goals) : null, id]);
+
+    const scheduleChanges = {};
+    if (status && status !== campaign.rows[0].current_status) {
+      scheduleChanges.status = {
+        from: campaign.rows[0].current_status,
+        to: status
+      };
+    }
+    const previousStart = campaign.rows[0].start_date ? campaign.rows[0].start_date.toISOString().split('T')[0] : null;
+    const previousEnd = campaign.rows[0].end_date ? campaign.rows[0].end_date.toISOString().split('T')[0] : null;
+
+    if (startDate && startDate !== previousStart) {
+      scheduleChanges.startDate = { from: previousStart, to: startDate };
+    }
+    if (endDate && endDate !== previousEnd) {
+      scheduleChanges.endDate = { from: previousEnd, to: endDate };
+    }
+
+    if (Object.keys(scheduleChanges).length > 0) {
+      await logAuditEvent('CAMPAIGN_STATUS_SCHEDULE_UPDATED', req.user.userId, {
+        campaignId: id,
+        changes: scheduleChanges
+      }, req);
+    }
     
     res.json({
       success: true,
@@ -4619,14 +4687,24 @@ app.put('/api/campaigns/:id/respond', authenticateToken, async (req, res) => {
 });
 
 // Submit deliverable
-app.post('/api/campaigns/:campaignId/deliverables/:deliverableId/submit', authenticateToken, async (req, res) => {
+app.post('/api/campaigns/:campaignId/deliverables/:deliverableId/submit', authenticateToken, validators.submitDeliverableValidator, async (req, res) => {
   try {
     const { campaignId, deliverableId } = req.params;
-    const { url, content } = req.body;
+    const { url, content, caption, files = [] } = req.body;
+
+    const uploadError = validateUploadBatch(files);
+    if (uploadError) {
+      return res.status(400).json({ error: uploadError });
+    }
+
+    const captionText = caption || content;
+    if (captionText && containsProhibitedCaptionLanguage(captionText)) {
+      return res.status(400).json({ error: 'Caption contains prohibited or brand-unsafe language' });
+    }
     
     // Verify participant owns this deliverable
     const deliverable = await pool.query(`
-      SELECT d.* FROM deliverables d
+      SELECT d.*, d.status as previous_status FROM deliverables d
       JOIN campaign_participants cp ON d.participant_id = cp.id
       WHERE d.id = $1 AND cp.campaign_id = $2 AND cp.user_id = $3
     `, [deliverableId, campaignId, req.user.userId]);
@@ -4637,10 +4715,21 @@ app.post('/api/campaigns/:campaignId/deliverables/:deliverableId/submit', authen
     
     const result = await pool.query(`
       UPDATE deliverables
-      SET status = 'submitted', submitted_url = $1, submitted_content = $2, submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      SET status = 'submitted',
+          submitted_url = $1,
+          submitted_content = $2,
+          submitted_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
       WHERE id = $3
       RETURNING *
-    `, [url, content, deliverableId]);
+    `, [url, captionText || content, deliverableId]);
+
+    await logAuditEvent('DELIVERABLE_SUBMITTED', req.user.userId, {
+      deliverableId,
+      campaignId,
+      previousStatus: deliverable.rows[0].previous_status,
+      newStatus: 'submitted'
+    }, req);
     
     res.json({
       success: true,
@@ -4653,18 +4742,39 @@ app.post('/api/campaigns/:campaignId/deliverables/:deliverableId/submit', authen
 });
 
 // Approve/reject deliverable (brand only)
-app.put('/api/campaigns/:campaignId/deliverables/:deliverableId/review', authenticateToken, async (req, res) => {
+app.put('/api/campaigns/:campaignId/deliverables/:deliverableId/review', authenticateToken, validators.reviewDeliverableValidator, async (req, res) => {
   try {
     const { campaignId, deliverableId } = req.params;
-    const { approve, feedback } = req.body;
+    const { approve, feedback, status } = req.body;
     
     // Verify brand owns campaign
-    const campaign = await pool.query('SELECT brand_id FROM campaigns WHERE id = $1', [campaignId]);
+    const campaign = await pool.query('SELECT brand_id, name FROM campaigns WHERE id = $1', [campaignId]);
     if (campaign.rows.length === 0 || campaign.rows[0].brand_id !== req.user.userId) {
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    const newStatus = approve ? 'approved' : 'revision_requested';
+    const newStatus = status || (typeof approve === 'boolean' ? (approve ? 'approved' : 'revision_requested') : null);
+    if (!newStatus) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    if (!['approved', 'revision_requested', 'rejected'].includes(newStatus)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const deliverable = await pool.query(`
+      SELECT d.*, cp.user_id as participant_user_id
+      FROM deliverables d
+      JOIN campaign_participants cp ON d.participant_id = cp.id
+      WHERE d.id = $1 AND d.campaign_id = $2
+    `, [deliverableId, campaignId]);
+
+    if (deliverable.rows.length === 0) {
+      return res.status(404).json({ error: 'Deliverable not found for this campaign' });
+    }
+
+    const participantUserId = deliverable.rows[0].participant_user_id;
+    const previousStatus = deliverable.rows[0].status;
+    const approvedAt = newStatus === 'approved' ? new Date() : null;
     
     const result = await pool.query(`
       UPDATE deliverables
@@ -4673,7 +4783,64 @@ app.put('/api/campaigns/:campaignId/deliverables/:deliverableId/review', authent
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
       RETURNING *
-    `, [newStatus, feedback, approve ? new Date() : null, approve ? req.user.userId : null, deliverableId]);
+    `, [newStatus, feedback, approvedAt, newStatus === 'approved' ? req.user.userId : null, deliverableId]);
+
+    const decisionMessage = newStatus === 'approved'
+      ? 'approved'
+      : newStatus === 'revision_requested'
+        ? 'needs changes'
+        : 'was rejected';
+    const campaignName = campaign.rows[0].name || 'your campaign';
+    const deliverableTitle = deliverable.rows[0].title || 'Deliverable';
+    const notificationContent = `${deliverableTitle} for ${campaignName} ${decisionMessage}.`;
+
+    await pool.query(`
+      INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
+      VALUES ($1, 'deliverable_update', $2, $3, $4, 'deliverable')
+    `, [
+      participantUserId,
+      newStatus === 'approved' ? 'Deliverable approved' : 'Changes requested',
+      feedback ? `${notificationContent} Feedback: ${feedback}` : notificationContent,
+      deliverableId
+    ]);
+
+    // Send message to campaign conversation thread (brand <> participant)
+    const existingConv = await pool.query(`
+      SELECT id FROM conversations
+      WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
+    `, [req.user.userId, participantUserId]);
+
+    let conversationId;
+    if (existingConv.rows.length > 0) {
+      conversationId = existingConv.rows[0].id;
+    } else {
+      const newConvo = await pool.query(`
+        INSERT INTO conversations (user1_id, user2_id)
+        VALUES ($1, $2)
+        RETURNING id
+      `, [req.user.userId, participantUserId]);
+      conversationId = newConvo.rows[0].id;
+    }
+
+    const messageBody = `${deliverableTitle} for ${campaignName} was ${decisionMessage}${feedback ? `.\nFeedback: ${feedback}` : '.'}`;
+    await pool.query(
+      `INSERT INTO messages (conversation_id, sender_id, receiver_id, content)
+       VALUES ($1, $2, $3, $4)`,
+      [conversationId, req.user.userId, participantUserId, messageBody]
+    );
+
+    await pool.query(
+      'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
+      [conversationId]
+    );
+
+    await logAuditEvent('DELIVERABLE_STATUS_UPDATED', req.user.userId, {
+      deliverableId,
+      campaignId,
+      previousStatus,
+      newStatus,
+      participantUserId
+    }, req);
     
     res.json({
       success: true,
