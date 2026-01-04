@@ -25,6 +25,7 @@ try {
 
 // Centralized error handling utilities
 const { ApiError, asyncHandler, errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { assetsRoutes } = require('./routes');
 
 // Rate limiters
 const {
@@ -208,6 +209,9 @@ app.use(express.json({ limit: '10kb' })); // Prevent large payload attacks
 
 // Sanitize all incoming request bodies (from middleware/security.js)
 app.use(sanitizeBodyMiddleware);
+
+// Modular route mounts
+app.use('/api/assets', assetsRoutes);
 
 // Serve React app from dist folder (built by Vite)
 const distPath = path.join(__dirname, '../dist');
