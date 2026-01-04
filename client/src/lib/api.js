@@ -266,6 +266,148 @@ class ApiClient {
       body: { userId, code },
     })
   }
+
+  // Assets
+  async getAssets(filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/assets?${params}`)
+  }
+
+  async getAsset(id) {
+    return this.request(`/api/assets/${id}`)
+  }
+
+  async createAsset(assetData) {
+    return this.request('/api/assets', {
+      method: 'POST',
+      body: assetData,
+    })
+  }
+
+  async updateAsset(id, data) {
+    return this.request(`/api/assets/${id}`, {
+      method: 'PUT',
+      body: data,
+    })
+  }
+
+  async deleteAsset(id) {
+    return this.request(`/api/assets/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Asset Versions
+  async getAssetVersions(assetId) {
+    return this.request(`/api/assets/${assetId}/versions`)
+  }
+
+  async createAssetVersion(assetId) {
+    return this.request(`/api/assets/${assetId}/versions`, {
+      method: 'POST',
+    })
+  }
+
+  async submitAssetForReview(assetId, versionId) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/submit`, {
+      method: 'POST',
+    })
+  }
+
+  async reviewAsset(assetId, versionId, outcome, notes) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/review`, {
+      method: 'POST',
+      body: { outcome, notes },
+    })
+  }
+
+  // Asset Feedback
+  async getAssetFeedback(assetId, versionId) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/feedback`)
+  }
+
+  async addAssetFeedback(assetId, versionId, feedbackData) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/feedback`, {
+      method: 'POST',
+      body: feedbackData,
+    })
+  }
+
+  async resolveAssetFeedback(feedbackId) {
+    return this.request(`/api/assets/feedback/${feedbackId}/resolve`, {
+      method: 'PUT',
+    })
+  }
+
+  // Asset Scheduling
+  async getAssetSchedule(assetId) {
+    return this.request(`/api/assets/${assetId}/schedule`)
+  }
+
+  async scheduleAsset(assetId, scheduleData) {
+    return this.request(`/api/assets/${assetId}/schedule`, {
+      method: 'POST',
+      body: scheduleData,
+    })
+  }
+
+  async getAllScheduledAssets(filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/assets/schedule?${params}`)
+  }
+
+  async cancelScheduleSlot(slotId) {
+    return this.request(`/api/assets/schedule/${slotId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Asset Metrics
+  async getAssetMetrics(assetId, filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/assets/${assetId}/metrics?${params}`)
+  }
+
+  async getMetricsSummary(filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/assets/metrics/summary?${params}`)
+  }
+
+  // Asset Files
+  async addAssetFile(assetId, versionId, fileData) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/files`, {
+      method: 'POST',
+      body: fileData,
+    })
+  }
+
+  async removeAssetFile(fileId) {
+    return this.request(`/api/assets/files/${fileId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Asset Captions
+  async addAssetCaption(assetId, versionId, captionData) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/captions`, {
+      method: 'POST',
+      body: captionData,
+    })
+  }
+
+  // Asset Tags
+  async addAssetTags(assetId, versionId, tags, tagType = 'general') {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/tags`, {
+      method: 'POST',
+      body: { tags, tagType },
+    })
+  }
+
+  async removeAssetTag(tagId) {
+    return this.request(`/api/assets/tags/${tagId}`, {
+      method: 'DELETE',
+    })
+  }
 }
 
 export const api = new ApiClient()
