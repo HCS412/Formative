@@ -69,6 +69,9 @@ const {
   LOCKOUT_DURATION
 } = require('./middleware/security');
 
+// Route modules
+const assetRoutes = require('./routes/assets');
+
 // ============================================
 // DATABASE CONNECTION
 // ============================================
@@ -6396,6 +6399,13 @@ app.get('/api/shop/download/:token', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ============================================
+// MOUNTED ROUTE MODULES
+// ============================================
+
+// Asset management routes
+app.use('/api/assets', assetRoutes);
 
 // ============================================
 // CENTRALIZED ERROR HANDLER
