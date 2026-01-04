@@ -11,6 +11,7 @@ import {
   DollarSign,
   FileText,
   Check,
+  AlertTriangle,
   Clock,
   X,
   Upload,
@@ -32,7 +33,9 @@ import {
   TrendingUp,
   PieChart,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  CircleHelp,
+  MessageSquare
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { CampaignCard } from '@/components/CampaignCard'
@@ -40,11 +43,12 @@ import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/components/ui/Toast'
 import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardContent, Badge, Avatar } from '@/components/ui'
 import api from '@/lib/api'
-import { cn, capitalizeFirst, formatDate, formatNumber } from '@/lib/utils'
+import { cn, capitalizeFirst, formatDate, formatNumber, formatRelativeTime, formatTime } from '@/lib/utils'
 
 // Tab configuration
 const tabs = [
   { id: 'campaigns', label: 'Campaigns', icon: Target },
+  { id: 'library', label: 'Library', icon: FileText },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'management', label: 'Management', icon: Users },
@@ -486,6 +490,663 @@ function CampaignsPanel() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+// ============================================
+// LIBRARY PANEL
+// ============================================
+function LibraryPanel() {
+  const { addToast } = useToast()
+  const [assets, setAssets] = useState(() => ([
+    {
+      id: 'asset-1',
+      title: 'Summer Launch Teaser',
+      campaign: 'Summer Fashion 2024',
+      platform: 'Instagram',
+      format: 'Reel',
+      status: 'approved',
+      thumbnail: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
+      caption: 'Teaser for our summer drop. Keep energy high, highlight CTA at 0:12.',
+      tags: ['fashion', 'summer', 'launch'],
+      collaborators: ['@styleco', '@alexdesigns'],
+      location: 'Los Angeles, CA',
+      partnership: 'Paid partnership with StyleCo',
+      scheduledFor: '2024-07-20T18:30:00Z',
+      currentVersion: 'v2',
+      media: [
+        { id: 'm-1', label: 'Final cut', type: 'video', backdrop: 'linear-gradient(135deg, #115e59, #14b8a6)', note: '00:30 reel' },
+        { id: 'm-2', label: 'Thumbnail', type: 'image', backdrop: 'linear-gradient(135deg, #0f172a, #334155)', note: '1080x1920 cover' },
+      ],
+      timeline: [
+        { id: 't-1', label: 'Uploaded new version', at: '2024-07-02T09:00:00Z', tone: 'info' },
+        { id: 't-2', label: 'Submitted for review', at: '2024-07-03T12:30:00Z', tone: 'primary' },
+        { id: 't-3', label: 'Approved by client', at: '2024-07-04T15:00:00Z', tone: 'success' },
+        { id: 't-4', label: 'Scheduled for Jul 20, 6:30 PM', at: '2024-07-05T10:00:00Z', tone: 'default' },
+      ],
+      feedback: [
+        { id: 'f-1', author: 'Sasha (Client)', channel: 'client', message: 'Please highlight CTA at 0:12', timecode: '00:12', version: 'v2', unread: true, createdAt: '2024-07-03T14:00:00Z' },
+        { id: 'f-2', author: 'Nate (Internal)', channel: 'internal', message: 'Color grade matches brand palette', version: 'v2', unread: false, createdAt: '2024-07-04T09:00:00Z' },
+      ]
+    },
+    {
+      id: 'asset-2',
+      title: 'Wellness Partnership Story Set',
+      campaign: 'Wellness World',
+      platform: 'TikTok',
+      format: 'Story Set',
+      status: 'changes_requested',
+      thumbnail: 'linear-gradient(135deg, #ec4899, #6366f1)',
+      caption: '3-panel story with swipe up. Add UGC snippet and legal line on last frame.',
+      tags: ['wellness', 'ugc', 'story'],
+      collaborators: ['@wellnessco', '@jess'],
+      location: 'Remote',
+      partnership: 'Gifted product + affiliate',
+      scheduledFor: '2024-07-15T16:00:00Z',
+      currentVersion: 'v1',
+      media: [
+        { id: 'm-3', label: 'Story frame v1', type: 'image', backdrop: 'linear-gradient(135deg, #312e81, #a855f7)', note: 'Frame 1/3' },
+        { id: 'm-4', label: 'UGC cut', type: 'video', backdrop: 'linear-gradient(135deg, #4338ca, #06b6d4)', note: '00:08 clip' },
+      ],
+      timeline: [
+        { id: 't-5', label: 'Uploaded first cut', at: '2024-07-05T10:00:00Z', tone: 'info' },
+        { id: 't-6', label: 'Client requested changes', at: '2024-07-06T08:30:00Z', tone: 'warning' },
+      ],
+      feedback: [
+        { id: 'f-3', author: 'Priya (Client)', channel: 'client', message: 'Add FTC disclosure on frame 3', timecode: null, version: 'v1', unread: true, createdAt: '2024-07-06T08:20:00Z' },
+        { id: 'f-4', author: 'Alex (Internal)', channel: 'internal', message: 'Swap UGC clip at 00:04 with brighter take', timecode: '00:04', version: 'v1', unread: true, createdAt: '2024-07-06T09:00:00Z' },
+      ]
+    },
+    {
+      id: 'asset-3',
+      title: 'City Pop Playlist Promo',
+      campaign: 'Sounds of Summer',
+      platform: 'YouTube',
+      format: 'Short',
+      status: 'in_review',
+      thumbnail: 'linear-gradient(135deg, #f97316, #ea580c)',
+      caption: 'Drive traffic to the playlist; keep end card visible for 3s.',
+      tags: ['music', 'promo', 'shorts'],
+      collaborators: ['@soundlab'],
+      location: 'New York, NY',
+      partnership: 'Paid playlist push',
+      scheduledFor: '2024-07-22T13:00:00Z',
+      currentVersion: 'v3',
+      media: [
+        { id: 'm-5', label: 'Short v3', type: 'video', backdrop: 'linear-gradient(135deg, #4f46e5, #22d3ee)', note: '00:45 short' },
+      ],
+      timeline: [
+        { id: 't-7', label: 'Uploaded v3', at: '2024-07-08T11:10:00Z', tone: 'info' },
+        { id: 't-8', label: 'Waiting on approval', at: '2024-07-09T09:00:00Z', tone: 'primary' },
+      ],
+      feedback: [
+        { id: 'f-5', author: 'Mina (Client)', channel: 'client', message: 'Volume spike at 00:27, please normalize', timecode: '00:27', version: 'v3', unread: false, createdAt: '2024-07-09T10:00:00Z' },
+      ]
+    },
+  ]))
+  const [filters, setFilters] = useState({
+    campaign: 'all',
+    platform: 'all',
+    status: 'all',
+    format: 'all',
+    tag: 'all'
+  })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedAssets, setSelectedAssets] = useState(new Set())
+  const [activeAssetId, setActiveAssetId] = useState(null)
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0)
+  const [replyMessage, setReplyMessage] = useState('')
+  const [replyVersion, setReplyVersion] = useState('')
+  const [replyTimecode, setReplyTimecode] = useState('')
+
+  const statusMeta = {
+    approved: { label: 'Approved', variant: 'success', icon: Check, symbol: '✓' },
+    in_review: { label: 'In Review', variant: 'blue', icon: CircleHelp, symbol: '?' },
+    changes_requested: { label: 'Changes requested', variant: 'warning', icon: AlertTriangle, symbol: '⚠️' },
+    rejected: { label: 'Rejected', variant: 'danger', icon: X, symbol: '✖️' },
+    scheduled: { label: 'Scheduled', variant: 'primary', icon: Calendar, symbol: '✓' },
+    draft: { label: 'Draft', variant: 'default', icon: FileText, symbol: '?' },
+  }
+
+  const FilterSelect = ({ label, value, options, onChange }) => (
+    <div className="space-y-1">
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)] text-sm text-white focus:outline-none focus:border-teal-500"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </div>
+  )
+
+  useEffect(() => {
+    if (activeAssetId) {
+      const current = assets.find((asset) => asset.id === activeAssetId)
+      setActiveMediaIndex(0)
+      setReplyVersion(current?.currentVersion || '')
+      setReplyTimecode('')
+    }
+  }, [activeAssetId, assets])
+
+  const updateAsset = (assetId, updater) => {
+    setAssets((prev) => prev.map((asset) => asset.id === assetId ? updater(asset) : asset))
+  }
+
+  const toggleSelect = (assetId) => {
+    setSelectedAssets((prev) => {
+      const next = new Set(prev)
+      if (next.has(assetId)) {
+        next.delete(assetId)
+      } else {
+        next.add(assetId)
+      }
+      return next
+    })
+  }
+
+  const filteredAssetIds = new Set(assets
+    .filter((asset) => {
+      const matchesSearch = asset.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.campaign.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      const matchesCampaign = filters.campaign === 'all' || asset.campaign === filters.campaign
+      const matchesPlatform = filters.platform === 'all' || asset.platform === filters.platform
+      const matchesStatus = filters.status === 'all' || asset.status === filters.status
+      const matchesFormat = filters.format === 'all' || asset.format === filters.format
+      const matchesTag = filters.tag === 'all' || asset.tags.includes(filters.tag)
+      return matchesSearch && matchesCampaign && matchesPlatform && matchesStatus && matchesFormat && matchesTag
+    })
+    .map((a) => a.id))
+
+  const allFilteredSelected = filteredAssetIds.size > 0 && [...filteredAssetIds].every((id) => selectedAssets.has(id))
+
+  const filteredAssets = assets.filter((asset) => filteredAssetIds.has(asset.id))
+
+  const toggleSelectAll = () => {
+    setSelectedAssets((prev) => {
+      if (allFilteredSelected) {
+        const next = new Set(prev)
+        filteredAssetIds.forEach((id) => next.delete(id))
+        return next
+      }
+      const next = new Set(prev)
+      filteredAssetIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
+  const campaigns = ['all', ...new Set(assets.map((asset) => asset.campaign))]
+  const platforms = ['all', ...new Set(assets.map((asset) => asset.platform))]
+  const statuses = ['all', ...new Set(assets.map((asset) => asset.status))]
+  const formats = ['all', ...new Set(assets.map((asset) => asset.format))]
+  const tags = ['all', ...new Set(assets.flatMap((asset) => asset.tags))]
+
+  const activeAsset = assets.find((asset) => asset.id === activeAssetId)
+
+  const handleSubmitForReview = (assetIds) => {
+    setAssets((prev) => prev.map((asset) => {
+      if (!assetIds.includes(asset.id)) return asset
+      return {
+        ...asset,
+        status: 'in_review',
+        timeline: [
+          ...asset.timeline,
+          { id: `t-${asset.timeline.length + 1}`, label: 'Submitted for review', at: new Date().toISOString(), tone: 'primary' }
+        ]
+      }
+    }))
+    addToast('Submitted for review', 'success')
+  }
+
+  const handleDuplicate = (asset) => {
+    const newAsset = {
+      ...asset,
+      id: `${asset.id}-copy-${Date.now()}`,
+      title: `${asset.title} (copy)`,
+      status: 'draft',
+      timeline: [
+        ...asset.timeline,
+        { id: `t-${asset.timeline.length + 1}`, label: 'Duplicated for edits', at: new Date().toISOString(), tone: 'info' }
+      ],
+      feedback: []
+    }
+    setAssets((prev) => [newAsset, ...prev])
+    addToast('Asset duplicated', 'success')
+  }
+
+  const handleStatusChange = (assetId, status) => {
+    updateAsset(assetId, (asset) => ({
+      ...asset,
+      status,
+      timeline: [
+        ...asset.timeline,
+        { id: `t-${asset.timeline.length + 1}`, label: capitalizeFirst(status.replace('_', ' ')), at: new Date().toISOString(), tone: status === 'approved' ? 'success' : status === 'rejected' ? 'danger' : status === 'scheduled' ? 'primary' : 'warning' }
+      ]
+    }))
+    addToast(`Status updated to ${capitalizeFirst(status.replace('_', ' '))}`, 'success')
+  }
+
+  const handleMarkFeedback = (assetId, feedbackId, unread) => {
+    updateAsset(assetId, (asset) => ({
+      ...asset,
+      feedback: asset.feedback.map((item) => item.id === feedbackId ? { ...item, unread } : item)
+    }))
+  }
+
+  const handleAddFeedback = () => {
+    if (!activeAsset || !replyMessage.trim()) return
+    const newFeedback = {
+      id: `f-${activeAsset.feedback.length + 1}-${Date.now()}`,
+      author: 'You',
+      channel: 'internal',
+      message: replyMessage,
+      timecode: replyTimecode || null,
+      version: replyVersion || activeAsset.currentVersion,
+      unread: false,
+      createdAt: new Date().toISOString()
+    }
+    updateAsset(activeAsset.id, (asset) => ({
+      ...asset,
+      feedback: [newFeedback, ...asset.feedback]
+    }))
+    setReplyMessage('')
+    setReplyTimecode('')
+    addToast('Reply added to feedback thread', 'success')
+  }
+
+  const renderStatusBadge = (status) => {
+    const meta = statusMeta[status] || statusMeta.draft
+    const Icon = meta.icon
+    return (
+      <Badge variant={meta.variant}>
+        <Icon className="w-3 h-3 mr-1" />
+        {meta.symbol}
+        <span className="ml-1">{meta.label}</span>
+      </Badge>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold">Asset Library</h2>
+          <p className="text-sm text-[var(--text-secondary)]">Search, filter, and review creative assets</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedAssets(new Set())}>
+            <Trash2 className="w-4 h-4" />
+            Clear selections
+          </Button>
+          <Button size="sm" onClick={() => handleSubmitForReview(Array.from(selectedAssets))} disabled={selectedAssets.size === 0}>
+            <Upload className="w-4 h-4" />
+            Submit selected for review
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="md:col-span-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search title, campaign, or tags"
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-teal-500"
+            />
+          </div>
+        </div>
+        <FilterSelect
+          label="Campaign"
+          value={filters.campaign}
+          onChange={(value) => setFilters((prev) => ({ ...prev, campaign: value }))}
+          options={campaigns.map((c) => ({ value: c, label: c === 'all' ? 'All campaigns' : c }))}
+        />
+        <FilterSelect
+          label="Platform"
+          value={filters.platform}
+          onChange={(value) => setFilters((prev) => ({ ...prev, platform: value }))}
+          options={platforms.map((c) => ({ value: c, label: c === 'all' ? 'All platforms' : c }))}
+        />
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+          options={statuses.map((c) => ({ value: c, label: c === 'all' ? 'All status' : capitalizeFirst(c.replace('_', ' ')) }))}
+        />
+        <FilterSelect
+          label="Format"
+          value={filters.format}
+          onChange={(value) => setFilters((prev) => ({ ...prev, format: value }))}
+          options={formats.map((c) => ({ value: c, label: c === 'all' ? 'All formats' : c }))}
+        />
+        <FilterSelect
+          label="Tag"
+          value={filters.tag}
+          onChange={(value) => setFilters((prev) => ({ ...prev, tag: value }))}
+          options={tags.map((c) => ({ value: c, label: c === 'all' ? 'All tags' : `#${c}` }))}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={allFilteredSelected}
+            onChange={toggleSelectAll}
+            className="w-5 h-5 rounded border-[var(--border-color)] bg-[var(--bg-card)] text-teal-500 focus:ring-teal-500"
+          />
+          <div>
+            <p className="text-sm font-semibold">{selectedAssets.size} selected</p>
+            <p className="text-xs text-[var(--text-muted)]">Bulk-select assets for actions</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="primary">{filteredAssets.length} results</Badge>
+          <Badge variant="purple">{tags.length - 1} tags</Badge>
+        </div>
+      </div>
+
+      {filteredAssets.length === 0 ? (
+        <Card className="p-10 text-center">
+          <FolderKanban className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" />
+          <h3 className="text-lg font-semibold">No assets match these filters</h3>
+          <p className="text-[var(--text-secondary)]">Adjust filters to see more results.</p>
+        </Card>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredAssets.map((asset) => (
+            <Card key={asset.id} className="overflow-hidden">
+              <div className="relative">
+                <div
+                  className="h-44 bg-gradient-to-br rounded-t-xl"
+                  style={{ backgroundImage: asset.thumbnail }}
+                />
+                <div className="absolute top-3 left-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedAssets.has(asset.id)}
+                    onChange={() => toggleSelect(asset.id)}
+                    className="w-5 h-5 rounded border-[var(--border-color)] bg-[var(--bg-card)] text-teal-500 focus:ring-teal-500"
+                  />
+                </div>
+                <div className="absolute top-3 right-3">
+                  {renderStatusBadge(asset.status)}
+                </div>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{asset.title}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{asset.campaign}</p>
+                  </div>
+                  <Badge variant="default">{asset.currentVersion}</Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="primary">{asset.platform}</Badge>
+                  <Badge variant="blue">{asset.format}</Badge>
+                  {asset.tags.slice(0, 2).map((tag) => (
+                    <Badge key={tag} variant="default">#{tag}</Badge>
+                  ))}
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] line-clamp-2">{asset.caption}</p>
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-[var(--text-muted)]">
+                    Scheduled: {formatDate(asset.scheduledFor)} at {formatTime(asset.scheduledFor)}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setActiveAssetId(asset.id)}>
+                      <ExternalLink className="w-4 h-4" />
+                      Open
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(asset)}>
+                      <Copy className="w-4 h-4" />
+                      Duplicate
+                    </Button>
+                    <Button size="sm" onClick={() => handleSubmitForReview([asset.id])}>
+                      <Upload className="w-4 h-4" />
+                      Submit
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Modal
+        isOpen={!!activeAsset}
+        onClose={() => setActiveAssetId(null)}
+        title={activeAsset?.title}
+        subtitle={activeAsset ? `${activeAsset.platform} • ${activeAsset.format}` : ''}
+        size="full"
+        className="lg:max-w-5xl"
+      >
+        {activeAsset && (
+          <div className="grid lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3 space-y-4">
+              <div className="relative overflow-hidden rounded-xl border border-[var(--border-color)]">
+                <div
+                  className="aspect-video flex items-center justify-center text-center text-sm text-[var(--text-secondary)]"
+                  style={{ backgroundImage: activeAsset.media[activeMediaIndex]?.backdrop }}
+                >
+                  <div className="p-6">
+                    <p className="text-lg font-semibold mb-2">{activeAsset.media[activeMediaIndex]?.label}</p>
+                    <p className="text-sm text-[var(--text-muted)]">{activeAsset.media[activeMediaIndex]?.note}</p>
+                  </div>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 flex justify-between p-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveMediaIndex((prev) => (prev === 0 ? activeAsset.media.length - 1 : prev - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveMediaIndex((prev) => (prev === activeAsset.media.length - 1 ? 0 : prev + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {activeAsset.media.map((media, index) => (
+                  <button
+                    key={media.id}
+                    onClick={() => setActiveMediaIndex(index)}
+                    className={cn(
+                      'min-w-[120px] p-3 rounded-lg border text-left',
+                      activeMediaIndex === index
+                        ? 'border-teal-500 bg-teal-500/10'
+                        : 'border-[var(--border-color)] bg-[var(--bg-secondary)]'
+                    )}
+                  >
+                    <p className="text-sm font-semibold">{media.label}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{media.note}</p>
+                  </button>
+                ))}
+              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-teal-400" />
+                    Asset metadata
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-[var(--text-secondary)]">{activeAsset.caption}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {activeAsset.tags.map((tag) => (
+                      <Badge key={tag} variant="default">#{tag}</Badge>
+                    ))}
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3 text-sm text-[var(--text-secondary)]">
+                    <div>
+                      <p className="text-[var(--text-muted)]">Collaborators</p>
+                      <p>{activeAsset.collaborators.join(', ')}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--text-muted)]">Location</p>
+                      <p>{activeAsset.location}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--text-muted)]">Partnership</p>
+                      <p>{activeAsset.partnership}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--text-muted)]">Scheduled</p>
+                      <p>{formatDate(activeAsset.scheduledFor)} at {formatTime(activeAsset.scheduledFor)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {renderStatusBadge(activeAsset.status)}
+                    <span>Review actions</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => handleStatusChange(activeAsset.id, 'approved')}>
+                      <Check className="w-4 h-4" />
+                      Approve
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => handleStatusChange(activeAsset.id, 'changes_requested')}>
+                      <AlertTriangle className="w-4 h-4" />
+                      Changes requested
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleStatusChange(activeAsset.id, 'rejected')}>
+                      <X className="w-4 h-4" />
+                      Reject
+                    </Button>
+                    <Button size="sm" onClick={() => handleStatusChange(activeAsset.id, 'scheduled')}>
+                      <Calendar className="w-4 h-4" />
+                      Submit for scheduling
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Status timeline</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {activeAsset.timeline.map((item) => {
+                    const tone = item.tone
+                    const toneClasses = tone === 'success'
+                      ? 'bg-green-500/15 text-green-300 border-green-500/30'
+                      : tone === 'warning'
+                        ? 'bg-orange-500/15 text-orange-300 border-orange-500/30'
+                        : tone === 'danger'
+                          ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                          : tone === 'primary'
+                            ? 'bg-teal-500/15 text-teal-300 border-teal-500/30'
+                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-color)]'
+                    const Icon = tone === 'success' ? Check : tone === 'warning' ? AlertTriangle : tone === 'danger' ? X : Clock
+                    return (
+                      <div key={item.id} className="flex gap-3 items-start">
+                        <div className={cn('p-2 rounded-lg border', toneClasses)}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.label}</p>
+                          <p className="text-xs text-[var(--text-muted)]">{formatRelativeTime(item.at)}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Feedback thread</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {activeAsset.feedback.map((item) => (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          'p-3 rounded-lg border',
+                          item.unread
+                            ? 'border-teal-500/40 bg-teal-500/10'
+                            : 'border-[var(--border-color)] bg-[var(--bg-secondary)]'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={item.channel === 'client' ? 'purple' : 'blue'}>
+                                {item.channel === 'client' ? 'Client' : 'Internal'}
+                              </Badge>
+                              {item.unread && <Badge variant="primary">Unread</Badge>}
+                            </div>
+                            <p className="text-sm font-semibold">{item.author}</p>
+                            <p className="text-sm text-white">{item.message}</p>
+                            <p className="text-xs text-[var(--text-muted)]">
+                              {item.version && `Version ${item.version}`} {item.timecode && `• @ ${item.timecode}`} • {formatRelativeTime(item.createdAt)}
+                            </p>
+                          </div>
+                          <button
+                            className="text-xs text-teal-300 hover:text-teal-200"
+                            onClick={() => handleMarkFeedback(activeAsset.id, item.id, !item.unread)}
+                          >
+                            Mark as {item.unread ? 'read' : 'unread'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Reply with notes or tag a timecode..."
+                      value={replyMessage}
+                      onChange={(e) => setReplyMessage(e.target.value)}
+                      rows={3}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Version (e.g., v2)"
+                        value={replyVersion}
+                        onChange={(e) => setReplyVersion(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Timecode (00:12)"
+                        value={replyTimecode}
+                        onChange={(e) => setReplyTimecode(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleAddFeedback}>
+                        <Upload className="w-4 h-4" />
+                        Reply
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
       </Modal>
@@ -1405,6 +2066,8 @@ export function Workspace() {
     switch (activeTab) {
       case 'campaigns':
         return <CampaignsPanel />
+      case 'library':
+        return <LibraryPanel />
       case 'projects':
         return <ProjectsPanel />
       case 'payments':
