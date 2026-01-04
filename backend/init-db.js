@@ -320,7 +320,224 @@ async function initializeDatabase() {
     `);
 
     // ==========================================
-    // 13. PAYMENT METHODS TABLE (NEW!)
+    // 13. ASSETS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS assets (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        team_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        platform VARCHAR(50) CHECK (platform IN ('twitter', 'instagram', 'tiktok', 'youtube', 'bluesky', 'twitch', 'linkedin', 'pinterest', 'reddit', 'discord', 'facebook', 'snapchat', 'threads', 'other')),
+        format VARCHAR(50) CHECK (format IN ('image', 'video', 'audio', 'text', 'document', 'link', 'other')),
+        width INTEGER,
+        height INTEGER,
+        duration_seconds INTEGER,
+        aspect_ratio VARCHAR(20),
+        status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'in_review', 'approved', 'changes_requested', 'scheduled', 'live')),
+        risk_flags JSONB DEFAULT '[]',
+        is_sensitive BOOLEAN DEFAULT FALSE,
+        risk_notes TEXT,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Assets table created/verified');
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_assets_team ON assets(team_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_assets_campaign ON assets(campaign_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status)
+    `);
+
+    // ==========================================
+    // 14. ASSET VERSIONS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_versions (
+        id SERIAL PRIMARY KEY,
+        asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+        version_number INTEGER NOT NULL CHECK (version_number > 0),
+        title VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'in_review', 'approved', 'changes_requested', 'scheduled', 'live')),
+        review_outcome VARCHAR(50) CHECK (review_outcome IN ('approved', 'changes_requested', 'rejected')),
+        is_current BOOLEAN DEFAULT FALSE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        review_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(asset_id, version_number)
+      )
+    `);
+    console.log('✅ Asset versions table created/verified');
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_asset_versions_current ON asset_versions(asset_id) WHERE is_current = TRUE
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_versions_asset ON asset_versions(asset_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_versions_status ON asset_versions(status)
+    `);
+
+    // ==========================================
+    // 15. ASSET VERSION FILES TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_files (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        file_url TEXT NOT NULL,
+        file_name VARCHAR(255),
+        mime_type VARCHAR(100),
+        file_size INTEGER,
+        storage_provider VARCHAR(50),
+        checksum VARCHAR(255),
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Asset version files table created/verified');
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_version_files_version ON asset_version_files(asset_version_id)
+    `);
+
+    // ==========================================
+    // 16. ASSET VERSION CAPTIONS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_captions (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        locale VARCHAR(10) DEFAULT 'en',
+        caption_text TEXT NOT NULL,
+        is_primary BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Asset version captions table created/verified');
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_asset_version_captions_primary ON asset_version_captions(asset_version_id) WHERE is_primary = TRUE
+    `);
+
+    // ==========================================
+    // 17. ASSET VERSION TAGS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_tags (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        tag VARCHAR(100) NOT NULL,
+        tag_type VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(asset_version_id, tag)
+      )
+    `);
+    console.log('✅ Asset version tags table created/verified');
+
+    // ==========================================
+    // 18. ASSET VERSION PLATFORM SETTINGS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_version_platform_settings (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        platform VARCHAR(50) NOT NULL CHECK (platform IN ('twitter', 'instagram', 'tiktok', 'youtube', 'bluesky', 'twitch', 'linkedin', 'pinterest', 'reddit', 'discord', 'facebook', 'snapchat', 'threads', 'other')),
+        settings JSONB DEFAULT '{}',
+        is_primary BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(asset_version_id, platform)
+      )
+    `);
+    console.log('✅ Asset version platform settings table created/verified');
+
+    // ==========================================
+    // 19. ASSET FEEDBACK TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_feedback (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        feedback_type VARCHAR(50) DEFAULT 'internal' CHECK (feedback_type IN ('internal', 'client', 'creator', 'qa', 'system')),
+        review_outcome VARCHAR(50) CHECK (review_outcome IN ('approved', 'changes_requested', 'rejected')),
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Asset feedback table created/verified');
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_feedback_version ON asset_feedback(asset_version_id)
+    `);
+
+    // ==========================================
+    // 20. ASSET SCHEDULE SLOTS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_schedule_slots (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER REFERENCES asset_versions(id) ON DELETE SET NULL,
+        campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+        platform VARCHAR(50) CHECK (platform IN ('twitter', 'instagram', 'tiktok', 'youtube', 'bluesky', 'twitch', 'linkedin', 'pinterest', 'reddit', 'discord', 'facebook', 'snapchat', 'threads', 'other')),
+        scheduled_for TIMESTAMP NOT NULL,
+        timezone VARCHAR(50) DEFAULT 'UTC',
+        status VARCHAR(50) DEFAULT 'scheduled' CHECK (status IN ('draft', 'in_review', 'approved', 'changes_requested', 'scheduled', 'live')),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Asset schedule slots table created/verified');
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_version ON asset_schedule_slots(asset_version_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_campaign ON asset_schedule_slots(campaign_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_schedule_slots_time ON asset_schedule_slots(scheduled_for)
+    `);
+
+    // ==========================================
+    // 21. ASSET METRICS TABLE (NEW!)
+    // ==========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS asset_metrics (
+        id SERIAL PRIMARY KEY,
+        asset_version_id INTEGER NOT NULL REFERENCES asset_versions(id) ON DELETE CASCADE,
+        platform VARCHAR(50) CHECK (platform IN ('twitter', 'instagram', 'tiktok', 'youtube', 'bluesky', 'twitch', 'linkedin', 'pinterest', 'reddit', 'discord', 'facebook', 'snapchat', 'threads', 'other')),
+        impressions INTEGER DEFAULT 0,
+        reach INTEGER DEFAULT 0,
+        clicks INTEGER DEFAULT 0,
+        engagements INTEGER DEFAULT 0,
+        conversions INTEGER DEFAULT 0,
+        metrics JSONB DEFAULT '{}',
+        captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Asset metrics table created/verified');
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_metrics_version ON asset_metrics(asset_version_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_asset_metrics_platform ON asset_metrics(platform)
+    `);
+
+    // ==========================================
+    // 22. PAYMENT METHODS TABLE (NEW!)
     // ==========================================
     await client.query(`
       CREATE TABLE IF NOT EXISTS payment_methods (
@@ -355,7 +572,7 @@ async function initializeDatabase() {
     `);
 
     // ==========================================
-    // 14. PAYMENTS TABLE (NEW!)
+    // 23. PAYMENTS TABLE (NEW!)
     // ==========================================
     await client.query(`
       CREATE TABLE IF NOT EXISTS payments (
@@ -405,7 +622,7 @@ async function initializeDatabase() {
     `);
 
     // ==========================================
-    // 15. ANALYTICS EVENTS TABLE (NEW!)
+    // 24. ANALYTICS EVENTS TABLE (NEW!)
     // ==========================================
     await client.query(`
       CREATE TABLE IF NOT EXISTS analytics_events (
@@ -451,7 +668,7 @@ async function initializeDatabase() {
     `);
 
     // ==========================================
-    // 16. SAVED/BOOKMARKS TABLE (NEW!)
+    // 25. SAVED/BOOKMARKS TABLE (NEW!)
     // ==========================================
     await client.query(`
       CREATE TABLE IF NOT EXISTS saved_items (
@@ -633,6 +850,11 @@ async function initializeDatabase() {
     console.log('   • campaigns');
     console.log('   • campaign_participants');
     console.log('   • deliverables');
+    console.log('   • assets');
+    console.log('   • asset_versions (with files, captions, tags, platform settings)');
+    console.log('   • asset_feedback');
+    console.log('   • asset_schedule_slots');
+    console.log('   • asset_metrics');
     console.log('   • reviews');
     console.log('   • notifications');
     console.log('   • user_settings');
