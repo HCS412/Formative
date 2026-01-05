@@ -72,6 +72,8 @@ const {
 // Route modules
 const assetRoutes = require('./routes/assets');
 const notificationRoutes = require('./routes/notifications');
+const taskRoutes = require('./routes/tasks');
+const projectRoutes = require('./routes/projects');
 
 // File upload services
 const { avatarUpload, handleUploadError } = require('./middleware/upload');
@@ -1404,6 +1406,100 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id INTEGER`);
     await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_entity ON notifications(entity_type, entity_id)`);
+
+    // ========================================
+    // TASKS & PROJECTS (Motion-like scheduling)
+    // ========================================
+
+    // 46. PROJECTS TABLE - For organizing tasks
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        color VARCHAR(7) DEFAULT '#6366f1',
+        icon VARCHAR(50) DEFAULT 'folder',
+        status VARCHAR(50) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)`);
+
+    // 47. TASKS TABLE - Main task entity
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        status VARCHAR(50) DEFAULT 'todo',
+        priority VARCHAR(20) DEFAULT 'medium',
+        due_date DATE,
+        due_time TIME,
+        scheduled_start TIMESTAMP WITH TIME ZONE,
+        scheduled_end TIMESTAMP WITH TIME ZONE,
+        estimated_minutes INTEGER,
+        completed_at TIMESTAMP,
+        recurring_rule JSONB,
+        labels JSONB DEFAULT '[]',
+        position INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tasks_user_status ON tasks(user_id, status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tasks_scheduled ON tasks(scheduled_start, scheduled_end)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id)`);
+
+    // 48. TASK_COMMENTS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS task_comments (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id)`);
+
+    // 49. TASK_ATTACHMENTS TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS task_attachments (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        file_url TEXT NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        file_type VARCHAR(100),
+        file_size INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_task_attachments_task ON task_attachments(task_id)`);
+
+    // 50. TASK_ACTIVITY_LOG TABLE
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS task_activity_log (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action VARCHAR(100) NOT NULL,
+        details JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_task_activity_log_task ON task_activity_log(task_id)`);
 
     // ========================================
     // SEED DEFAULT ROLES & PERMISSIONS
@@ -6576,6 +6672,10 @@ app.use('/api/assets', assetRoutes);
 
 // Notification and audit routes
 app.use('/api/notifications', notificationRoutes);
+
+// Task management routes (Motion-like scheduling)
+app.use('/api/tasks', taskRoutes);
+app.use('/api/projects', projectRoutes);
 
 // ============================================
 // CENTRALIZED ERROR HANDLER

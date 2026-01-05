@@ -408,6 +408,136 @@ class ApiClient {
       method: 'DELETE',
     })
   }
+
+  // ============================================
+  // TASKS (Motion-like scheduling)
+  // ============================================
+
+  async getTasks(filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/tasks?${params}`)
+  }
+
+  async getTasksForCalendar(startDate, endDate, includeUnscheduled = false) {
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+      includeUnscheduled: includeUnscheduled.toString()
+    })
+    return this.request(`/api/tasks/calendar?${params}`)
+  }
+
+  async getTask(id) {
+    return this.request(`/api/tasks/${id}`)
+  }
+
+  async createTask(taskData) {
+    return this.request('/api/tasks', {
+      method: 'POST',
+      body: taskData,
+    })
+  }
+
+  async updateTask(id, data) {
+    return this.request(`/api/tasks/${id}`, {
+      method: 'PUT',
+      body: data,
+    })
+  }
+
+  async updateTaskStatus(id, status, position) {
+    return this.request(`/api/tasks/${id}/status`, {
+      method: 'PATCH',
+      body: { status, position },
+    })
+  }
+
+  async scheduleTask(id, scheduledStart, scheduledEnd, dueDate) {
+    return this.request(`/api/tasks/${id}/schedule`, {
+      method: 'PATCH',
+      body: { scheduledStart, scheduledEnd, dueDate },
+    })
+  }
+
+  async reorderTasks(tasks) {
+    return this.request('/api/tasks/reorder', {
+      method: 'POST',
+      body: { tasks },
+    })
+  }
+
+  async deleteTask(id) {
+    return this.request(`/api/tasks/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async addTaskComment(taskId, content) {
+    return this.request(`/api/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: { content },
+    })
+  }
+
+  async getTaskComments(taskId) {
+    return this.request(`/api/tasks/${taskId}/comments`)
+  }
+
+  async deleteTaskComment(taskId, commentId) {
+    return this.request(`/api/tasks/${taskId}/comments/${commentId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================
+  // PROJECTS
+  // ============================================
+
+  async getProjects(filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/projects?${params}`)
+  }
+
+  async getProject(id) {
+    return this.request(`/api/projects/${id}`)
+  }
+
+  async getProjectTasks(id, filters = {}) {
+    const params = new URLSearchParams(filters)
+    return this.request(`/api/projects/${id}/tasks?${params}`)
+  }
+
+  async createProject(projectData) {
+    return this.request('/api/projects', {
+      method: 'POST',
+      body: projectData,
+    })
+  }
+
+  async updateProject(id, data) {
+    return this.request(`/api/projects/${id}`, {
+      method: 'PUT',
+      body: data,
+    })
+  }
+
+  async deleteProject(id) {
+    return this.request(`/api/projects/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async archiveProject(id) {
+    return this.request(`/api/projects/${id}/archive`, {
+      method: 'PATCH',
+    })
+  }
+
+  async unarchiveProject(id) {
+    return this.request(`/api/projects/${id}/unarchive`, {
+      method: 'PATCH',
+    })
+  }
 }
 
 export const api = new ApiClient()

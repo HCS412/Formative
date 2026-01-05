@@ -21,7 +21,8 @@ import {
   Edit3,
   Filter,
   Clock,
-  Calendar
+  Calendar,
+  CheckSquare
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
@@ -29,11 +30,16 @@ import { useToast } from '@/components/ui/Toast'
 import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui'
 import api from '@/lib/api'
 import { cn, formatDate } from '@/lib/utils'
+import { TaskBoard } from '@/components/studio/TaskBoard'
+import { TaskDetailModal } from '@/components/studio/TaskDetailModal'
+import { UnifiedCalendar } from '@/components/studio/UnifiedCalendar'
 
 // Tab configuration for Studio
 const studioTabs = [
+  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+  { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'library', label: 'Library', icon: LayoutGrid },
-  { id: 'schedule', label: 'Schedule', icon: CalendarDays },
+  { id: 'schedule', label: 'Asset Schedule', icon: CalendarDays },
   { id: 'review', label: 'Review', icon: Eye },
 ]
 
@@ -46,7 +52,7 @@ export function Studio() {
   const navigate = useNavigate()
   const { addToast } = useToast()
 
-  const [activeTab, setActiveTab] = useState(tab || 'library')
+  const [activeTab, setActiveTab] = useState(tab || 'tasks')
   const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -55,6 +61,10 @@ export function Studio() {
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // Task-related state
+  const [selectedTaskId, setSelectedTaskId] = useState(null)
+  const [showTaskModal, setShowTaskModal] = useState(false)
 
   const [newAsset, setNewAsset] = useState({
     name: '',
@@ -70,8 +80,10 @@ export function Studio() {
   }, [tab])
 
   useEffect(() => {
-    loadAssets()
-  }, [statusFilter, platformFilter])
+    if (['library', 'schedule', 'review'].includes(activeTab)) {
+      loadAssets()
+    }
+  }, [statusFilter, platformFilter, activeTab])
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
@@ -264,25 +276,29 @@ export function Studio() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search assets..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-teal-500"
-            />
+        {/* Only show asset search/create for asset tabs */}
+        {['library', 'schedule', 'review'].includes(activeTab) && (
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search assets..."
+                className="w-full pl-10 pr-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-teal-500"
+              />
+            </div>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Asset
+            </Button>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Asset
-          </Button>
-        </div>
+        )}
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Only show for asset tabs */}
+      {['library', 'schedule', 'review'].includes(activeTab) && (
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
         <Card className="p-3">
           <div className="flex items-center gap-2">
@@ -351,6 +367,7 @@ export function Studio() {
           </div>
         </Card>
       </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="flex gap-2 mb-6 border-b border-[var(--border-color)]">
@@ -379,32 +396,58 @@ export function Studio() {
         })}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white text-sm focus:outline-none focus:border-teal-500"
-        >
-          <option value="all">All Statuses</option>
-          {statuses.map(s => (
-            <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
-          ))}
-        </select>
-        <select
-          value={platformFilter}
-          onChange={(e) => setPlatformFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white text-sm focus:outline-none focus:border-teal-500"
-        >
-          <option value="all">All Platforms</option>
-          {platforms.map(p => (
-            <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-          ))}
-        </select>
-      </div>
+      {/* Filters - Only show for asset tabs */}
+      {['library', 'schedule', 'review'].includes(activeTab) && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white text-sm focus:outline-none focus:border-teal-500"
+          >
+            <option value="all">All Statuses</option>
+            {statuses.map(s => (
+              <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
+            ))}
+          </select>
+          <select
+            value={platformFilter}
+            onChange={(e) => setPlatformFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white text-sm focus:outline-none focus:border-teal-500"
+          >
+            <option value="all">All Platforms</option>
+            {platforms.map(p => (
+              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Content based on active tab */}
-      {loading ? (
+      {activeTab === 'tasks' ? (
+        // Tasks View - Kanban Board
+        <TaskBoard
+          onTaskClick={(task) => {
+            setSelectedTaskId(task.id)
+            setShowTaskModal(true)
+          }}
+        />
+      ) : activeTab === 'calendar' ? (
+        // Calendar View - Unified Calendar
+        <UnifiedCalendar
+          onTaskClick={(task) => {
+            setSelectedTaskId(task.id)
+            setShowTaskModal(true)
+          }}
+          onAssetClick={(asset) => {
+            setSelectedAsset(asset)
+            setShowDetailModal(true)
+          }}
+          onCreateTask={() => {
+            // Could open a quick create modal
+            addToast('Create a task from the Tasks tab', 'info')
+          }}
+        />
+      ) : loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full" />
         </div>
@@ -727,6 +770,23 @@ export function Studio() {
           </div>
         )}
       </Modal>
+
+      {/* Task Detail Modal */}
+      <TaskDetailModal
+        taskId={selectedTaskId}
+        isOpen={showTaskModal}
+        onClose={() => {
+          setShowTaskModal(false)
+          setSelectedTaskId(null)
+        }}
+        onUpdate={() => {
+          // Refresh will be handled by the TaskBoard component
+        }}
+        onDelete={() => {
+          setShowTaskModal(false)
+          setSelectedTaskId(null)
+        }}
+      />
     </DashboardLayout>
   )
 }
