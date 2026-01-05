@@ -146,26 +146,72 @@ export function Landing() {
                 </div>
               </div>
               {/* Dashboard preview */}
-              <div className="aspect-[16/9] bg-gradient-to-br from-[var(--bg-primary)] to-[var(--bg-base)] p-8">
-                <div className="grid grid-cols-4 gap-4 h-full opacity-60">
+              <div className="aspect-[16/9] bg-[var(--bg-base)] p-6">
+                <div className="grid grid-cols-5 gap-4 h-full">
                   {/* Sidebar skeleton */}
-                  <div className="col-span-1 bg-[var(--bg-elevated)] rounded-xl p-4 space-y-4">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--accent-primary)]/20" />
+                  <div className="col-span-1 bg-[var(--bg-elevated)] rounded-xl p-4 space-y-4 border border-[var(--border-subtle)]">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--accent-primary)] to-violet-600" />
                     <div className="space-y-2">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-8 rounded-lg bg-[var(--bg-surface)]" style={{ opacity: 1 - i * 0.15 }} />
+                      <div className="h-8 rounded-lg bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/30" />
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className="h-8 rounded-lg bg-[var(--bg-surface)]" />
                       ))}
                     </div>
                   </div>
                   {/* Main content skeleton */}
-                  <div className="col-span-3 space-y-4">
-                    <div className="h-12 rounded-xl bg-[var(--bg-elevated)] w-1/3" />
-                    <div className="grid grid-cols-3 gap-4">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-24 rounded-xl bg-[var(--bg-elevated)]" />
+                  <div className="col-span-4 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="h-8 w-48 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)]" />
+                      <div className="flex gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)]" />
+                        <div className="h-8 w-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)]" />
+                      </div>
+                    </div>
+                    {/* Stats cards */}
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        { color: 'violet', value: '12.4K' },
+                        { color: 'orange', value: '8.2%' },
+                        { color: 'emerald', value: '3' },
+                        { color: 'sky', value: '$4,250' },
+                      ].map((stat, i) => (
+                        <div key={i} className="h-20 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] p-3 flex flex-col justify-between">
+                          <div className={`w-6 h-6 rounded-md ${
+                            stat.color === 'violet' ? 'bg-violet-500/20' :
+                            stat.color === 'orange' ? 'bg-orange-500/20' :
+                            stat.color === 'emerald' ? 'bg-emerald-500/20' :
+                            'bg-sky-500/20'
+                          }`} />
+                          <div className="text-sm font-semibold text-[var(--text-primary)]">{stat.value}</div>
+                        </div>
                       ))}
                     </div>
-                    <div className="h-48 rounded-xl bg-[var(--bg-elevated)]" />
+                    {/* Content cards */}
+                    <div className="grid grid-cols-3 gap-3 flex-1">
+                      <div className="col-span-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] p-4">
+                        <div className="h-4 w-32 rounded bg-[var(--bg-surface)] mb-4" />
+                        <div className="space-y-2">
+                          {[...Array(3)].map((_, i) => (
+                            <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--bg-surface)]">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--accent-primary)]/10" />
+                              <div className="flex-1">
+                                <div className="h-3 w-24 rounded bg-[var(--bg-hover)] mb-1" />
+                                <div className="h-2 w-16 rounded bg-[var(--bg-hover)]" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] p-4">
+                        <div className="h-4 w-20 rounded bg-[var(--bg-surface)] mb-4" />
+                        <div className="space-y-2">
+                          {[...Array(4)].map((_, i) => (
+                            <div key={i} className="h-8 rounded-lg bg-[var(--bg-surface)]" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
