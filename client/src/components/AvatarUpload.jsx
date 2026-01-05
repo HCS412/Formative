@@ -36,7 +36,7 @@ export function AvatarUpload({ currentUrl, name, onUpload, onRemove, size = '2xl
       const formData = new FormData();
       formData.append('avatar', file);
 
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await fetch('/api/user/avatar', {
         method: 'POST',
         headers: {
@@ -88,7 +88,7 @@ export function AvatarUpload({ currentUrl, name, onUpload, onRemove, size = '2xl
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await fetch('/api/user/avatar', {
         method: 'DELETE',
         headers: {

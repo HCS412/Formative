@@ -19,7 +19,7 @@ export function NotificationPreferences() {
   const loadPreferences = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE}/api/notifications/preferences`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -41,7 +41,7 @@ export function NotificationPreferences() {
   const savePreferences = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE}/api/notifications/preferences`, {
         method: 'PUT',
         headers: {

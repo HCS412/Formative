@@ -75,7 +75,7 @@ export function usePushNotifications() {
       await navigator.serviceWorker.ready;
 
       // Get VAPID public key from server
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       const keyResponse = await fetch(`${API_BASE}/api/notifications/push/vapid-key`);
       const keyData = await keyResponse.json();
 
@@ -136,7 +136,7 @@ export function usePushNotifications() {
       await subscription.unsubscribe();
 
       // Remove subscription from server
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       await fetch(`${API_BASE}/api/notifications/push/unsubscribe`, {
         method: 'DELETE',
         headers: {
