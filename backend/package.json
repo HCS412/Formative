@@ -9,6 +9,8 @@
     "test": "echo 'Tests would go here'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.962.0",
+    "@aws-sdk/s3-request-presigner": "^3.962.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -17,9 +19,15 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
     "pg": "^8.11.3",
     "qrcode": "^1.5.4",
-    "speakeasy": "^2.0.0"
+    "resend": "^6.6.0",
+    "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
+    "speakeasy": "^2.0.0",
+    "uuid": "^13.0.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

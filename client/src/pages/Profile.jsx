@@ -17,6 +17,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/components/ui/Toast'
 import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardContent, Avatar, Badge } from '@/components/ui'
+import { AvatarUpload } from '@/components/AvatarUpload'
 import api from '@/lib/api'
 import { formatNumber, formatDate, capitalizeFirst, getInitials } from '@/lib/utils'
 
@@ -210,13 +211,14 @@ export function Profile() {
         <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-transparent to-purple-500/10" />
         
         <div className="relative flex flex-col md:flex-row gap-6">
-          {/* Avatar */}
+          {/* Avatar with Upload */}
           <div className="flex-shrink-0">
-            <Avatar 
-              name={user?.name} 
-              src={user?.avatar_url}
-              size="2xl" 
-              className="ring-4 ring-teal-500/30"
+            <AvatarUpload
+              name={user?.name}
+              currentUrl={user?.avatar_url}
+              size="2xl"
+              onUpload={(url) => setUser({ ...user, avatar_url: url })}
+              onRemove={() => setUser({ ...user, avatar_url: null })}
             />
           </div>
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '@/lib/api'
+import { connectSocket, disconnectSocket, onNotification, onConnectionChange } from '@/lib/socket'
 
 const AuthContext = createContext(null)
 
@@ -32,10 +33,41 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [socketConnected, setSocketConnected] = useState(false)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
 
   useEffect(() => {
     checkAuth()
   }, [])
+
+  // Connect WebSocket when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const token = storage.get('authToken')
+      if (token) {
+        connectSocket(token)
+
+        // Listen for connection changes
+        const unsubConnection = onConnectionChange(({ connected }) => {
+          setSocketConnected(connected)
+        })
+
+        // Listen for new notifications
+        const unsubNotification = onNotification((notification) => {
+          setUnreadNotifications(prev => prev + 1)
+          // Could also show toast here
+        })
+
+        return () => {
+          unsubConnection()
+          unsubNotification()
+        }
+      }
+    } else {
+      disconnectSocket()
+      setSocketConnected(false)
+    }
+  }, [isAuthenticated])
 
   const checkAuth = async () => {
     const token = storage.get('authToken')
@@ -90,9 +122,14 @@ export function AuthProvider({ children }) {
   }
 
   const logout = useCallback(() => {
+    disconnectSocket()
     api.logout()
     clearAuth()
   }, [clearAuth])
+
+  const clearUnreadNotifications = useCallback(() => {
+    setUnreadNotifications(0)
+  }, [])
 
   const updateUser = (updates) => {
     const updatedUser = { ...user, ...updates }
@@ -107,11 +144,14 @@ export function AuthProvider({ children }) {
         loading,
         isAuthenticated,
         rememberMe,
+        socketConnected,
+        unreadNotifications,
         login,
         register,
         logout,
         updateUser,
         checkAuth,
+        clearUnreadNotifications,
       }}
     >
       {children}

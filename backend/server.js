@@ -73,6 +73,16 @@ const {
 const assetRoutes = require('./routes/assets');
 const notificationRoutes = require('./routes/notifications');
 
+// File upload services
+const { avatarUpload, handleUploadError } = require('./middleware/upload');
+const { uploadAvatar, deleteFile, isS3Url } = require('./services/s3Service');
+
+// Real-time and notification services
+const { initializeWebSocket, emitNotification } = require('./services/websocketService');
+const { startEmailQueueProcessor } = require('./services/emailService');
+const { isPushEnabled } = require('./services/pushService');
+const http = require('http');
+
 // ============================================
 // DATABASE CONNECTION
 // ============================================
@@ -1305,6 +1315,97 @@ async function initializeDatabase() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_asset_metrics_platform ON asset_metrics(platform)`);
 
     // ========================================
+    // TABLE 43: NOTIFICATION PREFERENCES
+    // ========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS notification_preferences (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+        -- In-app notifications
+        in_app_messages BOOLEAN DEFAULT TRUE,
+        in_app_payments BOOLEAN DEFAULT TRUE,
+        in_app_milestones BOOLEAN DEFAULT TRUE,
+        in_app_uploads BOOLEAN DEFAULT TRUE,
+        in_app_mentions BOOLEAN DEFAULT TRUE,
+        in_app_system BOOLEAN DEFAULT TRUE,
+
+        -- Email notifications
+        email_messages BOOLEAN DEFAULT TRUE,
+        email_payments BOOLEAN DEFAULT TRUE,
+        email_milestones BOOLEAN DEFAULT TRUE,
+        email_uploads BOOLEAN DEFAULT FALSE,
+        email_digest BOOLEAN DEFAULT TRUE,
+        email_digest_frequency VARCHAR(20) DEFAULT 'daily',
+
+        -- Push notifications
+        push_messages BOOLEAN DEFAULT TRUE,
+        push_payments BOOLEAN DEFAULT TRUE,
+        push_milestones BOOLEAN DEFAULT TRUE,
+        push_uploads BOOLEAN DEFAULT FALSE,
+
+        -- Quiet hours
+        quiet_hours_enabled BOOLEAN DEFAULT FALSE,
+        quiet_hours_start TIME DEFAULT '22:00',
+        quiet_hours_end TIME DEFAULT '08:00',
+        timezone VARCHAR(50) DEFAULT 'UTC',
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_notification_preferences_user ON notification_preferences(user_id)`);
+
+    // ========================================
+    // TABLE 44: PUSH SUBSCRIPTIONS
+    // ========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT UNIQUE NOT NULL,
+        p256dh_key TEXT NOT NULL,
+        auth_key TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)`);
+
+    // ========================================
+    // TABLE 45: EMAIL QUEUE
+    // ========================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS email_queue (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        to_email VARCHAR(255) NOT NULL,
+        subject VARCHAR(500) NOT NULL,
+        template VARCHAR(100) NOT NULL,
+        template_data JSONB DEFAULT '{}',
+        status VARCHAR(50) DEFAULT 'pending',
+        attempts INTEGER DEFAULT 0,
+        last_attempt_at TIMESTAMP,
+        sent_at TIMESTAMP,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_email_queue_status ON email_queue(status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_email_queue_created ON email_queue(created_at)`);
+
+    // Add missing columns to notifications table if they don't exist
+    await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}'`);
+    await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50)`);
+    await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id INTEGER`);
+    await client.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_entity ON notifications(entity_type, entity_id)`);
+
+    // ========================================
     // SEED DEFAULT ROLES & PERMISSIONS
     // ========================================
     
@@ -2466,6 +2567,71 @@ app.put('/api/user/profile', authenticateToken, validators.updateProfileValidato
   );
 
   res.json({ success: true, user: result.rows[0] });
+}));
+
+// ========================================
+// AVATAR UPLOAD ENDPOINTS
+// ========================================
+
+// Upload avatar
+app.post('/api/user/avatar', authenticateToken, avatarUpload.single('avatar'), handleUploadError, asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError('No file uploaded', 400);
+  }
+
+  const userId = req.user.userId;
+
+  // Get current avatar to delete later
+  const currentUser = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [userId]);
+  const oldAvatarUrl = currentUser.rows[0]?.avatar_url;
+
+  // Upload new avatar to S3
+  const avatarUrl = await uploadAvatar(req.file, userId);
+
+  // Update user record
+  await pool.query(
+    'UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    [avatarUrl, userId]
+  );
+
+  // Delete old avatar from S3 if it exists
+  if (oldAvatarUrl && isS3Url(oldAvatarUrl)) {
+    try {
+      await deleteFile(oldAvatarUrl);
+    } catch (e) {
+      console.warn('Failed to delete old avatar:', e.message);
+    }
+  }
+
+  // Log audit event
+  await logAuditEvent('avatar_updated', userId, { newUrl: avatarUrl }, req);
+
+  res.json({ success: true, avatarUrl });
+}));
+
+// Delete avatar
+app.delete('/api/user/avatar', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+
+  // Get current avatar
+  const currentUser = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [userId]);
+  const avatarUrl = currentUser.rows[0]?.avatar_url;
+
+  // Delete from S3 if it's an S3 URL
+  if (avatarUrl && isS3Url(avatarUrl)) {
+    await deleteFile(avatarUrl);
+  }
+
+  // Clear avatar_url in database
+  await pool.query(
+    'UPDATE users SET avatar_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+    [userId]
+  );
+
+  // Log audit event
+  await logAuditEvent('avatar_deleted', userId, {}, req);
+
+  res.json({ success: true, message: 'Avatar deleted' });
 }));
 
 // Save onboarding data
@@ -6471,8 +6637,17 @@ async function startServer() {
   try {
     // Initialize database
     await initializeDatabase();
-    
-    app.listen(PORT, '0.0.0.0', () => {
+
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Initialize WebSocket
+    initializeWebSocket(server);
+
+    // Start email queue processor
+    startEmailQueueProcessor(pool);
+
+    server.listen(PORT, '0.0.0.0', () => {
       console.log('');
       console.log('═══════════════════════════════════════════════════');
       console.log('🚀 FORMATIVE API SERVER STARTED');
@@ -6480,6 +6655,10 @@ async function startServer() {
       console.log(`📍 Port: ${PORT}`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📊 Database: Connected`);
+      console.log(`🔌 WebSocket: Enabled`);
+      console.log(`📧 Email Queue: ${process.env.RESEND_API_KEY ? '✅ Active' : '❌ Not configured'}`);
+      console.log(`🔔 Push Notifications: ${isPushEnabled() ? '✅ Enabled' : '❌ Not configured'}`);
+      console.log(`☁️  AWS S3: ${process.env.AWS_S3_BUCKET ? '✅ Configured' : '❌ Not configured'}`);
       console.log('');
       console.log('🔐 OAuth Status:');
       console.log(`   Twitter:   ${OAUTH_CONFIG.twitter.clientId ? '✅ Configured' : '❌ Not configured'}`);

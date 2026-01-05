@@ -36,6 +36,33 @@ const NOTIFICATION_TYPES = {
   DELIVERABLE_DUE_SOON: 'deliverable_due_soon',
   DELIVERABLE_OVERDUE: 'deliverable_overdue',
 
+  // Messages
+  MESSAGE_RECEIVED: 'message_received',
+  MESSAGE_READ: 'message_read',
+
+  // Payments
+  PAYMENT_RECEIVED: 'payment_received',
+  PAYMENT_SENT: 'payment_sent',
+  PAYMENT_PENDING: 'payment_pending',
+  PAYMENT_FAILED: 'payment_failed',
+
+  // Files/Uploads
+  FILE_UPLOADED: 'file_uploaded',
+  ASSET_COMMENT: 'asset_comment',
+
+  // Milestones
+  MILESTONE_MISSED: 'milestone_missed',
+  MILESTONE_APPROACHING: 'milestone_approaching',
+  MILESTONE_COMPLETED: 'milestone_completed',
+
+  // Campaign lifecycle
+  CAMPAIGN_STARTED: 'campaign_started',
+  CAMPAIGN_COMPLETED: 'campaign_completed',
+
+  // Opportunities
+  OPPORTUNITY_MATCH: 'opportunity_match',
+  APPLICATION_UPDATE: 'application_update',
+
   // General
   MENTION: 'mention',
   SYSTEM: 'system'
@@ -458,6 +485,137 @@ router.get('/audit-logs/entity/:type/:id', authenticateToken, asyncHandler(async
     success: true,
     auditLogs: result.rows
   });
+}));
+
+// ============================================
+// NOTIFICATION PREFERENCES
+// ============================================
+
+// Get notification preferences
+router.get('/preferences', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+
+  let result = await pool.query(
+    'SELECT * FROM notification_preferences WHERE user_id = $1',
+    [userId]
+  );
+
+  // Create default preferences if none exist
+  if (result.rows.length === 0) {
+    result = await pool.query(`
+      INSERT INTO notification_preferences (user_id)
+      VALUES ($1)
+      RETURNING *
+    `, [userId]);
+  }
+
+  res.json({ success: true, preferences: result.rows[0] });
+}));
+
+// Update notification preferences
+router.put('/preferences', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const updates = req.body;
+
+  const allowedFields = [
+    'in_app_messages', 'in_app_payments', 'in_app_milestones', 'in_app_uploads',
+    'in_app_mentions', 'in_app_system',
+    'email_messages', 'email_payments', 'email_milestones', 'email_uploads',
+    'email_digest', 'email_digest_frequency',
+    'push_messages', 'push_payments', 'push_milestones', 'push_uploads',
+    'quiet_hours_enabled', 'quiet_hours_start', 'quiet_hours_end', 'timezone'
+  ];
+
+  const setClause = [];
+  const values = [userId];
+  let paramIndex = 2;
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (allowedFields.includes(key)) {
+      setClause.push(`${key} = $${paramIndex++}`);
+      values.push(value);
+    }
+  }
+
+  if (setClause.length === 0) {
+    throw new ApiError('No valid fields to update', 400);
+  }
+
+  setClause.push('updated_at = CURRENT_TIMESTAMP');
+
+  // Use upsert to handle both insert and update
+  const result = await pool.query(`
+    INSERT INTO notification_preferences (user_id)
+    VALUES ($1)
+    ON CONFLICT (user_id) DO UPDATE SET ${setClause.join(', ')}
+    RETURNING *
+  `, values);
+
+  res.json({ success: true, preferences: result.rows[0] });
+}));
+
+// ============================================
+// PUSH NOTIFICATION SUBSCRIPTIONS
+// ============================================
+
+// Get VAPID public key
+router.get('/push/vapid-key', (req, res) => {
+  res.json({
+    publicKey: process.env.VAPID_PUBLIC_KEY || null,
+    enabled: !!process.env.VAPID_PUBLIC_KEY
+  });
+});
+
+// Register push subscription
+router.post('/push/subscribe', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { endpoint, keys, userAgent } = req.body;
+
+  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    throw new ApiError('Invalid subscription data', 400);
+  }
+
+  await pool.query(`
+    INSERT INTO push_subscriptions (user_id, endpoint, p256dh_key, auth_key, user_agent)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (endpoint) DO UPDATE SET
+      user_id = $1,
+      p256dh_key = $3,
+      auth_key = $4,
+      user_agent = $5,
+      last_used_at = CURRENT_TIMESTAMP
+  `, [userId, endpoint, keys.p256dh, keys.auth, userAgent || null]);
+
+  res.json({ success: true, message: 'Push subscription registered' });
+}));
+
+// Unsubscribe from push
+router.delete('/push/unsubscribe', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { endpoint } = req.body;
+
+  if (!endpoint) {
+    throw new ApiError('Endpoint is required', 400);
+  }
+
+  await pool.query(
+    'DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2',
+    [userId, endpoint]
+  );
+
+  res.json({ success: true, message: 'Push subscription removed' });
+}));
+
+// Get user's push subscriptions
+router.get('/push/subscriptions', authenticateToken, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+
+  const result = await pool.query(
+    'SELECT id, endpoint, user_agent, created_at, last_used_at FROM push_subscriptions WHERE user_id = $1',
+    [userId]
+  );
+
+  res.json({ success: true, subscriptions: result.rows });
 }));
 
 // ============================================
