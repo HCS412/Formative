@@ -58,11 +58,10 @@ import { Button, Input, Textarea, Modal, Card, CardHeader, CardTitle, CardConten
 import api from '@/lib/api'
 import { cn, capitalizeFirst, formatDate, formatNumber } from '@/lib/utils'
 
-// Tab configuration
+// Tab configuration - Assets moved to dedicated Studio page
 const tabs = [
   { id: 'campaigns', label: 'Campaigns', icon: Target },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
-  { id: 'assets', label: 'Assets', icon: Image },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'management', label: 'Management', icon: Users },
 ]
@@ -2138,8 +2137,6 @@ export function Workspace() {
         return <CampaignsPanel />
       case 'projects':
         return <ProjectsPanel />
-      case 'assets':
-        return <AssetsPanel />
       case 'payments':
         return <PaymentsPanel />
       case 'management':
@@ -2155,7 +2152,7 @@ export function Workspace() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Workspace</h1>
         <p className="text-[var(--text-secondary)]">
-          Manage your campaigns, projects, assets, payments, and team
+          Manage your campaigns, projects, payments, and team
         </p>
       </div>
 
