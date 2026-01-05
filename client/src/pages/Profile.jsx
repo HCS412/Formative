@@ -217,8 +217,8 @@ export function Profile() {
               name={user?.name}
               currentUrl={user?.avatar_url}
               size="2xl"
-              onUpload={(url) => setUser({ ...user, avatar_url: url })}
-              onRemove={() => setUser({ ...user, avatar_url: null })}
+              onUpload={(url) => updateUser({ avatar_url: url })}
+              onRemove={() => updateUser({ avatar_url: null })}
             />
           </div>
 
