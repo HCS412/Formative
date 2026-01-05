@@ -284,7 +284,7 @@ router.put('/:id', authenticateToken, updateAssetValidator, asyncHandler(async (
     SELECT id FROM assets
     WHERE id = $1
       AND (created_by = $2
-        OR team_id IN (SELECT team_id FROM team_members WHERE user_id = $2 AND role IN ('owner', 'admin', 'manager'))
+        OR team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)
         OR campaign_id IN (SELECT id FROM campaigns WHERE brand_id = $2))
   `, [assetId, userId]);
 
@@ -396,7 +396,7 @@ router.post('/:id/versions', authenticateToken, asyncHandler(async (req, res) =>
     SELECT id FROM assets
     WHERE id = $1
       AND (created_by = $2
-        OR team_id IN (SELECT team_id FROM team_members WHERE user_id = $2 AND role IN ('owner', 'admin', 'manager', 'member')))
+        OR team_id IN (SELECT team_id FROM team_members WHERE user_id = $2))
   `, [assetId, userId]);
 
   if (accessCheck.rows.length === 0) {
@@ -473,7 +473,7 @@ router.post('/:assetId/versions/:versionId/review', authenticateToken, asyncHand
     JOIN assets a ON av.asset_id = a.id
     WHERE av.id = $1 AND av.asset_id = $2
       AND (a.campaign_id IN (SELECT id FROM campaigns WHERE brand_id = $3)
-        OR a.team_id IN (SELECT team_id FROM team_members WHERE user_id = $3 AND role IN ('owner', 'admin')))
+        OR a.team_id IN (SELECT team_id FROM team_members WHERE user_id = $3))
   `, [versionId, assetId, userId]);
 
   if (versionCheck.rows.length === 0) {
