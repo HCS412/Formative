@@ -33,6 +33,8 @@ import { cn, formatDate } from '@/lib/utils'
 import { TaskBoard } from '@/components/studio/TaskBoard'
 import { TaskDetailModal } from '@/components/studio/TaskDetailModal'
 import { UnifiedCalendar } from '@/components/studio/UnifiedCalendar'
+import { CreateAssetModal } from '@/components/studio/CreateAssetModal'
+import { AssetDetailModal } from '@/components/studio/AssetDetailModal'
 
 // Tab configuration for Studio
 const studioTabs = [
@@ -65,13 +67,6 @@ export function Studio() {
   // Task-related state
   const [selectedTaskId, setSelectedTaskId] = useState(null)
   const [showTaskModal, setShowTaskModal] = useState(false)
-
-  const [newAsset, setNewAsset] = useState({
-    name: '',
-    description: '',
-    platform: 'instagram',
-    format: 'image',
-  })
 
   useEffect(() => {
     if (tab && studioTabs.find(t => t.id === tab)) {
@@ -165,24 +160,6 @@ export function Studio() {
       pending_feedback_count: 2,
     },
   ]
-
-  const handleCreateAsset = async () => {
-    if (!newAsset.name.trim()) {
-      addToast('Asset name is required', 'error')
-      return
-    }
-
-    try {
-      await api.createAsset(newAsset)
-      addToast('Asset created successfully!', 'success')
-      setShowCreateModal(false)
-      setNewAsset({ name: '', description: '', platform: 'instagram', format: 'image' })
-      loadAssets()
-    } catch (error) {
-      addToast('Asset created!', 'success') // Demo mode
-      setShowCreateModal(false)
-    }
-  }
 
   const handleSubmitForReview = async (assetId) => {
     try {
@@ -644,132 +621,33 @@ export function Studio() {
       )}
 
       {/* Create Asset Modal */}
-      <Modal
+      <CreateAssetModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Asset"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Asset Name"
-            placeholder="e.g., Summer Campaign Reel"
-            value={newAsset.name}
-            onChange={(e) => setNewAsset(prev => ({ ...prev, name: e.target.value }))}
-          />
-          <Textarea
-            label="Description"
-            placeholder="Describe this asset..."
-            value={newAsset.description}
-            onChange={(e) => setNewAsset(prev => ({ ...prev, description: e.target.value }))}
-            rows={3}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                Platform
-              </label>
-              <select
-                value={newAsset.platform}
-                onChange={(e) => setNewAsset(prev => ({ ...prev, platform: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white focus:outline-none focus:border-teal-500"
-              >
-                {platforms.map(p => (
-                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                Format
-              </label>
-              <select
-                value={newAsset.format}
-                onChange={(e) => setNewAsset(prev => ({ ...prev, format: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white focus:outline-none focus:border-teal-500"
-              >
-                {formats.map(f => (
-                  <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setShowCreateModal(false)}>
-              Cancel
-            </Button>
-            <Button className="flex-1" onClick={handleCreateAsset}>
-              Create Asset
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onSuccess={(asset) => {
+          addToast('Asset created successfully!', 'success')
+          loadAssets()
+        }}
+      />
 
       {/* Asset Detail Modal */}
-      <Modal
+      <AssetDetailModal
+        assetId={selectedAsset?.id}
         isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        title={selectedAsset?.name}
-        size="lg"
-      >
-        {selectedAsset && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {getStatusBadge(selectedAsset.status)}
-              <Badge variant="outline" className="capitalize">{selectedAsset.platform}</Badge>
-              <Badge variant="outline" className="capitalize">{selectedAsset.format}</Badge>
-            </div>
-
-            <p className="text-[var(--text-secondary)]">
-              {selectedAsset.description || 'No description provided'}
-            </p>
-
-            <div className="p-4 rounded-xl bg-[var(--bg-secondary)]">
-              <h4 className="font-medium mb-2">Version History</h4>
-              <p className="text-sm text-[var(--text-muted)]">
-                Current version: v{selectedAsset.version_count}
-              </p>
-            </div>
-
-            {selectedAsset.pending_feedback_count > 0 && (
-              <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <MessageSquare className="w-4 h-4 text-orange-400" />
-                  <h4 className="font-medium text-orange-400">
-                    {selectedAsset.pending_feedback_count} Pending Feedback Items
-                  </h4>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  Review and address feedback before resubmitting.
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              {selectedAsset.status === 'draft' && (
-                <Button className="flex-1" onClick={() => handleSubmitForReview(selectedAsset.id)}>
-                  <Send className="w-4 h-4 mr-2" />
-                  Submit for Review
-                </Button>
-              )}
-              {selectedAsset.status === 'approved' && (
-                <Button className="flex-1">
-                  <CalendarDays className="w-4 h-4 mr-2" />
-                  Schedule
-                </Button>
-              )}
-              {selectedAsset.status === 'changes_requested' && (
-                <Button className="flex-1">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload New Version
-                </Button>
-              )}
-              <Button variant="ghost" className="flex-1" onClick={() => setShowDetailModal(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        onClose={() => {
+          setShowDetailModal(false)
+          setSelectedAsset(null)
+        }}
+        onUpdate={() => {
+          loadAssets()
+        }}
+        onDelete={() => {
+          setShowDetailModal(false)
+          setSelectedAsset(null)
+          loadAssets()
+          addToast('Asset deleted', 'success')
+        }}
+      />
 
       {/* Task Detail Modal */}
       <TaskDetailModal

@@ -877,7 +877,130 @@ router.get('/metrics/summary', authenticateToken, asyncHandler(async (req, res) 
 // VERSION FILES
 // ============================================
 
-// Add file to version
+// Import upload middleware and S3 service
+const { assetUpload, handleUploadError } = require('../middleware/upload');
+const { uploadAssetFile, deleteFile: deleteS3File } = require('../services/s3Service');
+
+// Upload files to version (multipart/form-data)
+router.post('/:assetId/versions/:versionId/upload', authenticateToken, assetUpload.array('files', 10), handleUploadError, asyncHandler(async (req, res) => {
+  const assetId = parseInt(req.params.assetId);
+  const versionId = parseInt(req.params.versionId);
+  const userId = req.user.userId;
+
+  // Verify asset ownership
+  const assetCheck = await pool.query(
+    'SELECT id FROM assets WHERE id = $1 AND created_by = $2',
+    [assetId, userId]
+  );
+  if (assetCheck.rows.length === 0) {
+    throw new ApiError('Asset not found or access denied', 404);
+  }
+
+  // Verify version exists
+  const versionCheck = await pool.query(
+    'SELECT id FROM asset_versions WHERE id = $1 AND asset_id = $2',
+    [versionId, assetId]
+  );
+  if (versionCheck.rows.length === 0) {
+    throw new ApiError('Version not found', 404);
+  }
+
+  if (!req.files || req.files.length === 0) {
+    throw new ApiError('No files uploaded', 400);
+  }
+
+  const uploadedFiles = [];
+  const isPrimaryRequested = req.body.isPrimary === 'true';
+
+  // Check if this version already has files
+  const existingFiles = await pool.query(
+    'SELECT COUNT(*) as count FROM asset_version_files WHERE version_id = $1',
+    [versionId]
+  );
+  const isFirstUpload = parseInt(existingFiles.rows[0].count) === 0;
+
+  for (let i = 0; i < req.files.length; i++) {
+    const file = req.files[i];
+
+    try {
+      // Upload to S3
+      const uploadResult = await uploadAssetFile(file, assetId, versionId);
+
+      // First file is primary if no files exist yet, or if explicitly requested
+      const isPrimary = (isFirstUpload && i === 0) || (isPrimaryRequested && i === 0);
+
+      // If setting as primary, unset other primary files first
+      if (isPrimary) {
+        await pool.query('UPDATE asset_version_files SET is_primary = false WHERE version_id = $1', [versionId]);
+      }
+
+      // Store file metadata in database
+      const result = await pool.query(`
+        INSERT INTO asset_version_files (
+          version_id, file_url, file_name, mime_type, file_size,
+          storage_provider, is_primary, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `, [
+        versionId,
+        uploadResult.url,
+        file.originalname,
+        uploadResult.contentType,
+        uploadResult.size,
+        's3',
+        isPrimary,
+        JSON.stringify({
+          thumbnailUrl: uploadResult.thumbnailUrl,
+          s3Key: uploadResult.key,
+          originalMimeType: file.mimetype,
+        })
+      ]);
+
+      uploadedFiles.push({
+        ...result.rows[0],
+        thumbnailUrl: uploadResult.thumbnailUrl,
+      });
+    } catch (uploadError) {
+      console.error('Failed to upload file:', uploadError);
+      uploadedFiles.push({
+        error: true,
+        fileName: file.originalname,
+        message: uploadError.message,
+      });
+    }
+  }
+
+  // Update asset's updated_at timestamp
+  await pool.query('UPDATE assets SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [assetId]);
+
+  res.status(201).json({
+    success: true,
+    files: uploadedFiles,
+    totalUploaded: uploadedFiles.filter(f => !f.error).length,
+    totalFailed: uploadedFiles.filter(f => f.error).length,
+  });
+}));
+
+// Get files for a version
+router.get('/:assetId/versions/:versionId/files', authenticateToken, asyncHandler(async (req, res) => {
+  const versionId = parseInt(req.params.versionId);
+
+  const result = await pool.query(`
+    SELECT * FROM asset_version_files
+    WHERE version_id = $1
+    ORDER BY is_primary DESC, created_at ASC
+  `, [versionId]);
+
+  res.json({
+    success: true,
+    files: result.rows.map(f => ({
+      ...f,
+      thumbnailUrl: f.metadata?.thumbnailUrl || null,
+    }))
+  });
+}));
+
+// Add file to version (JSON - for external URLs)
 router.post('/:assetId/versions/:versionId/files', authenticateToken, asyncHandler(async (req, res) => {
   const versionId = parseInt(req.params.versionId);
   const { fileUrl, fileName, mimeType, fileSize, storageProvider, checksum, isPrimary, metadata } = req.body;
@@ -912,6 +1035,22 @@ router.post('/:assetId/versions/:versionId/files', authenticateToken, asyncHandl
 // Delete file from version
 router.delete('/files/:fileId', authenticateToken, asyncHandler(async (req, res) => {
   const fileId = parseInt(req.params.fileId);
+
+  // Get file info before deleting
+  const fileResult = await pool.query('SELECT * FROM asset_version_files WHERE id = $1', [fileId]);
+
+  if (fileResult.rows.length > 0) {
+    const file = fileResult.rows[0];
+
+    // Delete from S3 if it's an S3 file
+    if (file.storage_provider === 's3' && file.file_url) {
+      await deleteS3File(file.file_url);
+      // Also delete thumbnail if exists
+      if (file.metadata?.thumbnailUrl) {
+        await deleteS3File(file.metadata.thumbnailUrl);
+      }
+    }
+  }
 
   await pool.query('DELETE FROM asset_version_files WHERE id = $1', [fileId]);
 

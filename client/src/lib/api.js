@@ -374,6 +374,37 @@ class ApiClient {
   }
 
   // Asset Files
+
+  // Upload files (multipart/form-data)
+  async uploadAssetFiles(assetId, versionId, files, onProgress) {
+    const formData = new FormData()
+    files.forEach(file => {
+      formData.append('files', file)
+    })
+
+    const token = this.getToken()
+    const response = await fetch(`${this.baseUrl}/api/assets/${assetId}/versions/${versionId}/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Upload failed' }))
+      throw new Error(error.message || 'Upload failed')
+    }
+
+    return response.json()
+  }
+
+  // Get files for a version
+  async getAssetFiles(assetId, versionId) {
+    return this.request(`/api/assets/${assetId}/versions/${versionId}/files`)
+  }
+
+  // Add file via URL (JSON)
   async addAssetFile(assetId, versionId, fileData) {
     return this.request(`/api/assets/${assetId}/versions/${versionId}/files`, {
       method: 'POST',
