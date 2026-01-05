@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
 import { Button } from '@/components/ui'
+import { DemoVideo } from '@/components/DemoVideo'
 
 export function Landing() {
+  const [showDemo, setShowDemo] = useState(false)
+
   return (
     <div className="min-h-screen">
       
@@ -46,7 +50,12 @@ export function Landing() {
                     Get Started →
                   </Button>
                 </Link>
-                <Button variant="ghost" size="lg" className="w-full sm:w-auto">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  onClick={() => setShowDemo(true)}
+                >
                   Watch Demo ▶
                 </Button>
               </div>
@@ -206,6 +215,9 @@ export function Landing() {
         </div>
       </footer>
       
+      {/* Demo Video Modal */}
+      <DemoVideo isOpen={showDemo} onClose={() => setShowDemo(false)} />
+
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0); }
