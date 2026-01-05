@@ -22,7 +22,9 @@ import {
   Filter,
   Clock,
   Calendar,
-  CheckSquare
+  CheckSquare,
+  Sparkles,
+  ArrowUpRight,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
@@ -36,7 +38,6 @@ import { UnifiedCalendar } from '@/components/studio/UnifiedCalendar'
 import { CreateAssetModal } from '@/components/studio/CreateAssetModal'
 import { AssetDetailModal } from '@/components/studio/AssetDetailModal'
 
-// Tab configuration for Studio
 const studioTabs = [
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
@@ -63,8 +64,6 @@ export function Studio() {
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
-
-  // Task-related state
   const [selectedTaskId, setSelectedTaskId] = useState(null)
   const [showTaskModal, setShowTaskModal] = useState(false)
 
@@ -91,11 +90,9 @@ export function Studio() {
       const params = {}
       if (statusFilter !== 'all') params.status = statusFilter
       if (platformFilter !== 'all') params.platform = platformFilter
-
       const data = await api.getAssets(params)
       setAssets(data.assets || [])
     } catch (error) {
-      // Demo data
       setAssets(getDemoAssets())
     } finally {
       setLoading(false)
@@ -103,62 +100,11 @@ export function Studio() {
   }
 
   const getDemoAssets = () => [
-    {
-      id: 1,
-      name: 'Summer Collection Reel',
-      description: 'Product showcase for summer collection',
-      platform: 'instagram',
-      format: 'reel',
-      status: 'approved',
-      created_at: '2024-06-01',
-      version_count: 3,
-      pending_feedback_count: 0,
-    },
-    {
-      id: 2,
-      name: 'Tech Review Video',
-      description: 'Unboxing and first impressions',
-      platform: 'youtube',
-      format: 'video',
-      status: 'in_review',
-      created_at: '2024-06-05',
-      version_count: 2,
-      pending_feedback_count: 3,
-    },
-    {
-      id: 3,
-      name: 'Product Carousel',
-      description: 'Multi-image post for new products',
-      platform: 'instagram',
-      format: 'carousel',
-      status: 'draft',
-      created_at: '2024-06-08',
-      version_count: 1,
-      pending_feedback_count: 0,
-    },
-    {
-      id: 4,
-      name: 'Quick Tips Thread',
-      description: 'Educational thread about product usage',
-      platform: 'twitter',
-      format: 'text',
-      status: 'scheduled',
-      created_at: '2024-06-10',
-      version_count: 1,
-      pending_feedback_count: 0,
-      scheduled_at: '2024-06-15T10:00:00Z',
-    },
-    {
-      id: 5,
-      name: 'Behind the Scenes',
-      description: 'BTS story content',
-      platform: 'tiktok',
-      format: 'video',
-      status: 'changes_requested',
-      created_at: '2024-06-03',
-      version_count: 2,
-      pending_feedback_count: 2,
-    },
+    { id: 1, name: 'Summer Collection Reel', description: 'Product showcase for summer collection', platform: 'instagram', format: 'reel', status: 'approved', created_at: '2024-06-01', version_count: 3, pending_feedback_count: 0 },
+    { id: 2, name: 'Tech Review Video', description: 'Unboxing and first impressions', platform: 'youtube', format: 'video', status: 'in_review', created_at: '2024-06-05', version_count: 2, pending_feedback_count: 3 },
+    { id: 3, name: 'Product Carousel', description: 'Multi-image post for new products', platform: 'instagram', format: 'carousel', status: 'draft', created_at: '2024-06-08', version_count: 1, pending_feedback_count: 0 },
+    { id: 4, name: 'Quick Tips Thread', description: 'Educational thread about product usage', platform: 'twitter', format: 'text', status: 'scheduled', created_at: '2024-06-10', version_count: 1, pending_feedback_count: 0, scheduled_at: '2024-06-15T10:00:00Z' },
+    { id: 5, name: 'Behind the Scenes', description: 'BTS story content', platform: 'tiktok', format: 'video', status: 'changes_requested', created_at: '2024-06-03', version_count: 2, pending_feedback_count: 2 },
   ]
 
   const handleSubmitForReview = async (assetId) => {
@@ -167,29 +113,22 @@ export function Studio() {
       addToast('Submitted for review!', 'success')
       loadAssets()
     } catch (error) {
-      addToast('Submitted for review!', 'success') // Demo
+      addToast('Submitted for review!', 'success')
       loadAssets()
     }
   }
 
   const getStatusBadge = (status) => {
-    const variants = {
-      draft: 'default',
-      in_review: 'warning',
-      approved: 'success',
-      changes_requested: 'error',
-      scheduled: 'blue',
-      live: 'success'
+    const config = {
+      draft: { variant: 'default', label: 'Draft' },
+      in_review: { variant: 'warning', label: 'In Review' },
+      approved: { variant: 'success', label: 'Approved' },
+      changes_requested: { variant: 'danger', label: 'Changes Requested' },
+      scheduled: { variant: 'info', label: 'Scheduled' },
+      live: { variant: 'success', label: 'Live' },
     }
-    const labels = {
-      draft: 'Draft',
-      in_review: 'In Review',
-      approved: 'Approved',
-      changes_requested: 'Changes Requested',
-      scheduled: 'Scheduled',
-      live: 'Live'
-    }
-    return <Badge variant={variants[status] || 'default'}>{labels[status] || status}</Badge>
+    const c = config[status] || config.draft
+    return <Badge variant={c.variant}>{c.label}</Badge>
   }
 
   const getPlatformIcon = (platform) => {
@@ -197,26 +136,24 @@ export function Studio() {
       instagram: 'text-pink-400',
       tiktok: 'text-cyan-400',
       youtube: 'text-red-400',
-      twitter: 'text-blue-400',
+      twitter: 'text-sky-400',
       facebook: 'text-blue-500',
       linkedin: 'text-blue-600',
       bluesky: 'text-sky-400',
-      threads: 'text-gray-400'
+      threads: 'text-gray-400',
     }
-    return <span className={cn('text-sm capitalize', colors[platform] || 'text-white')}>{platform}</span>
+    return <span className={cn('text-sm capitalize font-medium', colors[platform])}>{platform}</span>
   }
 
   const getFormatIcon = (format) => {
-    switch (format) {
-      case 'video':
-      case 'reel':
-        return <Video className="w-4 h-4" />
-      case 'image':
-      case 'carousel':
-        return <Image className="w-4 h-4" />
-      default:
-        return <FileText className="w-4 h-4" />
+    const icons = {
+      video: Video,
+      reel: Video,
+      image: Image,
+      carousel: Image,
     }
+    const Icon = icons[format] || FileText
+    return <Icon className="w-4 h-4" />
   }
 
   const filteredAssets = assets.filter(asset => {
@@ -225,7 +162,6 @@ export function Studio() {
     return asset.name?.toLowerCase().includes(query) || asset.description?.toLowerCase().includes(query)
   })
 
-  // Filter assets based on active section
   const sectionAssets = {
     library: filteredAssets,
     schedule: filteredAssets.filter(a => ['approved', 'scheduled', 'live'].includes(a.status)),
@@ -245,126 +181,108 @@ export function Studio() {
   return (
     <DashboardLayout>
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Studio</h1>
-          <p className="text-[var(--text-secondary)]">
-            Create, manage, and schedule your content assets
-          </p>
+      <div className="relative mb-8">
+        <div className="absolute -top-20 -right-20 w-96 h-96 bg-[var(--accent-primary)] opacity-[0.03] blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-[var(--accent-primary)] tracking-wide uppercase">
+              Studio
+            </p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[var(--text-primary)] tracking-tight">
+              Content Studio
+            </h1>
+            <p className="text-[var(--text-tertiary)] text-lg">
+              Create, manage, and schedule your content assets
+            </p>
+          </div>
+
+          {['library', 'schedule', 'review'].includes(activeTab) && (
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search assets..."
+                  className={cn(
+                    'w-64 pl-10 pr-4 h-10 rounded-lg',
+                    'bg-[var(--bg-secondary)] border border-[var(--border-subtle)]',
+                    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
+                    'focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-primary-muted)]',
+                    'transition-all duration-200'
+                  )}
+                />
+              </div>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4" />
+                New Asset
+              </Button>
+            </div>
+          )}
         </div>
-
-        {/* Only show asset search/create for asset tabs */}
-        {['library', 'schedule', 'review'].includes(activeTab) && (
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search assets..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-teal-500"
-              />
-            </div>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Asset
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Stats Cards - Only show for asset tabs */}
+      {/* Stats Cards */}
       {['library', 'schedule', 'review'].includes(activeTab) && (
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center">
-              <LayoutGrid className="w-4 h-4 text-teal-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{stats.total}</p>
-              <p className="text-xs text-[var(--text-secondary)]">Total</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gray-500/20 flex items-center justify-center">
-              <Edit3 className="w-4 h-4 text-gray-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{stats.draft}</p>
-              <p className="text-xs text-[var(--text-secondary)]">Drafts</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-              <Eye className="w-4 h-4 text-orange-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{stats.inReview}</p>
-              <p className="text-xs text-[var(--text-secondary)]">In Review</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-green-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{stats.approved}</p>
-              <p className="text-xs text-[var(--text-secondary)]">Approved</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <CalendarDays className="w-4 h-4 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{stats.scheduled}</p>
-              <p className="text-xs text-[var(--text-secondary)]">Scheduled</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold">{stats.changesRequested}</p>
-              <p className="text-xs text-[var(--text-secondary)]">Needs Work</p>
-            </div>
-          </div>
-        </Card>
-      </div>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-8">
+          {[
+            { label: 'Total', value: stats.total, icon: LayoutGrid, color: 'violet' },
+            { label: 'Drafts', value: stats.draft, icon: Edit3, color: 'gray' },
+            { label: 'In Review', value: stats.inReview, icon: Eye, color: 'orange' },
+            { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'emerald' },
+            { label: 'Scheduled', value: stats.scheduled, icon: CalendarDays, color: 'sky' },
+            { label: 'Needs Work', value: stats.changesRequested, icon: AlertCircle, color: 'red' },
+          ].map((stat, i) => {
+            const colors = {
+              violet: 'bg-violet-500/10 text-violet-400',
+              gray: 'bg-gray-500/10 text-gray-400',
+              orange: 'bg-orange-500/10 text-orange-400',
+              emerald: 'bg-emerald-500/10 text-emerald-400',
+              sky: 'bg-sky-500/10 text-sky-400',
+              red: 'bg-red-500/10 text-red-400',
+            }
+            return (
+              <Card key={i} className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colors[stat.color].split(' ')[0])}>
+                    <stat.icon className={cn('w-5 h-5', colors[stat.color].split(' ')[1])} />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-[var(--text-primary)]">{stat.value}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{stat.label}</p>
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
       )}
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6 border-b border-[var(--border-color)]">
+      <div className="flex gap-1 mb-6 p-1 bg-[var(--bg-secondary)] rounded-xl w-fit">
         {studioTabs.map((t) => {
           const Icon = t.icon
+          const isActive = activeTab === t.id
           return (
             <button
               key={t.id}
               onClick={() => handleTabChange(t.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[2px]',
-                activeTab === t.id
-                  ? 'text-teal-400 border-teal-400'
-                  : 'text-[var(--text-secondary)] border-transparent hover:text-white hover:border-[var(--border-color)]'
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                isActive
+                  ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
               )}
             >
               <Icon className="w-4 h-4" />
               {t.label}
               {t.id === 'review' && stats.inReview + stats.changesRequested > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-orange-500/20 text-orange-400">
+                <span className={cn(
+                  'ml-1 px-1.5 py-0.5 text-xs rounded-full',
+                  isActive ? 'bg-orange-500/20 text-orange-400' : 'bg-[var(--bg-surface)] text-[var(--text-muted)]'
+                )}>
                   {stats.inReview + stats.changesRequested}
                 </span>
               )}
@@ -373,13 +291,19 @@ export function Studio() {
         })}
       </div>
 
-      {/* Filters - Only show for asset tabs */}
+      {/* Filters */}
       {['library', 'schedule', 'review'].includes(activeTab) && (
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-3 mb-6">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white text-sm focus:outline-none focus:border-teal-500"
+            className={cn(
+              'h-10 px-3 rounded-lg appearance-none cursor-pointer',
+              'bg-[var(--bg-secondary)] border border-[var(--border-subtle)]',
+              'text-[var(--text-primary)] text-sm',
+              'focus:outline-none focus:border-[var(--accent-primary)]',
+              'pr-8 bg-[url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")] bg-[length:1.5em_1.5em] bg-[right_0.5rem_center] bg-no-repeat'
+            )}
           >
             <option value="all">All Statuses</option>
             {statuses.map(s => (
@@ -389,7 +313,13 @@ export function Studio() {
           <select
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-white text-sm focus:outline-none focus:border-teal-500"
+            className={cn(
+              'h-10 px-3 rounded-lg appearance-none cursor-pointer',
+              'bg-[var(--bg-secondary)] border border-[var(--border-subtle)]',
+              'text-[var(--text-primary)] text-sm',
+              'focus:outline-none focus:border-[var(--accent-primary)]',
+              'pr-8 bg-[url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")] bg-[length:1.5em_1.5em] bg-[right_0.5rem_center] bg-no-repeat'
+            )}
           >
             <option value="all">All Platforms</option>
             {platforms.map(p => (
@@ -399,9 +329,8 @@ export function Studio() {
         </div>
       )}
 
-      {/* Content based on active tab */}
+      {/* Content */}
       {activeTab === 'tasks' ? (
-        // Tasks View - Kanban Board
         <TaskBoard
           onTaskClick={(task) => {
             setSelectedTaskId(task.id)
@@ -409,7 +338,6 @@ export function Studio() {
           }}
         />
       ) : activeTab === 'calendar' ? (
-        // Calendar View - Unified Calendar
         <UnifiedCalendar
           onTaskClick={(task) => {
             setSelectedTaskId(task.id)
@@ -420,66 +348,66 @@ export function Studio() {
             setShowDetailModal(true)
           }}
           onCreateTask={() => {
-            // Could open a quick create modal
             addToast('Create a task from the Tasks tab', 'info')
           }}
         />
       ) : loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full" />
+          <div className="w-8 h-8 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : sectionAssets[activeTab]?.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Image className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
+        <Card className="p-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-surface)] flex items-center justify-center mx-auto mb-4">
+            <Image className="w-8 h-8 text-[var(--text-muted)]" />
+          </div>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
             {activeTab === 'library' && 'No assets yet'}
             {activeTab === 'schedule' && 'Nothing scheduled'}
             {activeTab === 'review' && 'No pending reviews'}
           </h3>
-          <p className="text-[var(--text-secondary)] mb-4">
-            {activeTab === 'library' && 'Create your first asset to get started'}
+          <p className="text-[var(--text-tertiary)] mb-6 max-w-sm mx-auto">
+            {activeTab === 'library' && 'Create your first asset to get started with your content studio'}
             {activeTab === 'schedule' && 'Approved assets ready for scheduling will appear here'}
             {activeTab === 'review' && 'Assets waiting for review will appear here'}
           </p>
           {activeTab === 'library' && (
             <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Create Asset
             </Button>
           )}
         </Card>
       ) : activeTab === 'schedule' ? (
-        // Schedule View
-        <div className="space-y-4">
+        <div className="space-y-3">
           {sectionAssets.schedule.map((asset) => (
-            <Card key={asset.id} className="p-4">
+            <Card key={asset.id} className="p-5 hover:border-[var(--border-default)] transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center",
-                    asset.status === 'live' ? 'bg-green-500/20' : 'bg-blue-500/20'
+                    'w-12 h-12 rounded-xl flex items-center justify-center',
+                    asset.status === 'live' ? 'bg-emerald-500/10' : 'bg-sky-500/10'
                   )}>
                     {asset.status === 'live' ? (
-                      <Play className="w-5 h-5 text-green-400" />
+                      <Play className="w-5 h-5 text-emerald-400" />
                     ) : asset.status === 'scheduled' ? (
-                      <CalendarDays className="w-5 h-5 text-blue-400" />
+                      <CalendarDays className="w-5 h-5 text-sky-400" />
                     ) : (
-                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <CheckCircle className="w-5 h-5 text-emerald-400" />
                     )}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{asset.name}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-[var(--text-primary)]">{asset.name}</p>
                       {getStatusBadge(asset.status)}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <div className="flex items-center gap-2 text-sm">
                       {getPlatformIcon(asset.platform)}
-                      <span>•</span>
-                      <span className="capitalize">{asset.format}</span>
+                      <span className="text-[var(--text-muted)]">·</span>
+                      <span className="capitalize text-[var(--text-muted)]">{asset.format}</span>
                       {asset.scheduled_at && (
                         <>
-                          <span>•</span>
-                          <span>Scheduled: {formatDate(asset.scheduled_at)}</span>
+                          <span className="text-[var(--text-muted)]">·</span>
+                          <span className="text-[var(--text-tertiary)]">Scheduled: {formatDate(asset.scheduled_at)}</span>
                         </>
                       )}
                     </div>
@@ -488,13 +416,13 @@ export function Studio() {
                 <div className="flex items-center gap-2">
                   {asset.status === 'approved' && (
                     <Button size="sm" variant="secondary">
-                      <CalendarDays className="w-4 h-4 mr-1" />
+                      <CalendarDays className="w-4 h-4" />
                       Schedule
                     </Button>
                   )}
                   {asset.status === 'scheduled' && (
                     <Button size="sm" variant="ghost">
-                      <Pause className="w-4 h-4 mr-1" />
+                      <Pause className="w-4 h-4" />
                       Cancel
                     </Button>
                   )}
@@ -507,18 +435,20 @@ export function Studio() {
           ))}
         </div>
       ) : activeTab === 'review' ? (
-        // Review View
-        <div className="space-y-4">
+        <div className="space-y-3">
           {sectionAssets.review.map((asset) => (
-            <Card key={asset.id} className={cn(
-              "p-4",
-              asset.status === 'changes_requested' && "border-red-500/30"
-            )}>
+            <Card
+              key={asset.id}
+              className={cn(
+                'p-5 transition-colors',
+                asset.status === 'changes_requested' ? 'border-red-500/30 hover:border-red-500/50' : 'hover:border-[var(--border-default)]'
+              )}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center",
-                    asset.status === 'changes_requested' ? 'bg-red-500/20' : 'bg-orange-500/20'
+                    'w-12 h-12 rounded-xl flex items-center justify-center',
+                    asset.status === 'changes_requested' ? 'bg-red-500/10' : 'bg-orange-500/10'
                   )}>
                     {asset.status === 'changes_requested' ? (
                       <XCircle className="w-5 h-5 text-red-400" />
@@ -527,22 +457,20 @@ export function Studio() {
                     )}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{asset.name}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-[var(--text-primary)]">{asset.name}</p>
                       {getStatusBadge(asset.status)}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <div className="flex items-center gap-2 text-sm">
                       {getPlatformIcon(asset.platform)}
-                      <span>•</span>
-                      <span className="capitalize">{asset.format}</span>
-                      <span>•</span>
-                      <span>v{asset.version_count}</span>
+                      <span className="text-[var(--text-muted)]">·</span>
+                      <span className="capitalize text-[var(--text-muted)]">{asset.format}</span>
+                      <span className="text-[var(--text-muted)]">·</span>
+                      <span className="text-[var(--text-muted)]">v{asset.version_count}</span>
                       {asset.pending_feedback_count > 0 && (
                         <>
-                          <span>•</span>
-                          <span className="text-orange-400">
-                            {asset.pending_feedback_count} feedback items
-                          </span>
+                          <span className="text-[var(--text-muted)]">·</span>
+                          <span className="text-orange-400 font-medium">{asset.pending_feedback_count} feedback items</span>
                         </>
                       )}
                     </div>
@@ -553,12 +481,12 @@ export function Studio() {
                     setSelectedAsset(asset)
                     setShowDetailModal(true)
                   }}>
-                    <MessageSquare className="w-4 h-4 mr-1" />
+                    <MessageSquare className="w-4 h-4" />
                     View Feedback
                   </Button>
                   {asset.status === 'changes_requested' && (
                     <Button size="sm">
-                      <Upload className="w-4 h-4 mr-1" />
+                      <Upload className="w-4 h-4" />
                       Upload New Version
                     </Button>
                   )}
@@ -568,36 +496,37 @@ export function Studio() {
           ))}
         </div>
       ) : (
-        // Library View - Grid layout
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sectionAssets.library.map((asset) => (
             <Card
               key={asset.id}
-              className="p-4 hover:border-teal-500/30 transition-colors cursor-pointer"
+              interactive
+              glow
+              className="p-5"
               onClick={() => {
                 setSelectedAsset(asset)
                 setShowDetailModal(true)
               }}
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-4">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center",
-                  asset.format === 'video' || asset.format === 'reel' ? 'bg-purple-500/20' :
-                  asset.format === 'image' || asset.format === 'carousel' ? 'bg-pink-500/20' :
-                  'bg-blue-500/20'
+                  'w-11 h-11 rounded-xl flex items-center justify-center',
+                  asset.format === 'video' || asset.format === 'reel' ? 'bg-violet-500/10' :
+                  asset.format === 'image' || asset.format === 'carousel' ? 'bg-pink-500/10' :
+                  'bg-sky-500/10'
                 )}>
                   {getFormatIcon(asset.format)}
                 </div>
                 {getStatusBadge(asset.status)}
               </div>
-              <h3 className="font-semibold mb-1">{asset.name}</h3>
-              <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">
+              <h3 className="font-semibold text-[var(--text-primary)] mb-1">{asset.name}</h3>
+              <p className="text-sm text-[var(--text-muted)] line-clamp-2 mb-4">
                 {asset.description || 'No description'}
               </p>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   {getPlatformIcon(asset.platform)}
-                  <span className="text-[var(--text-muted)]">•</span>
+                  <span className="text-[var(--text-muted)]">·</span>
                   <span className="text-[var(--text-muted)] capitalize">{asset.format}</span>
                 </div>
                 <span className="text-[var(--text-muted)]">v{asset.version_count}</span>
@@ -605,13 +534,13 @@ export function Studio() {
               {asset.status === 'draft' && (
                 <Button
                   size="sm"
-                  className="w-full mt-3"
+                  className="w-full mt-4"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleSubmitForReview(asset.id)
                   }}
                 >
-                  <Send className="w-4 h-4 mr-1" />
+                  <Send className="w-4 h-4" />
                   Submit for Review
                 </Button>
               )}
@@ -620,7 +549,6 @@ export function Studio() {
         </div>
       )}
 
-      {/* Create Asset Modal */}
       <CreateAssetModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
@@ -630,7 +558,6 @@ export function Studio() {
         }}
       />
 
-      {/* Asset Detail Modal */}
       <AssetDetailModal
         assetId={selectedAsset?.id}
         isOpen={showDetailModal}
@@ -638,9 +565,7 @@ export function Studio() {
           setShowDetailModal(false)
           setSelectedAsset(null)
         }}
-        onUpdate={() => {
-          loadAssets()
-        }}
+        onUpdate={() => loadAssets()}
         onDelete={() => {
           setShowDetailModal(false)
           setSelectedAsset(null)
@@ -649,7 +574,6 @@ export function Studio() {
         }}
       />
 
-      {/* Task Detail Modal */}
       <TaskDetailModal
         taskId={selectedTaskId}
         isOpen={showTaskModal}
@@ -657,9 +581,7 @@ export function Studio() {
           setShowTaskModal(false)
           setSelectedTaskId(null)
         }}
-        onUpdate={() => {
-          // Refresh will be handled by the TaskBoard component
-        }}
+        onUpdate={() => {}}
         onDelete={() => {
           setShowTaskModal(false)
           setSelectedTaskId(null)
