@@ -1,8 +1,16 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+
+// Try to load sharp, but don't fail if it's not available
+let sharp = null;
+try {
+  sharp = require('sharp');
+  console.log('Sharp image processing library loaded successfully');
+} catch (err) {
+  console.warn('Sharp not available - image processing will be disabled:', err.message);
+}
 
 // Initialize S3 client
 const s3Client = new S3Client({
@@ -33,6 +41,11 @@ const MAX_ASSET_SIZE = 100 * 1024 * 1024; // 100MB
  * Process avatar image - resize and optimize
  */
 async function processAvatar(buffer) {
+  if (!sharp) {
+    // If sharp is not available, return original buffer
+    console.warn('Sharp not available, skipping avatar processing');
+    return buffer;
+  }
   return sharp(buffer)
     .resize(400, 400, {
       fit: 'cover',
@@ -49,6 +62,11 @@ async function processAvatar(buffer) {
  * Process general image - optimize without resizing
  */
 async function processImage(buffer, options = {}) {
+  if (!sharp) {
+    // If sharp is not available, return original buffer
+    console.warn('Sharp not available, skipping image processing');
+    return buffer;
+  }
   const { maxWidth = 2000, maxHeight = 2000, quality = 85 } = options;
 
   return sharp(buffer)
@@ -67,6 +85,11 @@ async function processImage(buffer, options = {}) {
  * Generate thumbnail from image
  */
 async function generateThumbnail(buffer, size = 300) {
+  if (!sharp) {
+    // If sharp is not available, return null (no thumbnail)
+    console.warn('Sharp not available, skipping thumbnail generation');
+    return null;
+  }
   return sharp(buffer)
     .resize(size, size, {
       fit: 'cover',
@@ -111,14 +134,18 @@ async function uploadAvatar(file, userId) {
     throw new Error('File too large. Maximum size: 5MB');
   }
 
-  // Process image
+  // Process image (if sharp is available)
   const processedBuffer = await processAvatar(file.buffer);
 
+  // Determine extension and content type based on whether sharp processed it
+  const extension = sharp ? 'jpg' : path.extname(file.originalname).toLowerCase().slice(1) || 'jpg';
+  const contentType = sharp ? 'image/jpeg' : file.mimetype;
+
   // Generate unique filename
-  const key = `${UPLOAD_PATHS.avatars}${userId}/${uuidv4()}.jpg`;
+  const key = `${UPLOAD_PATHS.avatars}${userId}/${uuidv4()}.${extension}`;
 
   // Upload to S3
-  return uploadFile(processedBuffer, key, 'image/jpeg');
+  return uploadFile(processedBuffer, key, contentType);
 }
 
 /**

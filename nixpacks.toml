@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_20", "vips", "pkg-config"]
+aptPkgs = ["libvips-dev"]
 
 [phases.install]
 cmds = ["npm install"]
