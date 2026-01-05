@@ -159,7 +159,7 @@ export function Settings() {
       for (const account of socialAccounts) {
         try {
           await fetch(`/api/social/${account.platform}/stats`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+            headers: { 'Authorization': `Bearer ${api.getToken()}` }
           })
         } catch (e) {
           // Continue with other platforms
@@ -176,12 +176,12 @@ export function Settings() {
 
   // OAuth connection
   const initiateOAuth = (platform) => {
-    const token = localStorage.getItem('authToken')
+    const token = api.getToken()
     if (!token) {
       addToast('Please log in first', 'error')
       return
     }
-    
+
     // Redirect to OAuth endpoint
     window.location.href = `/api/oauth/${platform}/authorize?token=${encodeURIComponent(token)}`
   }
@@ -198,7 +198,7 @@ export function Settings() {
       const response = await fetch('/api/social/bluesky/connect', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${api.getToken()}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ handle: blueskyHandle.trim() }),
@@ -227,7 +227,7 @@ export function Settings() {
     try {
       const response = await fetch(`/api/social/disconnect/${platform}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
+        headers: { 'Authorization': `Bearer ${api.getToken()}` },
       })
 
       if (response.ok) {
