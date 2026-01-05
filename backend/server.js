@@ -71,6 +71,7 @@ const {
 
 // Route modules
 const assetRoutes = require('./routes/assets');
+const notificationRoutes = require('./routes/notifications');
 
 // ============================================
 // DATABASE CONNECTION
@@ -6406,6 +6407,9 @@ app.get('/api/shop/download/:token', async (req, res) => {
 
 // Asset management routes
 app.use('/api/assets', assetRoutes);
+
+// Notification and audit routes
+app.use('/api/notifications', notificationRoutes);
 
 // ============================================
 // CENTRALIZED ERROR HANDLER
