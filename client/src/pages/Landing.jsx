@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Button } from '@/components/ui'
 import { DemoVideo } from '@/components/DemoVideo'
-import { ArrowRight, Play } from 'lucide-react'
+import { ArrowRight, Play, Sparkles, Zap, Shield, BarChart3, MessageCircle, Users } from 'lucide-react'
 
 export function Landing() {
   const [showDemo, setShowDemo] = useState(false)
@@ -24,192 +23,223 @@ export function Landing() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white">
-      {/* Navigation - Glass effect */}
-      <nav className="fixed top-0 left-0 right-0 z-50">
-        <div className="mx-4 mt-4">
-          <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08]">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-white/[0.12] flex items-center justify-center">
-                <div className="w-3.5 h-3.5 rounded-sm bg-white rotate-45" />
-              </div>
-              <span className="font-semibold text-white">Formative</span>
+    <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between h-14 px-6 rounded-2xl bg-[#09090b]/80 backdrop-blur-2xl border border-white/10">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-lg font-semibold text-white">Formative</span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm text-zinc-400 hover:text-white transition-colors">Features</a>
+            <a href="#pricing" className="text-sm text-zinc-400 hover:text-white transition-colors">Pricing</a>
+            <a href="#about" className="text-sm text-zinc-400 hover:text-white transition-colors">About</a>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/login"
+              className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+            >
+              Sign in
             </Link>
-
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-                Features
-              </a>
-              <a href="#about" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
-                About
-              </a>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Link to="/login">
-                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/[0.08]">
-                  Sign in
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button size="sm" className="bg-white text-black font-medium hover:bg-white/90">
-                  Get Started
-                </Button>
-              </Link>
-            </div>
+            <Link
+              to="/register"
+              className="px-5 py-2.5 text-sm font-semibold bg-white text-zinc-900 rounded-lg hover:bg-zinc-100 transition-colors"
+            >
+              Get Started
+            </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden">
-        {/* Subtle gradient orb that follows mouse */}
+      {/* Hero Section */}
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center pt-20">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute w-[1200px] h-[1200px] rounded-full blur-[150px] transition-all duration-[3000ms] ease-out"
+            style={{
+              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 30%, transparent 70%)',
+              left: `${mousePosition.x}%`,
+              top: `${mousePosition.y}%`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-indigo-600/10 blur-[120px]" />
+          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-violet-600/10 blur-[100px]" />
+        </div>
+
+        {/* Grid overlay */}
         <div
-          className="absolute w-[1000px] h-[1000px] rounded-full opacity-[0.03] blur-[120px] transition-all duration-[2500ms] ease-out pointer-events-none"
+          className="absolute inset-0 opacity-[0.04]"
           style={{
-            background: 'radial-gradient(circle, white 0%, transparent 70%)',
-            left: `${mousePosition.x}%`,
-            top: `${mousePosition.y}%`,
-            transform: 'translate(-50%, -50%)',
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
           }}
         />
 
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
-            backgroundSize: '72px 72px',
-          }}
-        />
-
-        <div className="max-w-5xl mx-auto text-center relative z-10">
+        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.1] mb-8 animate-fade-in">
-            <span className="w-2 h-2 rounded-full bg-white/60 animate-pulse" />
-            <span className="text-sm text-white/70">Now in Beta</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-8 animate-fade-in">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            <span className="text-sm font-medium text-indigo-300">Now in Beta</span>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight leading-[0.95] mb-8 animate-fade-in animation-delay-100">
+          {/* Main Headline */}
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-fade-in animation-delay-100">
             <span className="text-white">Creator partnerships</span>
             <br />
-            <span className="text-white/40">simplified.</span>
+            <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
+              simplified.
+            </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-white/50 max-w-2xl mx-auto mb-12 leading-relaxed animate-fade-in animation-delay-200">
+          <p className="text-lg sm:text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed animate-fade-in animation-delay-200">
             The platform that connects influencers with brands.
-            <br className="hidden md:block" />
+            <span className="hidden sm:inline"><br /></span>
+            <span className="sm:hidden"> </span>
             Manage campaigns, track performance, scale your business.
           </p>
 
-          {/* CTAs */}
+          {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in animation-delay-300">
-            <Link to="/register">
-              <Button size="lg" className="bg-white text-black font-medium hover:bg-white/90 group px-8 h-12">
-                Start for free
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="lg"
-              onClick={() => setShowDemo(true)}
-              className="text-white/60 hover:text-white hover:bg-white/[0.08] border border-white/[0.1] h-12"
+            <Link
+              to="/register"
+              className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold bg-white text-zinc-900 rounded-xl hover:bg-zinc-100 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-white/10"
             >
-              <Play className="w-4 h-4 mr-2" />
+              Start for free
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <button
+              onClick={() => setShowDemo(true)}
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-white rounded-xl border border-white/20 hover:bg-white/5 transition-all hover:border-white/30"
+            >
+              <Play className="w-5 h-5" />
               Watch demo
-            </Button>
+            </button>
           </div>
         </div>
       </section>
 
       {/* Product Preview */}
-      <section className="relative px-6 pb-40 -mt-16">
-        <div className="max-w-5xl mx-auto">
-          {/* Glass container */}
+      <section className="relative px-6 pb-32 -mt-10">
+        <div className="max-w-6xl mx-auto">
           <div className="relative rounded-3xl overflow-hidden animate-fade-in animation-delay-500">
-            {/* Glow effect */}
-            <div className="absolute -inset-[1px] rounded-3xl bg-gradient-to-b from-white/20 via-white/5 to-transparent" />
+            {/* Glow border */}
+            <div className="absolute -inset-[1px] rounded-3xl bg-gradient-to-b from-white/25 via-white/10 to-transparent" />
 
-            {/* Main card */}
-            <div className="relative bg-[#111113] border border-white/[0.08] rounded-3xl overflow-hidden">
-              {/* Browser chrome */}
-              <div className="flex items-center gap-2 px-5 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+            {/* Card */}
+            <div className="relative bg-[#0f0f11] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+              {/* Browser Chrome */}
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-white/[0.15]" />
-                  <div className="w-3 h-3 rounded-full bg-white/[0.15]" />
-                  <div className="w-3 h-3 rounded-full bg-white/[0.15]" />
+                  <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/80" />
                 </div>
                 <div className="flex-1 flex justify-center">
-                  <div className="px-4 py-1.5 rounded-lg bg-white/[0.05] text-sm text-white/40">
+                  <div className="px-4 py-1.5 rounded-lg bg-white/5 text-sm text-zinc-500 font-mono">
                     formative.co/dashboard
                   </div>
                 </div>
               </div>
 
-              {/* Dashboard mockup */}
+              {/* Dashboard Content */}
               <div className="p-8">
                 <div className="flex gap-8">
                   {/* Sidebar */}
-                  <div className="w-52 flex-shrink-0 space-y-2 hidden md:block">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.08]">
-                      <div className="w-5 h-5 rounded-md bg-white/30" />
-                      <span className="text-sm font-medium text-white/80">Dashboard</span>
+                  <div className="w-56 flex-shrink-0 space-y-2 hidden lg:block">
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                      <div className="w-5 h-5 rounded-lg bg-indigo-500/30 flex items-center justify-center">
+                        <BarChart3 className="w-3 h-3 text-indigo-400" />
+                      </div>
+                      <span className="text-sm font-medium text-white">Dashboard</span>
                     </div>
-                    {['Campaigns', 'Messages', 'Analytics', 'Settings'].map((item) => (
-                      <div key={item} className="flex items-center gap-3 px-4 py-3 text-white/40 hover:text-white/60 transition-colors cursor-pointer">
-                        <div className="w-5 h-5 rounded-md bg-white/[0.08]" />
-                        <span className="text-sm">{item}</span>
+                    {[
+                      { icon: Zap, name: 'Campaigns' },
+                      { icon: MessageCircle, name: 'Messages' },
+                      { icon: Users, name: 'Creators' },
+                      { icon: Shield, name: 'Settings' },
+                    ].map((item) => (
+                      <div key={item.name} className="flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">
+                        <item.icon className="w-5 h-5" />
+                        <span className="text-sm">{item.name}</span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Main content */}
+                  {/* Main Content */}
                   <div className="flex-1 space-y-6">
-                    {/* Stats row */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       {[
-                        { label: 'Followers', value: '24.5K' },
-                        { label: 'Engagement', value: '8.2%' },
-                        { label: 'Campaigns', value: '12' },
-                        { label: 'Revenue', value: '$18.4K' },
+                        { label: 'Followers', value: '24.5K', change: '+12%', positive: true },
+                        { label: 'Engagement', value: '8.2%', change: '+3%', positive: true },
+                        { label: 'Campaigns', value: '12', change: '3 active', positive: true },
+                        { label: 'Revenue', value: '$18.4K', change: '+24%', positive: true },
                       ].map((stat) => (
-                        <div key={stat.label} className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-                          <div className="text-2xl md:text-3xl font-semibold text-white mb-1">{stat.value}</div>
-                          <div className="text-sm text-white/40">{stat.label}</div>
+                        <div key={stat.label} className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
+                          <div className="text-2xl lg:text-3xl font-bold text-white mb-1">{stat.value}</div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-zinc-500">{stat.label}</span>
+                            <span className="text-xs font-medium text-emerald-400">{stat.change}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Content grid */}
-                    <div className="grid md:grid-cols-5 gap-4">
-                      {/* Main panel */}
-                      <div className="md:col-span-3 p-5 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-                        <div className="text-sm font-medium text-white/60 mb-5">Active Campaigns</div>
+                    {/* Charts placeholder */}
+                    <div className="grid lg:grid-cols-5 gap-4">
+                      <div className="lg:col-span-3 p-6 rounded-2xl bg-white/[0.03] border border-white/10">
+                        <div className="flex items-center justify-between mb-6">
+                          <span className="text-sm font-medium text-zinc-300">Active Campaigns</span>
+                          <span className="text-xs text-zinc-500">View all</span>
+                        </div>
                         <div className="space-y-3">
-                          {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.04]">
-                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-white/[0.1] to-white/[0.05]" />
-                              <div className="flex-1">
-                                <div className="h-4 w-32 rounded-md bg-white/[0.15] mb-2" />
-                                <div className="h-3 w-24 rounded-md bg-white/[0.08]" />
+                          {[
+                            { name: 'Summer Collection', brand: 'StyleCo', status: 'Active' },
+                            { name: 'Tech Review Series', brand: 'GadgetPro', status: 'Active' },
+                            { name: 'Fitness Challenge', brand: 'FitLife', status: 'Pending' },
+                          ].map((campaign, i) => (
+                            <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-white truncate">{campaign.name}</div>
+                                <div className="text-xs text-zinc-500">{campaign.brand}</div>
                               </div>
-                              <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.08] text-white/60">Active</div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                campaign.status === 'Active'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              }`}>
+                                {campaign.status}
+                              </span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      {/* Side panel */}
-                      <div className="md:col-span-2 p-5 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
-                        <div className="text-sm font-medium text-white/60 mb-5">Activity</div>
+                      <div className="lg:col-span-2 p-6 rounded-2xl bg-white/[0.03] border border-white/10">
+                        <div className="text-sm font-medium text-zinc-300 mb-6">Recent Activity</div>
                         <div className="space-y-4">
-                          {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="flex items-center gap-4">
-                              <div className="w-9 h-9 rounded-full bg-white/[0.08]" />
-                              <div className="flex-1 h-3 rounded-md bg-white/[0.08]" />
+                          {[
+                            { text: 'New brand inquiry from Nike', time: '2m ago' },
+                            { text: 'Campaign milestone reached', time: '1h ago' },
+                            { text: 'Payment received: $2,500', time: '3h ago' },
+                            { text: 'Content approved by StyleCo', time: '5h ago' },
+                          ].map((activity, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                              <div className="w-2 h-2 rounded-full bg-indigo-400 mt-2" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-zinc-300 truncate">{activity.text}</div>
+                                <div className="text-xs text-zinc-600">{activity.time}</div>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -223,84 +253,92 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features Section */}
       <section id="features" className="py-32 px-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-5">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               Everything you need
             </h2>
-            <p className="text-xl text-white/50 max-w-lg mx-auto">
+            <p className="text-xl text-zinc-400 max-w-xl mx-auto">
               Powerful tools designed for modern creator partnerships
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { title: 'Discovery', desc: 'Find creators that match your brand with smart filters and audience insights.' },
-              { title: 'Analytics', desc: 'Track performance, measure ROI, and make data-driven decisions.' },
-              { title: 'Messaging', desc: 'Centralize communication with creators and brands in one place.' },
-              { title: 'Campaigns', desc: 'Manage deliverables, approvals, and timelines with ease.' },
-              { title: 'Payments', desc: 'Built-in escrow, contracts, and invoicing for peace of mind.' },
-              { title: 'Media Kits', desc: 'Create stunning media kits that showcase your brand.' },
+              { icon: Users, title: 'Creator Discovery', desc: 'Find creators that match your brand with smart filters and real-time audience insights.' },
+              { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Track performance, measure ROI, and make data-driven decisions with detailed reports.' },
+              { icon: MessageCircle, title: 'Messaging Hub', desc: 'Centralize all communication with creators and brands in one unified inbox.' },
+              { icon: Zap, title: 'Campaign Management', desc: 'Manage deliverables, approvals, and timelines with automated workflows.' },
+              { icon: Shield, title: 'Secure Payments', desc: 'Built-in escrow, contracts, and invoicing for complete peace of mind.' },
+              { icon: Sparkles, title: 'Media Kit Builder', desc: 'Create stunning media kits that showcase your brand and attract partnerships.' },
             ].map((feature, i) => (
               <div
                 key={i}
-                className="group p-7 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all duration-500"
+                className="group p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20 transition-all duration-300"
               >
-                <h3 className="text-lg font-semibold text-white mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-[15px] text-white/50 leading-relaxed group-hover:text-white/60 transition-colors">
-                  {feature.desc}
-                </p>
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 group-hover:bg-indigo-500/20 transition-colors">
+                  <feature.icon className="w-6 h-6 text-indigo-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                <p className="text-zinc-400 leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA Section */}
       <section id="about" className="py-32 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white mb-6">
-            Ready to start?
-          </h2>
-          <p className="text-xl text-white/50 mb-12">
-            Join creators and brands building meaningful partnerships.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register">
-              <Button size="lg" className="bg-white text-black font-medium hover:bg-white/90 px-8 h-12">
-                Create free account
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="ghost" size="lg" className="text-white/60 hover:text-white hover:bg-white/[0.08] border border-white/[0.1] h-12">
-                Sign in
-              </Button>
-            </Link>
+        <div className="max-w-4xl mx-auto">
+          <div className="relative rounded-3xl overflow-hidden">
+            {/* Background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-violet-600/10 to-transparent" />
+            <div className="absolute inset-0 bg-[#0f0f11]/80" />
+
+            <div className="relative p-12 md:p-20 text-center border border-white/10 rounded-3xl">
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                Ready to get started?
+              </h2>
+              <p className="text-xl text-zinc-400 mb-10 max-w-lg mx-auto">
+                Join thousands of creators and brands building meaningful partnerships.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold bg-white text-zinc-900 rounded-xl hover:bg-zinc-100 transition-all hover:scale-[1.02]"
+                >
+                  Create free account
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white rounded-xl border border-white/20 hover:bg-white/5 transition-all"
+                >
+                  Sign in
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-10 px-6 border-t border-white/[0.06]">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white/[0.12] flex items-center justify-center">
-              <div className="w-3 h-3 rounded-sm bg-white rotate-45" />
+      <footer className="py-12 px-6 border-t border-white/10">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-medium text-white/60">Formative</span>
+            <span className="font-semibold text-white">Formative</span>
           </div>
-          <div className="flex items-center gap-8 text-sm text-white/40">
+          <div className="flex items-center gap-8 text-sm text-zinc-500">
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
             <a href="#" className="hover:text-white transition-colors">Contact</a>
           </div>
-          <p className="text-sm text-white/30">
-            © {new Date().getFullYear()} Formative
-          </p>
+          <p className="text-sm text-zinc-600">© {new Date().getFullYear()} Formative</p>
         </div>
       </footer>
 
@@ -309,17 +347,17 @@ export function Landing() {
 
       <style>{`
         @keyframes fade-in {
-          from { opacity: 0; transform: translateY(24px); }
+          from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
           animation: fade-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
-        .animation-delay-100 { animation-delay: 0.1s; }
-        .animation-delay-200 { animation-delay: 0.2s; }
-        .animation-delay-300 { animation-delay: 0.3s; }
-        .animation-delay-500 { animation-delay: 0.5s; }
+        .animation-delay-100 { animation-delay: 0.15s; }
+        .animation-delay-200 { animation-delay: 0.3s; }
+        .animation-delay-300 { animation-delay: 0.45s; }
+        .animation-delay-500 { animation-delay: 0.6s; }
       `}</style>
     </div>
   )

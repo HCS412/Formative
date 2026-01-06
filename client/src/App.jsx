@@ -61,10 +61,11 @@ function AppRoutes() {
   const isPublicShop = location.pathname.startsWith('/shop/');
   const isAuthPage = ['/login', '/register', '/onboarding'].includes(location.pathname);
   const isLegalPage = ['/terms', '/privacy'].includes(location.pathname);
+  const isLandingPage = location.pathname === '/';
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isDashboard && !isMediaKit && !isPublicShop && !isAuthPage && !isLegalPage && <Navbar />}
+      {!isDashboard && !isMediaKit && !isPublicShop && !isAuthPage && !isLegalPage && !isLandingPage && <Navbar />}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
