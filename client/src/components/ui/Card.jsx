@@ -2,13 +2,13 @@ import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 export const Card = forwardRef(function Card(
-  { children, className, variant = 'default', interactive = false, glow = false, lift = false, ...props },
+  { children, className, variant = 'default', interactive = false, ...props },
   ref
 ) {
   const variants = {
-    default: 'bg-[var(--bg-elevated)] border-[var(--border-subtle)]',
-    surface: 'bg-[var(--bg-surface)] border-[var(--border-default)]',
-    glass: 'bg-[var(--glass-bg)] backdrop-blur-xl border-[var(--glass-border)]',
+    default: 'bg-[var(--bg-secondary)] border-[var(--border-subtle)]',
+    elevated: 'bg-[var(--bg-elevated)] border-[var(--border-default)]',
+    surface: 'bg-[var(--bg-surface)] border-[var(--border-subtle)]',
     ghost: 'bg-transparent border-transparent',
   }
 
@@ -17,20 +17,13 @@ export const Card = forwardRef(function Card(
       ref={ref}
       className={cn(
         'rounded-xl border',
-        'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+        'transition-all duration-200',
         variants[variant],
         interactive && [
           'cursor-pointer',
-          'hover:bg-[var(--bg-surface)] hover:border-[var(--border-default)]',
-          'hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)]',
-          'hover:-translate-y-1',
-          'active:translate-y-0 active:scale-[0.99]',
+          'hover:border-[var(--border-default)]',
+          'hover:bg-[var(--bg-elevated)]',
         ],
-        lift && [
-          'hover:-translate-y-1',
-          'hover:shadow-[0_12px_40px_rgba(0,0,0,0.35)]',
-        ],
-        glow && 'hover:shadow-[0_0_30px_rgba(167,139,250,0.15),0_8px_30px_rgba(0,0,0,0.2)]',
         className
       )}
       {...props}
@@ -57,10 +50,10 @@ export function CardHeader({ children, className, actions, ...props }) {
 
 export function CardTitle({ children, className, subtitle, ...props }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5">
       <h3
         className={cn(
-          'text-base font-semibold text-[var(--text-primary)] tracking-tight',
+          'text-sm font-semibold text-[var(--text-primary)]',
           className
         )}
         {...props}
@@ -68,7 +61,7 @@ export function CardTitle({ children, className, subtitle, ...props }) {
         {children}
       </h3>
       {subtitle && (
-        <p className="text-sm text-[var(--text-tertiary)]">{subtitle}</p>
+        <p className="text-xs text-[var(--text-muted)]">{subtitle}</p>
       )}
     </div>
   )
@@ -99,7 +92,6 @@ export function CardFooter({ children, className, ...props }) {
   )
 }
 
-// Stat card variant for dashboards
 export function StatCard({
   label,
   value,
@@ -110,30 +102,30 @@ export function StatCard({
   ...props
 }) {
   const changeColors = {
-    positive: 'text-[var(--status-success)]',
-    negative: 'text-[var(--status-error)]',
-    neutral: 'text-[var(--text-tertiary)]',
+    positive: 'text-[var(--color-success)]',
+    negative: 'text-[var(--color-error)]',
+    neutral: 'text-[var(--text-muted)]',
   }
 
   return (
     <Card className={cn('p-5', className)} {...props}>
       <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
             {label}
           </p>
-          <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+          <p className="text-2xl font-semibold text-[var(--text-primary)]">
             {value}
           </p>
           {change && (
-            <p className={cn('text-sm font-medium', changeColors[changeType])}>
+            <p className={cn('text-xs font-medium', changeColors[changeType])}>
               {changeType === 'positive' && '+'}
               {change}
             </p>
           )}
         </div>
         {icon && (
-          <div className="p-3 rounded-xl bg-[var(--accent-primary-muted)]">
+          <div className="p-2.5 rounded-lg bg-[var(--accent-primary-muted)]">
             {icon}
           </div>
         )}

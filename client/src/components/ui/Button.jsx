@@ -3,17 +3,14 @@ import { cn } from '@/lib/utils'
 
 const variants = {
   primary: [
-    'bg-[var(--accent-primary)] text-[var(--bg-base)]',
+    'bg-[var(--accent-primary)] text-white',
     'hover:bg-[var(--accent-primary-hover)]',
-    'shadow-[0_1px_2px_rgba(0,0,0,0.3),0_0_0_1px_rgba(167,139,250,0.1)]',
-    'hover:shadow-[0_4px_16px_rgba(167,139,250,0.25),0_0_0_1px_rgba(167,139,250,0.2)]',
     'active:scale-[0.98]',
   ].join(' '),
   secondary: [
     'bg-[var(--bg-elevated)] text-[var(--text-primary)]',
-    'border border-[var(--border-subtle)]',
-    'hover:bg-[var(--bg-surface)] hover:border-[var(--border-default)]',
-    'shadow-[0_1px_2px_rgba(0,0,0,0.2)]',
+    'border border-[var(--border-default)]',
+    'hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)]',
     'active:scale-[0.98]',
   ].join(' '),
   ghost: [
@@ -23,26 +20,18 @@ const variants = {
   ].join(' '),
   outline: [
     'bg-transparent text-[var(--accent-primary)]',
-    'border border-[var(--accent-primary)]',
-    'hover:bg-[var(--accent-primary-muted)]',
+    'border border-[var(--accent-primary)]/50',
+    'hover:bg-[var(--accent-primary-muted)] hover:border-[var(--accent-primary)]',
     'active:scale-[0.98]',
   ].join(' '),
   danger: [
-    'bg-[var(--status-error)] text-white',
-    'hover:bg-[#f87171]',
-    'shadow-[0_1px_2px_rgba(0,0,0,0.3)]',
+    'bg-[var(--color-error)] text-white',
+    'hover:bg-[#dc2626]',
     'active:scale-[0.98]',
   ].join(' '),
   success: [
-    'bg-[var(--status-success)] text-white',
-    'hover:bg-[#4ade80]',
-    'shadow-[0_1px_2px_rgba(0,0,0,0.3)]',
-    'active:scale-[0.98]',
-  ].join(' '),
-  glow: [
-    'bg-[var(--accent-primary)] text-[var(--bg-base)]',
-    'shadow-[0_0_20px_rgba(167,139,250,0.4),0_0_40px_rgba(167,139,250,0.2)]',
-    'hover:shadow-[0_0_30px_rgba(167,139,250,0.5),0_0_60px_rgba(167,139,250,0.3)]',
+    'bg-[var(--color-success)] text-white',
+    'hover:bg-[#16a34a]',
     'active:scale-[0.98]',
   ].join(' '),
 }
@@ -51,8 +40,8 @@ const sizes = {
   xs: 'h-7 px-2.5 text-xs gap-1',
   sm: 'h-8 px-3 text-sm gap-1.5',
   md: 'h-9 px-4 text-sm gap-2',
-  lg: 'h-10 px-5 text-base gap-2',
-  xl: 'h-12 px-6 text-base gap-2.5',
+  lg: 'h-10 px-5 text-sm gap-2',
+  xl: 'h-11 px-6 text-base gap-2',
 }
 
 export const Button = forwardRef(function Button(
@@ -77,7 +66,7 @@ export const Button = forwardRef(function Button(
         // Base styles
         'inline-flex items-center justify-center',
         'font-medium rounded-lg',
-        'transition-all duration-200 ease-out',
+        'transition-all duration-150',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]',
         'select-none whitespace-nowrap',
         // Variant styles
@@ -85,7 +74,7 @@ export const Button = forwardRef(function Button(
         // Size styles
         sizes[size],
         // States
-        disabled && 'opacity-40 cursor-not-allowed pointer-events-none',
+        disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
         loading && 'cursor-wait',
         className
       )}
@@ -123,7 +112,6 @@ export const Button = forwardRef(function Button(
   )
 })
 
-// Icon-only button variant
 export function IconButton({
   children,
   variant = 'ghost',
@@ -136,7 +124,7 @@ export function IconButton({
     sm: 'w-8 h-8',
     md: 'w-9 h-9',
     lg: 'w-10 h-10',
-    xl: 'w-12 h-12',
+    xl: 'w-11 h-11',
   }
 
   return (
