@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle, MessageSquare, Briefcase, DollarSign, Users, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ToastContext = createContext(null)
@@ -9,6 +10,15 @@ const icons = {
   error: AlertCircle,
   warning: AlertTriangle,
   info: Info,
+}
+
+// Rich notification icons based on notification category
+const notificationIcons = {
+  message: MessageSquare,
+  opportunity: Briefcase,
+  payment: DollarSign,
+  team: Users,
+  default: Bell,
 }
 
 const styles = {
@@ -38,8 +48,8 @@ const styles = {
   },
 }
 
-function Toast({ id, message, title, type = 'info', duration = 5000, onRemove }) {
-  const Icon = icons[type]
+function Toast({ id, message, title, type = 'info', duration = 5000, onRemove, action, category, onClick }) {
+  const Icon = category ? (notificationIcons[category] || notificationIcons.default) : icons[type]
   const style = styles[type]
   const [progress, setProgress] = useState(100)
   const [isPaused, setIsPaused] = useState(false)
@@ -64,16 +74,27 @@ function Toast({ id, message, title, type = 'info', duration = 5000, onRemove })
     }
   }, [id, duration, onRemove, isPaused, progress])
 
+  const handleClick = (e) => {
+    // Don't trigger if clicking close button
+    if (e.target.closest('button')) return
+    if (onClick) {
+      onClick()
+      onRemove(id)
+    }
+  }
+
   return (
     <div
       className={cn(
         'relative flex items-start gap-3 p-4 rounded-xl overflow-hidden',
         'bg-[var(--bg-elevated)] border border-[var(--border-subtle)]',
         'shadow-[0_8px_30px_rgba(0,0,0,0.3)]',
-        'animate-in slide-in-from-right-full duration-300'
+        'animate-in slide-in-from-right-full duration-300',
+        onClick && 'cursor-pointer hover:bg-[var(--bg-surface)] transition-colors'
       )}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onClick={handleClick}
     >
       {/* Icon */}
       <div className={cn('flex-shrink-0 mt-0.5', style.icon)}>
@@ -88,6 +109,25 @@ function Toast({ id, message, title, type = 'info', duration = 5000, onRemove })
           </p>
         )}
         <p className="text-sm text-[var(--text-secondary)]">{message}</p>
+
+        {/* Action button */}
+        {action && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              action.onClick()
+              onRemove(id)
+            }}
+            className={cn(
+              'mt-2 text-xs font-medium px-3 py-1.5 rounded-md',
+              'bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]',
+              'text-[var(--text-primary)]',
+              'transition-colors duration-150'
+            )}
+          >
+            {action.label}
+          </button>
+        )}
       </div>
 
       {/* Close button */}
@@ -119,8 +159,8 @@ export function ToastProvider({ children }) {
 
   const addToast = useCallback((message, type = 'info', options = {}) => {
     const id = Date.now()
-    const { title, duration = 5000 } = options
-    setToasts((prev) => [...prev, { id, message, type, title, duration }])
+    const { title, duration = 5000, action, category, onClick } = options
+    setToasts((prev) => [...prev, { id, message, type, title, duration, action, category, onClick }])
     return id
   }, [])
 

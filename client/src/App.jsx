@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { CommandPalette } from '@/components/CommandPalette'
+import { NotificationToastBridge } from '@/components/NotificationToastBridge'
 import { Navbar } from '@/components/layout/Navbar'
 import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy, Workspace, Studio } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
@@ -103,6 +104,7 @@ function App() {
             <ToastProvider>
               <ActivityMonitor>
                 <CommandPalette />
+                <NotificationToastBridge />
                 <AppRoutes />
               </ActivityMonitor>
             </ToastProvider>
