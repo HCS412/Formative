@@ -103,8 +103,11 @@ const fuzzyScore = (query, text) => {
 const getRelevanceScore = (query, item) => {
   const titleScore = fuzzyScore(query, item.title) * 2
   const subtitleScore = fuzzyScore(query, item.subtitle)
-  const keywordScore = Math.max(...(item.keywords || []).map(k => fuzzyScore(query, k)))
-  return titleScore + subtitleScore + (keywordScore || 0)
+  const keywords = item.keywords || []
+  const keywordScore = keywords.length > 0
+    ? Math.max(...keywords.map(k => fuzzyScore(query, k)))
+    : 0
+  return titleScore + subtitleScore + keywordScore
 }
 
 export function CommandPalette() {
@@ -126,7 +129,13 @@ export function CommandPalette() {
     const stored = localStorage.getItem('formative-recent-pages')
     if (stored) {
       try {
-        setRecentItems(JSON.parse(stored).slice(0, 5))
+        const parsed = JSON.parse(stored).slice(0, 5)
+        // Restore icon references from NAVIGATION_COMMANDS (icons can't be serialized)
+        const restored = parsed.map(item => {
+          const original = NAVIGATION_COMMANDS.find(cmd => cmd.id === item.id)
+          return original ? { ...original, category: 'Recent' } : null
+        }).filter(Boolean)
+        setRecentItems(restored)
       } catch (e) {
         setRecentItems([])
       }
