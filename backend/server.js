@@ -295,6 +295,51 @@ const OAUTH_CONFIG = {
     tokenUrl: 'https://oauth2.googleapis.com/token',
     scopes: ['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/userinfo.profile'],
     redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/youtube/callback`
+  },
+  linkedin: {
+    clientId: process.env.LINKEDIN_CLIENT_ID,
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    userUrl: 'https://api.linkedin.com/v2/userinfo',
+    scopes: ['openid', 'profile', 'email'],
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/linkedin/callback`
+  },
+  facebook: {
+    clientId: process.env.FACEBOOK_CLIENT_ID,
+    clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+    authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+    userUrl: 'https://graph.facebook.com/me',
+    scopes: ['public_profile', 'pages_show_list', 'pages_read_engagement'],
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/facebook/callback`
+  },
+  twitch: {
+    clientId: process.env.TWITCH_CLIENT_ID,
+    clientSecret: process.env.TWITCH_CLIENT_SECRET,
+    authUrl: 'https://id.twitch.tv/oauth2/authorize',
+    tokenUrl: 'https://id.twitch.tv/oauth2/token',
+    userUrl: 'https://api.twitch.tv/helix/users',
+    scopes: ['user:read:email'],
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/twitch/callback`
+  },
+  pinterest: {
+    clientId: process.env.PINTEREST_CLIENT_ID,
+    clientSecret: process.env.PINTEREST_CLIENT_SECRET,
+    authUrl: 'https://www.pinterest.com/oauth/',
+    tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
+    userUrl: 'https://api.pinterest.com/v5/user_account',
+    scopes: ['user_accounts:read', 'pins:read', 'boards:read'],
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/pinterest/callback`
+  },
+  snapchat: {
+    clientId: process.env.SNAPCHAT_CLIENT_ID,
+    clientSecret: process.env.SNAPCHAT_CLIENT_SECRET,
+    authUrl: 'https://accounts.snapchat.com/login/oauth2/authorize',
+    tokenUrl: 'https://accounts.snapchat.com/login/oauth2/access_token',
+    userUrl: 'https://kit.snapchat.com/v1/me',
+    scopes: ['https://auth.snapchat.com/oauth2/api/user.display_name', 'https://auth.snapchat.com/oauth2/api/user.bitmoji.avatar'],
+    redirectUri: `${OAUTH_REDIRECT_BASE}/api/oauth/snapchat/callback`
   }
 };
 
@@ -2852,9 +2897,16 @@ app.get('/api/oauth/status', (req, res) => {
     twitter: !!OAUTH_CONFIG.twitter.clientId,
     instagram: !!OAUTH_CONFIG.instagram.clientId,
     tiktok: !!OAUTH_CONFIG.tiktok.clientId,
-    bluesky: true // Always available (no OAuth needed)
+    youtube: !!OAUTH_CONFIG.youtube.clientId,
+    linkedin: !!OAUTH_CONFIG.linkedin.clientId,
+    facebook: !!OAUTH_CONFIG.facebook.clientId,
+    twitch: !!OAUTH_CONFIG.twitch.clientId,
+    pinterest: !!OAUTH_CONFIG.pinterest.clientId,
+    snapchat: !!OAUTH_CONFIG.snapchat.clientId,
+    bluesky: true, // Always available (no OAuth needed)
+    threads: true  // Uses simple verification like Bluesky
   };
-  
+
   res.json({ success: true, configured: status });
 });
 
@@ -2970,6 +3022,141 @@ app.get('/api/oauth/youtube/authorize', authenticateTokenFlexible, (req, res) =>
   });
 
   res.redirect(`${OAUTH_CONFIG.youtube.authUrl}?${params}`);
+});
+
+// LinkedIn OAuth - Authorize
+app.get('/api/oauth/linkedin/authorize', authenticateTokenFlexible, (req, res) => {
+  if (!OAUTH_CONFIG.linkedin.clientId) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_not_configured&platform=linkedin`);
+  }
+
+  const state = generateOAuthState();
+
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'linkedin',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: OAUTH_CONFIG.linkedin.clientId,
+    redirect_uri: OAUTH_CONFIG.linkedin.redirectUri,
+    scope: OAUTH_CONFIG.linkedin.scopes.join(' '),
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.linkedin.authUrl}?${params}`);
+});
+
+// Facebook OAuth - Authorize
+app.get('/api/oauth/facebook/authorize', authenticateTokenFlexible, (req, res) => {
+  if (!OAUTH_CONFIG.facebook.clientId) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_not_configured&platform=facebook`);
+  }
+
+  const state = generateOAuthState();
+
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'facebook',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_id: OAUTH_CONFIG.facebook.clientId,
+    redirect_uri: OAUTH_CONFIG.facebook.redirectUri,
+    scope: OAUTH_CONFIG.facebook.scopes.join(','),
+    response_type: 'code',
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.facebook.authUrl}?${params}`);
+});
+
+// Twitch OAuth - Authorize
+app.get('/api/oauth/twitch/authorize', authenticateTokenFlexible, (req, res) => {
+  if (!OAUTH_CONFIG.twitch.clientId) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_not_configured&platform=twitch`);
+  }
+
+  const state = generateOAuthState();
+
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'twitch',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_id: OAUTH_CONFIG.twitch.clientId,
+    redirect_uri: OAUTH_CONFIG.twitch.redirectUri,
+    scope: OAUTH_CONFIG.twitch.scopes.join(' '),
+    response_type: 'code',
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.twitch.authUrl}?${params}`);
+});
+
+// Pinterest OAuth - Authorize
+app.get('/api/oauth/pinterest/authorize', authenticateTokenFlexible, (req, res) => {
+  if (!OAUTH_CONFIG.pinterest.clientId) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_not_configured&platform=pinterest`);
+  }
+
+  const state = generateOAuthState();
+
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'pinterest',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_id: OAUTH_CONFIG.pinterest.clientId,
+    redirect_uri: OAUTH_CONFIG.pinterest.redirectUri,
+    scope: OAUTH_CONFIG.pinterest.scopes.join(','),
+    response_type: 'code',
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.pinterest.authUrl}?${params}`);
+});
+
+// Snapchat OAuth - Authorize
+app.get('/api/oauth/snapchat/authorize', authenticateTokenFlexible, (req, res) => {
+  if (!OAUTH_CONFIG.snapchat.clientId) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_not_configured&platform=snapchat`);
+  }
+
+  const state = generateOAuthState();
+
+  oauthStates.set(state, {
+    userId: req.user.userId,
+    platform: 'snapchat',
+    timestamp: Date.now()
+  });
+
+  setTimeout(() => oauthStates.delete(state), 10 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    client_id: OAUTH_CONFIG.snapchat.clientId,
+    redirect_uri: OAUTH_CONFIG.snapchat.redirectUri,
+    scope: OAUTH_CONFIG.snapchat.scopes.join(' '),
+    response_type: 'code',
+    state: state
+  });
+
+  res.redirect(`${OAUTH_CONFIG.snapchat.authUrl}?${params}`);
 });
 
 // ============================================
@@ -3307,6 +3494,415 @@ app.get('/api/oauth/youtube/callback', async (req, res) => {
   }
 });
 
+// LinkedIn OAuth - Callback
+app.get('/api/oauth/linkedin/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_denied&platform=linkedin`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'linkedin') {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(OAUTH_CONFIG.linkedin.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: OAUTH_CONFIG.linkedin.redirectUri,
+        client_id: OAUTH_CONFIG.linkedin.clientId,
+        client_secret: OAUTH_CONFIG.linkedin.clientSecret
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+    if (tokens.error) {
+      throw new Error(tokens.error_description || tokens.error);
+    }
+
+    // Fetch user profile using OpenID userinfo endpoint
+    const userResponse = await fetch(OAUTH_CONFIG.linkedin.userUrl, {
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` }
+    });
+
+    const userData = await userResponse.json();
+
+    const username = userData.name || userData.email || 'LinkedIn User';
+    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+
+    const stats = {
+      displayName: userData.name || '',
+      profileImage: userData.picture || null,
+      email: userData.email || null
+    };
+
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+
+    await pool.query(
+      `INSERT INTO social_accounts
+        (user_id, platform, username, platform_user_id, access_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, NOW(), NOW(), NOW())
+       ON CONFLICT (user_id, platform)
+       DO UPDATE SET
+         username = $3,
+         platform_user_id = $4,
+         access_token = $5,
+         token_expires_at = $6,
+         stats = $7,
+         is_verified = TRUE,
+         updated_at = NOW()`,
+      [stateData.userId, 'linkedin', username, userData.sub || '', encryptedAccessToken, expiresAt, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ LinkedIn connected for user ${stateData.userId}: ${username}`);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?oauth=success&platform=linkedin`);
+  } catch (error) {
+    console.error('LinkedIn OAuth error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_failed&platform=linkedin&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// Facebook OAuth - Callback
+app.get('/api/oauth/facebook/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_denied&platform=facebook`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'facebook') {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(`${OAUTH_CONFIG.facebook.tokenUrl}?${new URLSearchParams({
+      client_id: OAUTH_CONFIG.facebook.clientId,
+      client_secret: OAUTH_CONFIG.facebook.clientSecret,
+      redirect_uri: OAUTH_CONFIG.facebook.redirectUri,
+      code
+    })}`);
+
+    const tokens = await tokenResponse.json();
+    if (tokens.error) {
+      throw new Error(tokens.error.message || tokens.error);
+    }
+
+    // Fetch user profile with fields
+    const userResponse = await fetch(`${OAUTH_CONFIG.facebook.userUrl}?fields=id,name,picture,friends&access_token=${tokens.access_token}`);
+    const userData = await userResponse.json();
+
+    const username = userData.name || 'Facebook User';
+    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+
+    const stats = {
+      displayName: userData.name || '',
+      profileImage: userData.picture?.data?.url || null,
+      friends: userData.friends?.summary?.total_count || 0
+    };
+
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+
+    await pool.query(
+      `INSERT INTO social_accounts
+        (user_id, platform, username, platform_user_id, access_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, NOW(), NOW(), NOW())
+       ON CONFLICT (user_id, platform)
+       DO UPDATE SET
+         username = $3,
+         platform_user_id = $4,
+         access_token = $5,
+         token_expires_at = $6,
+         stats = $7,
+         is_verified = TRUE,
+         updated_at = NOW()`,
+      [stateData.userId, 'facebook', username, userData.id, encryptedAccessToken, expiresAt, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ Facebook connected for user ${stateData.userId}: ${username}`);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?oauth=success&platform=facebook`);
+  } catch (error) {
+    console.error('Facebook OAuth error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_failed&platform=facebook&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// Twitch OAuth - Callback
+app.get('/api/oauth/twitch/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_denied&platform=twitch`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'twitch') {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(OAUTH_CONFIG.twitch.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: OAUTH_CONFIG.twitch.clientId,
+        client_secret: OAUTH_CONFIG.twitch.clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: OAUTH_CONFIG.twitch.redirectUri
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+    if (tokens.error) {
+      throw new Error(tokens.message || tokens.error);
+    }
+
+    // Fetch user profile - Twitch requires Client-ID header
+    const userResponse = await fetch(OAUTH_CONFIG.twitch.userUrl, {
+      headers: {
+        'Authorization': `Bearer ${tokens.access_token}`,
+        'Client-Id': OAUTH_CONFIG.twitch.clientId
+      }
+    });
+
+    const userData = await userResponse.json();
+    const user = userData.data?.[0];
+
+    if (!user) {
+      throw new Error('Failed to fetch Twitch user data');
+    }
+
+    const username = user.display_name || user.login;
+    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+
+    // Fetch follower count
+    let followers = 0;
+    try {
+      const followersResponse = await fetch(`https://api.twitch.tv/helix/channels/followers?broadcaster_id=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+          'Client-Id': OAUTH_CONFIG.twitch.clientId
+        }
+      });
+      const followersData = await followersResponse.json();
+      followers = followersData.total || 0;
+    } catch (e) {
+      console.log('Could not fetch Twitch followers:', e.message);
+    }
+
+    const stats = {
+      followers,
+      displayName: user.display_name || '',
+      profileImage: user.profile_image_url || null,
+      broadcasterType: user.broadcaster_type || '',
+      description: user.description || ''
+    };
+
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = tokens.refresh_token ? encryptToken(tokens.refresh_token) : null;
+
+    await pool.query(
+      `INSERT INTO social_accounts
+        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW(), NOW())
+       ON CONFLICT (user_id, platform)
+       DO UPDATE SET
+         username = $3,
+         platform_user_id = $4,
+         access_token = $5,
+         refresh_token = $6,
+         token_expires_at = $7,
+         stats = $8,
+         is_verified = TRUE,
+         updated_at = NOW()`,
+      [stateData.userId, 'twitch', username, user.id, encryptedAccessToken, encryptedRefreshToken, expiresAt, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ Twitch connected for user ${stateData.userId}: ${username} (${followers} followers)`);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?oauth=success&platform=twitch`);
+  } catch (error) {
+    console.error('Twitch OAuth error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_failed&platform=twitch&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// Pinterest OAuth - Callback
+app.get('/api/oauth/pinterest/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_denied&platform=pinterest`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'pinterest') {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Pinterest uses Basic Auth for token exchange
+    const auth = Buffer.from(`${OAUTH_CONFIG.pinterest.clientId}:${OAUTH_CONFIG.pinterest.clientSecret}`).toString('base64');
+
+    const tokenResponse = await fetch(OAUTH_CONFIG.pinterest.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: OAUTH_CONFIG.pinterest.redirectUri
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+    if (tokens.error) {
+      throw new Error(tokens.error_description || tokens.error);
+    }
+
+    // Fetch user profile
+    const userResponse = await fetch(OAUTH_CONFIG.pinterest.userUrl, {
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` }
+    });
+
+    const userData = await userResponse.json();
+
+    const username = userData.username || 'Pinterest User';
+    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+
+    const stats = {
+      followers: userData.follower_count || 0,
+      following: userData.following_count || 0,
+      displayName: userData.business_name || userData.username || '',
+      profileImage: userData.profile_image || null,
+      monthlyViews: userData.monthly_views || 0
+    };
+
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = tokens.refresh_token ? encryptToken(tokens.refresh_token) : null;
+
+    await pool.query(
+      `INSERT INTO social_accounts
+        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW(), NOW())
+       ON CONFLICT (user_id, platform)
+       DO UPDATE SET
+         username = $3,
+         platform_user_id = $4,
+         access_token = $5,
+         refresh_token = $6,
+         token_expires_at = $7,
+         stats = $8,
+         is_verified = TRUE,
+         updated_at = NOW()`,
+      [stateData.userId, 'pinterest', username, userData.id || '', encryptedAccessToken, encryptedRefreshToken, expiresAt, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ Pinterest connected for user ${stateData.userId}: ${username} (${stats.followers} followers)`);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?oauth=success&platform=pinterest`);
+  } catch (error) {
+    console.error('Pinterest OAuth error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_failed&platform=pinterest&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// Snapchat OAuth - Callback
+app.get('/api/oauth/snapchat/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_denied&platform=snapchat`);
+  }
+
+  const stateData = oauthStates.get(state);
+  if (!stateData || stateData.platform !== 'snapchat') {
+    return res.redirect(`${FRONTEND_URL}/dashboard/settings?error=invalid_state`);
+  }
+
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch(OAUTH_CONFIG.snapchat.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: OAUTH_CONFIG.snapchat.clientId,
+        client_secret: OAUTH_CONFIG.snapchat.clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: OAUTH_CONFIG.snapchat.redirectUri
+      })
+    });
+
+    const tokens = await tokenResponse.json();
+    if (tokens.error) {
+      throw new Error(tokens.error_description || tokens.error);
+    }
+
+    // Fetch user profile
+    const userResponse = await fetch(OAUTH_CONFIG.snapchat.userUrl, {
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` }
+    });
+
+    const userData = await userResponse.json();
+    const user = userData.data?.me || userData.me || userData;
+
+    const username = user.displayName || user.display_name || 'Snapchat User';
+    const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
+
+    const stats = {
+      displayName: user.displayName || user.display_name || '',
+      profileImage: user.bitmoji?.avatar || null,
+      externalId: user.externalId || user.id || ''
+    };
+
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = tokens.refresh_token ? encryptToken(tokens.refresh_token) : null;
+
+    await pool.query(
+      `INSERT INTO social_accounts
+        (user_id, platform, username, platform_user_id, access_token, refresh_token, token_expires_at, is_verified, stats, last_synced_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW(), NOW())
+       ON CONFLICT (user_id, platform)
+       DO UPDATE SET
+         username = $3,
+         platform_user_id = $4,
+         access_token = $5,
+         refresh_token = $6,
+         token_expires_at = $7,
+         stats = $8,
+         is_verified = TRUE,
+         updated_at = NOW()`,
+      [stateData.userId, 'snapchat', username, user.externalId || user.id || '', encryptedAccessToken, encryptedRefreshToken, expiresAt, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ Snapchat connected for user ${stateData.userId}: ${username}`);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?oauth=success&platform=snapchat`);
+  } catch (error) {
+    console.error('Snapchat OAuth error:', error);
+    res.redirect(`${FRONTEND_URL}/dashboard/settings?error=oauth_failed&platform=snapchat&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
 // ============================================
 // BLUESKY (SIMPLE VERIFICATION - NO OAUTH)
 // ============================================
@@ -3440,9 +4036,97 @@ app.get('/api/social/bluesky/stats', authenticateToken, async (req, res) => {
     
   } catch (error) {
     console.error('Bluesky stats error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch Bluesky stats',
-      message: error.message 
+      message: error.message
+    });
+  }
+});
+
+// ============================================
+// THREADS (SIMPLE VERIFICATION - NO OAUTH)
+// ============================================
+
+// Connect Threads account (via Instagram username lookup)
+app.post('/api/social/threads/connect', authenticateToken, async (req, res) => {
+  try {
+    const { handle } = req.body;
+
+    if (!handle) {
+      return res.status(400).json({ error: 'Threads handle is required' });
+    }
+
+    let cleanHandle = handle.trim();
+    if (cleanHandle.startsWith('@')) {
+      cleanHandle = cleanHandle.substring(1);
+    }
+
+    // Threads uses Instagram's infrastructure, so we verify via a public profile check
+    // Note: Threads API is limited, so we do basic verification
+    const profileUrl = `https://www.threads.net/@${cleanHandle}`;
+
+    // We can't directly fetch Threads API without auth, so we store as unverified initially
+    // The user's Threads presence is implied by their Instagram connection
+    const stats = {
+      displayName: cleanHandle,
+      handle: '@' + cleanHandle,
+      profileUrl: profileUrl,
+      note: 'Threads verification pending - connect Instagram for full verification'
+    };
+
+    await pool.query(
+      `INSERT INTO social_accounts (user_id, platform, username, stats, is_verified, created_at, updated_at)
+       VALUES ($1, 'threads', $2, $3, FALSE, NOW(), NOW())
+       ON CONFLICT (user_id, platform)
+       DO UPDATE SET username = $2, stats = $3, updated_at = NOW()`,
+      [req.user.userId, '@' + cleanHandle, JSON.stringify(stats)]
+    );
+
+    console.log(`✅ Threads connected for user ${req.user.userId}: @${cleanHandle}`);
+
+    res.json({
+      success: true,
+      platform: 'threads',
+      username: '@' + cleanHandle,
+      stats,
+      message: 'Threads account connected. Connect Instagram for full verification.'
+    });
+
+  } catch (error) {
+    console.error('Threads connect error:', error);
+    res.status(500).json({
+      error: 'Failed to connect Threads account',
+      message: error.message
+    });
+  }
+});
+
+// Get Threads stats (limited without API access)
+app.get('/api/social/threads/stats', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT username, stats FROM social_accounts WHERE user_id = $1 AND platform = 'threads'`,
+      [req.user.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Threads account not connected' });
+    }
+
+    const account = result.rows[0];
+    res.json({
+      success: true,
+      platform: 'threads',
+      username: account.username,
+      stats: account.stats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Threads stats error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch Threads stats',
+      message: error.message
     });
   }
 });

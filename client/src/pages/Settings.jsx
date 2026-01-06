@@ -58,6 +58,54 @@ const socialPlatforms = [
     description: 'Show your YouTube channel stats',
   },
   {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    icon: '💼',
+    color: 'bg-blue-700',
+    oauth: true,
+    description: 'Connect your professional profile',
+  },
+  {
+    id: 'facebook',
+    name: 'Facebook',
+    icon: '👤',
+    color: 'bg-blue-600',
+    oauth: true,
+    description: 'Link your Facebook page',
+  },
+  {
+    id: 'twitch',
+    name: 'Twitch',
+    icon: '🎮',
+    color: 'bg-purple-600',
+    oauth: true,
+    description: 'Show your streaming stats',
+  },
+  {
+    id: 'pinterest',
+    name: 'Pinterest',
+    icon: '📌',
+    color: 'bg-red-500',
+    oauth: true,
+    description: 'Display your Pinterest presence',
+  },
+  {
+    id: 'snapchat',
+    name: 'Snapchat',
+    icon: '👻',
+    color: 'bg-yellow-400',
+    oauth: true,
+    description: 'Connect your Snapchat account',
+  },
+  {
+    id: 'threads',
+    name: 'Threads',
+    icon: '🧵',
+    color: 'bg-black',
+    oauth: false,
+    description: 'Enter your Threads handle',
+  },
+  {
     id: 'bluesky',
     name: 'Bluesky',
     icon: '🦋',
@@ -81,7 +129,12 @@ export function Settings() {
   const [showBlueskyModal, setShowBlueskyModal] = useState(false)
   const [blueskyHandle, setBlueskyHandle] = useState('')
   const [connectingBluesky, setConnectingBluesky] = useState(false)
-  
+
+  // Threads connect state
+  const [showThreadsModal, setShowThreadsModal] = useState(false)
+  const [threadsHandle, setThreadsHandle] = useState('')
+  const [connectingThreads, setConnectingThreads] = useState(false)
+
   // Disconnect state
   const [disconnecting, setDisconnecting] = useState(null)
   
@@ -205,7 +258,7 @@ export function Settings() {
       })
 
       const data = await response.json()
-      
+
       if (response.ok) {
         addToast('Bluesky connected successfully!', 'success')
         setShowBlueskyModal(false)
@@ -218,6 +271,41 @@ export function Settings() {
       addToast('Failed to connect Bluesky', 'error')
     } finally {
       setConnectingBluesky(false)
+    }
+  }
+
+  // Threads connection
+  const connectThreads = async () => {
+    if (!threadsHandle.trim()) {
+      addToast('Please enter your Threads handle', 'error')
+      return
+    }
+
+    setConnectingThreads(true)
+    try {
+      const response = await fetch('/api/social/threads/connect', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${api.getToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ handle: threadsHandle.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        addToast('Threads connected successfully!', 'success')
+        setShowThreadsModal(false)
+        setThreadsHandle('')
+        loadSettings()
+      } else {
+        addToast(data.error || 'Failed to connect', 'error')
+      }
+    } catch (error) {
+      addToast('Failed to connect Threads', 'error')
+    } finally {
+      setConnectingThreads(false)
     }
   }
 
@@ -472,6 +560,13 @@ export function Settings() {
                               <Button
                                 size="sm"
                                 onClick={() => initiateOAuth(platform.id)}
+                              >
+                                Connect
+                              </Button>
+                            ) : platform.id === 'threads' ? (
+                              <Button
+                                size="sm"
+                                onClick={() => setShowThreadsModal(true)}
                               >
                                 Connect
                               </Button>
@@ -847,6 +942,39 @@ export function Settings() {
               onClick={connectBluesky}
               loading={connectingBluesky}
               disabled={!blueskyHandle.trim()}
+            >
+              Connect
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Threads Connect Modal */}
+      <Modal
+        isOpen={showThreadsModal}
+        onClose={() => setShowThreadsModal(false)}
+        title="Connect Threads"
+        subtitle="Enter your Threads handle to connect"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Threads Handle"
+            placeholder="@username"
+            value={threadsHandle}
+            onChange={(e) => setThreadsHandle(e.target.value)}
+          />
+          <p className="text-sm text-[var(--text-secondary)]">
+            Your Threads profile will be linked. For full verification, also connect your Instagram account.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="ghost" className="flex-1" onClick={() => setShowThreadsModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={connectThreads}
+              loading={connectingThreads}
+              disabled={!threadsHandle.trim()}
             >
               Connect
             </Button>

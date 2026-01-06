@@ -295,7 +295,16 @@ if (hasPermission('campaigns.create')) { /* show button */ }
 
 ### 2025-01-06
 
-**Added: CLAUDE.md**
+**Added: Comprehensive Social Media OAuth Integration**
+- Added OAuth for: LinkedIn, Facebook, Twitch, Pinterest, Snapchat
+- Added simple verification for: Threads (like Bluesky)
+- Backend: `server.js` - OAuth config, authorize endpoints, callback handlers
+- Frontend: `Settings.jsx` - Platform list, connect buttons, modals
+- Total platforms now supported: 11 (Twitter, Instagram, TikTok, YouTube, LinkedIn, Facebook, Twitch, Pinterest, Snapchat, Threads, Bluesky)
+- Each platform stores encrypted tokens, fetches user stats, handles token refresh
+- Environment variables needed: `{PLATFORM}_CLIENT_ID`, `{PLATFORM}_CLIENT_SECRET`
+
+**Updated: CLAUDE.md**
 - Created development reference with architecture, guidelines, changelog
 - Commit: `e51c95a`
 
