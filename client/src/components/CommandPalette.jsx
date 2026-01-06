@@ -11,14 +11,25 @@ import {
   Bell,
   Link,
   ShoppingBag,
-  ArrowRight,
   Command,
   Clock,
   Sparkles,
   ChevronRight,
+  Plus,
+  FileText,
+  DollarSign,
+  Hash,
+  Zap,
+  HelpCircle,
+  LogOut,
+  Moon,
+  Sun,
+  Copy,
+  ExternalLink,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 // Navigation commands with icons and paths
 const NAVIGATION_COMMANDS = [
@@ -26,7 +37,7 @@ const NAVIGATION_COMMANDS = [
   { id: 'nav-workspace', title: 'Workspace', subtitle: 'Campaigns & payments', path: '/dashboard/workspace', icon: Briefcase, category: 'Navigate', keywords: ['campaigns', 'payments', 'work'] },
   { id: 'nav-studio', title: 'Studio', subtitle: 'Media kit & links', path: '/dashboard/studio', icon: Palette, category: 'Navigate', keywords: ['media', 'kit', 'links', 'creative'] },
   { id: 'nav-messages', title: 'Messages', subtitle: 'Conversations', path: '/dashboard/messages', icon: MessageSquare, category: 'Navigate', keywords: ['chat', 'inbox', 'dm'] },
-  { id: 'nav-opportunities', title: 'Opportunities', subtitle: 'Discover campaigns', path: '/dashboard/opportunities', icon: Sparkles, category: 'Navigate', keywords: ['discover', 'find', 'search'] },
+  { id: 'nav-opportunities', title: 'Opportunities', subtitle: 'Discover campaigns', path: '/dashboard/opportunities', icon: Sparkles, category: 'Navigate', keywords: ['discover', 'find', 'browse'] },
   { id: 'nav-notifications', title: 'Notifications', subtitle: 'Alerts & updates', path: '/dashboard/notifications', icon: Bell, category: 'Navigate', keywords: ['alerts', 'updates'] },
   { id: 'nav-profile', title: 'Profile', subtitle: 'Your public profile', path: '/dashboard/profile', icon: User, category: 'Navigate', keywords: ['account', 'bio'] },
   { id: 'nav-settings', title: 'Settings', subtitle: 'Preferences & security', path: '/dashboard/settings', icon: Settings, category: 'Navigate', keywords: ['preferences', 'account', 'security'] },
@@ -36,8 +47,17 @@ const NAVIGATION_COMMANDS = [
 
 // Quick action commands
 const ACTION_COMMANDS = [
-  { id: 'action-new-message', title: 'New Message', subtitle: 'Start a conversation', path: '/dashboard/messages?new=true', icon: MessageSquare, category: 'Quick Actions', keywords: ['compose', 'chat', 'dm'] },
-  { id: 'action-new-campaign', title: 'Browse Campaigns', subtitle: 'Find opportunities', path: '/dashboard/opportunities', icon: Briefcase, category: 'Quick Actions', keywords: ['create', 'opportunity'] },
+  { id: 'action-new-message', title: 'New Message', subtitle: 'Start a conversation', path: '/dashboard/messages?new=true', icon: Plus, category: 'Quick Actions', keywords: ['compose', 'chat', 'dm', 'send'] },
+  { id: 'action-browse-opportunities', title: 'Browse Opportunities', subtitle: 'Find campaigns to join', path: '/dashboard/opportunities', icon: Sparkles, category: 'Quick Actions', keywords: ['discover', 'find', 'search', 'campaigns'] },
+  { id: 'action-view-payments', title: 'View Payments', subtitle: 'Check earnings & payouts', path: '/dashboard/workspace/payments', icon: DollarSign, category: 'Quick Actions', keywords: ['money', 'earnings', 'payout', 'income'] },
+  { id: 'action-edit-mediakit', title: 'Edit Media Kit', subtitle: 'Update your portfolio', path: '/dashboard/studio', icon: FileText, category: 'Quick Actions', keywords: ['portfolio', 'bio', 'showcase'] },
+]
+
+// Utility commands (special actions)
+const UTILITY_COMMANDS = [
+  { id: 'util-copy-profile', title: 'Copy Profile Link', subtitle: 'Share your media kit', icon: Copy, category: 'Utilities', keywords: ['share', 'link', 'url'], action: 'copyProfile' },
+  { id: 'util-shortcuts', title: 'Keyboard Shortcuts', subtitle: 'View all shortcuts', icon: Command, category: 'Utilities', keywords: ['help', 'keys', 'hotkeys'], action: 'showShortcuts' },
+  { id: 'util-help', title: 'Help & Support', subtitle: 'Get assistance', icon: HelpCircle, category: 'Utilities', keywords: ['support', 'faq', 'contact'], action: 'help' },
 ]
 
 // Get keyboard shortcut for display
@@ -54,18 +74,52 @@ const getShortcut = (path) => {
   return shortcuts[path]
 }
 
+// Fuzzy match score - higher is better
+const fuzzyScore = (query, text) => {
+  if (!text) return 0
+  const q = query.toLowerCase()
+  const t = text.toLowerCase()
+
+  // Exact match
+  if (t === q) return 100
+  // Starts with query
+  if (t.startsWith(q)) return 80
+  // Contains query
+  if (t.includes(q)) return 60
+
+  // Check if all characters in query appear in order
+  let qi = 0
+  let score = 0
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) {
+      score += 10
+      qi++
+    }
+  }
+  return qi === q.length ? score : 0
+}
+
+// Calculate relevance score for an item
+const getRelevanceScore = (query, item) => {
+  const titleScore = fuzzyScore(query, item.title) * 2
+  const subtitleScore = fuzzyScore(query, item.subtitle)
+  const keywordScore = Math.max(...(item.keywords || []).map(k => fuzzyScore(query, k)))
+  return titleScore + subtitleScore + (keywordScore || 0)
+}
+
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [results, setResults] = useState([])
   const [recentItems, setRecentItems] = useState([])
-  const [searchResults, setSearchResults] = useState([])
+  const [dynamicResults, setDynamicResults] = useState({ users: [], campaigns: [], conversations: [] })
   const [loading, setLoading] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, logout } = useAuth()
 
   // Load recent items from localStorage
   useEffect(() => {
@@ -120,7 +174,7 @@ export function CommandPalette() {
     if (isOpen) {
       setQuery('')
       setSelectedIndex(0)
-      setSearchResults([])
+      setDynamicResults({ users: [], campaigns: [], conversations: [] })
       // Focus input after animation
       setTimeout(() => inputRef.current?.focus(), 50)
     }
@@ -131,68 +185,159 @@ export function CommandPalette() {
     const q = query.toLowerCase().trim()
 
     if (!q) {
-      // Show recent + navigation + actions when no query
+      // Show recent + navigation + actions + utilities when no query
       const allCommands = [
         ...(recentItems.length > 0 ? recentItems : []),
         ...NAVIGATION_COMMANDS,
         ...ACTION_COMMANDS,
+        ...UTILITY_COMMANDS,
       ]
       setResults(allCommands)
       setSelectedIndex(0)
       return
     }
 
-    // Filter commands by query
-    const filtered = [...NAVIGATION_COMMANDS, ...ACTION_COMMANDS].filter(cmd => {
-      const matchTitle = cmd.title.toLowerCase().includes(q)
-      const matchSubtitle = cmd.subtitle?.toLowerCase().includes(q)
-      const matchKeywords = cmd.keywords?.some(k => k.includes(q))
-      return matchTitle || matchSubtitle || matchKeywords
-    })
+    // Filter and score all static commands
+    const allStaticCommands = [...NAVIGATION_COMMANDS, ...ACTION_COMMANDS, ...UTILITY_COMMANDS]
+    const scoredCommands = allStaticCommands
+      .map(cmd => ({ ...cmd, score: getRelevanceScore(q, cmd) }))
+      .filter(cmd => cmd.score > 0)
+      .sort((a, b) => b.score - a.score)
 
-    // Add search results if any
-    const combinedResults = [...filtered, ...searchResults]
+    // Combine with dynamic search results
+    const combinedResults = [
+      ...scoredCommands,
+      ...dynamicResults.campaigns,
+      ...dynamicResults.conversations,
+      ...dynamicResults.users,
+    ]
+
     setResults(combinedResults)
     setSelectedIndex(0)
-  }, [query, recentItems, searchResults])
+  }, [query, recentItems, dynamicResults])
 
-  // Search users when query is long enough
+  // Search API when query is long enough
   useEffect(() => {
     if (query.length < 2) {
-      setSearchResults([])
+      setDynamicResults({ users: [], campaigns: [], conversations: [] })
       return
     }
 
     const searchTimeout = setTimeout(async () => {
       setLoading(true)
       try {
-        const response = await api.searchUsers(query)
-        const users = (response.users || []).slice(0, 5).map(user => ({
-          id: `user-${user.id}`,
-          title: user.name,
-          subtitle: user.email || `@${user.username}`,
-          path: `/dashboard/messages?user=${user.id}`,
-          icon: User,
-          category: 'Users',
-          keywords: []
-        }))
-        setSearchResults(users)
+        // Parallel API calls for users, campaigns, and conversations
+        const [usersRes, campaignsRes, conversationsRes] = await Promise.allSettled([
+          api.searchUsers(query),
+          api.getCampaigns({ search: query, limit: 5 }),
+          api.getConversations(),
+        ])
+
+        // Process users
+        const users = usersRes.status === 'fulfilled'
+          ? (usersRes.value.users || []).slice(0, 4).map(u => ({
+              id: `user-${u.id}`,
+              title: u.name,
+              subtitle: u.email || `@${u.username}`,
+              path: `/dashboard/messages?user=${u.id}`,
+              icon: User,
+              category: 'People',
+              keywords: []
+            }))
+          : []
+
+        // Process campaigns
+        const campaigns = campaignsRes.status === 'fulfilled'
+          ? (campaignsRes.value.campaigns || []).slice(0, 4).map(c => ({
+              id: `campaign-${c.id}`,
+              title: c.name || c.title,
+              subtitle: c.brand?.name || c.status || 'Campaign',
+              path: `/dashboard/workspace?campaign=${c.id}`,
+              icon: Briefcase,
+              category: 'Campaigns',
+              keywords: []
+            }))
+          : []
+
+        // Process conversations - filter by query
+        const conversations = conversationsRes.status === 'fulfilled'
+          ? (conversationsRes.value.conversations || [])
+              .filter(conv => {
+                const otherUser = conv.other_user?.name?.toLowerCase() || ''
+                const lastMsg = conv.last_message?.content?.toLowerCase() || ''
+                return otherUser.includes(query.toLowerCase()) || lastMsg.includes(query.toLowerCase())
+              })
+              .slice(0, 3)
+              .map(conv => ({
+                id: `conv-${conv.id}`,
+                title: conv.other_user?.name || 'Conversation',
+                subtitle: conv.last_message?.content?.substring(0, 50) || 'No messages',
+                path: `/dashboard/messages?conversation=${conv.id}`,
+                icon: MessageSquare,
+                category: 'Conversations',
+                keywords: []
+              }))
+          : []
+
+        setDynamicResults({ users, campaigns, conversations })
       } catch (error) {
         console.error('Search error:', error)
-        setSearchResults([])
+        setDynamicResults({ users: [], campaigns: [], conversations: [] })
       } finally {
         setLoading(false)
       }
-    }, 300)
+    }, 250)
 
     return () => clearTimeout(searchTimeout)
   }, [query])
 
+  // Execute special actions
+  const executeAction = useCallback((action) => {
+    switch (action) {
+      case 'copyProfile':
+        if (user?.username) {
+          const url = `${window.location.origin}/kit/${user.username}`
+          navigator.clipboard.writeText(url)
+          // Could show a toast here
+        }
+        break
+      case 'showShortcuts':
+        // Trigger the keyboard shortcuts help
+        const shortcuts = [
+          '⌘K - Open Command Palette',
+          '⌘1 - Dashboard',
+          '⌘2 - Opportunities',
+          '⌘3 - Messages',
+          '⌘4 - Workspace',
+          '⌘5 - Notifications',
+          '⌘6 - Profile',
+          '⌘7 - Settings',
+          '⌘N - New (context-aware)',
+          '⌘/ - Show shortcuts',
+          'ESC - Close modals',
+        ].join('\n')
+        alert(`Keyboard Shortcuts:\n\n${shortcuts}`)
+        break
+      case 'help':
+        window.open('mailto:support@formative.co', '_blank')
+        break
+      case 'logout':
+        logout()
+        navigate('/login')
+        break
+    }
+    setIsOpen(false)
+  }, [user, logout, navigate])
+
   // Handle selection - defined before handleKeyDown which uses it
   const handleSelect = useCallback((item) => {
-    navigate(item.path)
-    setIsOpen(false)
-  }, [navigate])
+    if (item.action) {
+      executeAction(item.action)
+    } else if (item.path) {
+      navigate(item.path)
+      setIsOpen(false)
+    }
+  }, [navigate, executeAction])
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e) => {
@@ -217,6 +362,14 @@ export function CommandPalette() {
         e.preventDefault()
         setIsOpen(false)
         break
+      case 'Tab':
+        e.preventDefault()
+        if (e.shiftKey) {
+          setSelectedIndex(i => Math.max(i - 1, 0))
+        } else {
+          setSelectedIndex(i => Math.min(i + 1, results.length - 1))
+        }
+        break
     }
   }, [isOpen, results, selectedIndex, handleSelect])
 
@@ -234,7 +387,8 @@ export function CommandPalette() {
     }
   }, [selectedIndex])
 
-  // Group results by category
+  // Group results by category with priority ordering
+  const categoryOrder = ['Recent', 'Quick Actions', 'Navigate', 'Campaigns', 'Conversations', 'People', 'Utilities']
   const groupedResults = results.reduce((acc, item) => {
     const category = item.category
     if (!acc[category]) acc[category] = []
@@ -242,10 +396,20 @@ export function CommandPalette() {
     return acc
   }, {})
 
+  // Sort categories by priority
+  const sortedCategories = Object.keys(groupedResults).sort((a, b) => {
+    const aIndex = categoryOrder.indexOf(a)
+    const bIndex = categoryOrder.indexOf(b)
+    if (aIndex === -1 && bIndex === -1) return 0
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  })
+
   // Get flat index for an item
   const getFlatIndex = (category, itemIndex) => {
     let flatIndex = 0
-    for (const cat of Object.keys(groupedResults)) {
+    for (const cat of sortedCategories) {
       if (cat === category) {
         return flatIndex + itemIndex
       }
@@ -254,10 +418,24 @@ export function CommandPalette() {
     return flatIndex
   }
 
+  // Get category icon
+  const getCategoryIcon = (category) => {
+    const icons = {
+      'Recent': Clock,
+      'Quick Actions': Zap,
+      'Navigate': Hash,
+      'Campaigns': Briefcase,
+      'Conversations': MessageSquare,
+      'People': User,
+      'Utilities': Settings,
+    }
+    return icons[category]
+  }
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] p-4">
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[12vh] p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
@@ -283,9 +461,9 @@ export function CommandPalette() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search commands, pages, users..."
+            placeholder="Search pages, campaigns, people, actions..."
             className={cn(
-              'w-full h-14 pl-14 pr-20 bg-transparent',
+              'w-full h-14 pl-14 pr-24 bg-transparent',
               'text-white placeholder:text-zinc-500',
               'focus:outline-none text-[15px]'
             )}
@@ -300,94 +478,125 @@ export function CommandPalette() {
           </div>
         </div>
 
+        {/* Scope hints when empty */}
+        {query.length === 0 && (
+          <div className="px-4 py-3 border-b border-white/[0.06] flex flex-wrap gap-2">
+            <span className="text-xs text-zinc-600">Try:</span>
+            {['messages', 'settings', 'campaigns', 'dashboard'].map(hint => (
+              <button
+                key={hint}
+                onClick={() => setQuery(hint)}
+                className="px-2 py-1 rounded-md bg-zinc-800/40 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+              >
+                {hint}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Results */}
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-2 scroll-smooth">
-          {Object.entries(groupedResults).map(([category, items], catIndex) => (
-            <div key={category} className={catIndex > 0 ? 'mt-2' : ''}>
-              {/* Category Header */}
-              <div className="px-4 py-2 flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
-                  {category}
-                </span>
-                {category === 'Recent' && (
-                  <Clock className="w-3 h-3 text-zinc-600" />
-                )}
-              </div>
+          {sortedCategories.map((category, catIndex) => {
+            const items = groupedResults[category]
+            const CategoryIcon = getCategoryIcon(category)
 
-              {/* Items */}
-              <div className="px-2">
-                {items.map((item, itemIndex) => {
-                  const flatIndex = getFlatIndex(category, itemIndex)
-                  const isSelected = flatIndex === selectedIndex
-                  const Icon = item.icon
-                  const shortcut = getShortcut(item.path)
+            return (
+              <div key={category} className={catIndex > 0 ? 'mt-2' : ''}>
+                {/* Category Header */}
+                <div className="px-4 py-2 flex items-center gap-2">
+                  {CategoryIcon && <CategoryIcon className="w-3 h-3 text-zinc-600" />}
+                  <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+                    {category}
+                  </span>
+                  <span className="text-[10px] text-zinc-700">
+                    {items.length}
+                  </span>
+                </div>
 
-                  return (
-                    <button
-                      key={item.id}
-                      data-index={flatIndex}
-                      onClick={() => handleSelect(item)}
-                      onMouseEnter={() => setSelectedIndex(flatIndex)}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl',
-                        'text-left transition-all duration-100',
-                        isSelected
-                          ? 'bg-indigo-500/15 border border-indigo-500/30'
-                          : 'border border-transparent hover:bg-white/[0.04]'
-                      )}
-                    >
-                      {/* Icon */}
-                      <div className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-                        'transition-colors duration-100',
-                        isSelected
-                          ? 'bg-indigo-500/20'
-                          : 'bg-zinc-800/60'
-                      )}>
-                        <Icon className={cn(
-                          'w-5 h-5 transition-colors duration-100',
-                          isSelected ? 'text-indigo-400' : 'text-zinc-400'
-                        )} />
-                      </div>
+                {/* Items */}
+                <div className="px-2">
+                  {items.map((item, itemIndex) => {
+                    const flatIndex = getFlatIndex(category, itemIndex)
+                    const isSelected = flatIndex === selectedIndex
+                    const Icon = item.icon
+                    const shortcut = getShortcut(item.path)
 
-                      {/* Title & Subtitle */}
-                      <div className="flex-1 min-w-0">
-                        <div className={cn(
-                          'font-medium text-sm transition-colors duration-100',
-                          isSelected ? 'text-white' : 'text-zinc-300'
-                        )}>
-                          {item.title}
-                        </div>
-                        {item.subtitle && (
-                          <div className="text-xs text-zinc-500 truncate">
-                            {item.subtitle}
-                          </div>
+                    return (
+                      <button
+                        key={item.id}
+                        data-index={flatIndex}
+                        onClick={() => handleSelect(item)}
+                        onMouseEnter={() => setSelectedIndex(flatIndex)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl',
+                          'text-left transition-all duration-100',
+                          isSelected
+                            ? 'bg-indigo-500/15 border border-indigo-500/30'
+                            : 'border border-transparent hover:bg-white/[0.04]'
                         )}
-                      </div>
-
-                      {/* Keyboard Shortcut */}
-                      {shortcut && (
-                        <kbd className={cn(
-                          'hidden sm:block px-2 py-1 rounded-md text-[11px] font-medium',
+                      >
+                        {/* Icon */}
+                        <div className={cn(
+                          'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
                           'transition-colors duration-100',
                           isSelected
-                            ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                            : 'bg-zinc-800/50 text-zinc-500 border border-white/5'
+                            ? 'bg-indigo-500/20'
+                            : 'bg-zinc-800/60'
                         )}>
-                          {shortcut}
-                        </kbd>
-                      )}
+                          <Icon className={cn(
+                            'w-5 h-5 transition-colors duration-100',
+                            isSelected ? 'text-indigo-400' : 'text-zinc-400'
+                          )} />
+                        </div>
 
-                      {/* Arrow indicator */}
-                      {isSelected && (
-                        <ChevronRight className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                      )}
-                    </button>
-                  )
-                })}
+                        {/* Title & Subtitle */}
+                        <div className="flex-1 min-w-0">
+                          <div className={cn(
+                            'font-medium text-sm transition-colors duration-100',
+                            isSelected ? 'text-white' : 'text-zinc-300'
+                          )}>
+                            {item.title}
+                          </div>
+                          {item.subtitle && (
+                            <div className="text-xs text-zinc-500 truncate">
+                              {item.subtitle}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action indicator or Keyboard Shortcut */}
+                        {item.action ? (
+                          <span className={cn(
+                            'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                            isSelected
+                              ? 'bg-violet-500/20 text-violet-300'
+                              : 'bg-zinc-800/50 text-zinc-500'
+                          )}>
+                            Action
+                          </span>
+                        ) : shortcut ? (
+                          <kbd className={cn(
+                            'hidden sm:block px-2 py-1 rounded-md text-[11px] font-medium',
+                            'transition-colors duration-100',
+                            isSelected
+                              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                              : 'bg-zinc-800/50 text-zinc-500 border border-white/5'
+                          )}>
+                            {shortcut}
+                          </kbd>
+                        ) : null}
+
+                        {/* Arrow indicator */}
+                        {isSelected && (
+                          <ChevronRight className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {/* Empty State */}
           {results.length === 0 && query.length >= 2 && !loading && (
@@ -395,6 +604,14 @@ export function CommandPalette() {
               <Search className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
               <p className="text-zinc-500 text-sm">No results found for "{query}"</p>
               <p className="text-zinc-600 text-xs mt-1">Try a different search term</p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && results.length === 0 && (
+            <div className="py-12 text-center">
+              <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-zinc-500 text-sm">Searching...</p>
             </div>
           )}
         </div>
@@ -411,6 +628,10 @@ export function CommandPalette() {
               Select
             </span>
             <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded bg-zinc-800/60 border border-white/5 text-[10px]">Tab</kbd>
+              Next
+            </span>
+            <span className="hidden md:flex items-center gap-1.5">
               <kbd className="px-1.5 py-0.5 rounded bg-zinc-800/60 border border-white/5 text-[10px]">ESC</kbd>
               Close
             </span>
