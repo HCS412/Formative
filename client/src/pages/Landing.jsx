@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { DemoVideo } from '@/components/DemoVideo'
-import { ArrowRight, Play, Sparkles, Zap, Shield, BarChart3, MessageCircle, Users } from 'lucide-react'
+import { ArrowRight, Play, Sparkles, Zap, Shield, BarChart3, MessageCircle, Users, Check, Star, Globe, Heart, TrendingUp } from 'lucide-react'
 
 export function Landing() {
   const [showDemo, setShowDemo] = useState(false)
@@ -22,6 +22,14 @@ export function Landing() {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
+  const scrollToSection = (e, sectionId) => {
+    e.preventDefault()
+    const element = document.getElementById(sectionId)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden">
       {/* Navigation */}
@@ -35,9 +43,9 @@ export function Landing() {
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-zinc-400 hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-zinc-400 hover:text-white transition-colors">Pricing</a>
-            <a href="#about" className="text-sm text-zinc-400 hover:text-white transition-colors">About</a>
+            <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="text-sm text-zinc-400 hover:text-white transition-colors">Features</a>
+            <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="text-sm text-zinc-400 hover:text-white transition-colors">Pricing</a>
+            <a href="#about" onClick={(e) => scrollToSection(e, 'about')} className="text-sm text-zinc-400 hover:text-white transition-colors">About</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -289,8 +297,172 @@ export function Landing() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Pricing Section */}
+      <section id="pricing" className="py-32 px-6 relative">
+        {/* Background accent */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-indigo-600/5 blur-[120px]" />
+        </div>
+
+        <div className="max-w-6xl mx-auto relative">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-6">
+              <Star className="w-4 h-4 text-indigo-400" />
+              <span className="text-sm font-medium text-indigo-300">Simple pricing</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Choose your plan
+            </h2>
+            <p className="text-xl text-zinc-400 max-w-xl mx-auto">
+              Start free and scale as you grow. No hidden fees.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+            {/* Free Plan */}
+            <div className="relative p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-white mb-2">Starter</h3>
+                <p className="text-sm text-zinc-500">Perfect for getting started</p>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-white">$0</span>
+                <span className="text-zinc-500">/month</span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {['Up to 3 active campaigns', 'Basic analytics', 'Email support', 'Media kit builder', 'Community access'].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-sm text-zinc-300">
+                    <Check className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/register"
+                className="block w-full py-3 text-center text-sm font-semibold text-white rounded-xl border border-white/20 hover:bg-white/5 transition-all"
+              >
+                Get started free
+              </Link>
+            </div>
+
+            {/* Pro Plan - Featured */}
+            <div className="relative p-8 rounded-2xl bg-gradient-to-b from-indigo-500/10 to-transparent border border-indigo-500/30 hover:border-indigo-500/50 transition-all">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <span className="px-4 py-1.5 rounded-full bg-indigo-500 text-white text-xs font-semibold">
+                  Most Popular
+                </span>
+              </div>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-white mb-2">Pro</h3>
+                <p className="text-sm text-zinc-500">For serious creators</p>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-white">$29</span>
+                <span className="text-zinc-500">/month</span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {['Unlimited campaigns', 'Advanced analytics & ROI tracking', 'Priority support', 'Custom media kit domains', 'Contract templates', 'Brand collaboration tools'].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-sm text-zinc-300">
+                    <Check className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/register"
+                className="block w-full py-3 text-center text-sm font-semibold bg-white text-zinc-900 rounded-xl hover:bg-zinc-100 transition-all"
+              >
+                Start free trial
+              </Link>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="relative p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-white mb-2">Enterprise</h3>
+                <p className="text-sm text-zinc-500">For teams and agencies</p>
+              </div>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-white">Custom</span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {['Everything in Pro', 'Dedicated account manager', 'Custom integrations', 'SLA & security compliance', 'Team collaboration', 'White-label options'].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-sm text-zinc-300">
+                    <Check className="w-5 h-5 text-violet-400 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                className="block w-full py-3 text-center text-sm font-semibold text-white rounded-xl border border-white/20 hover:bg-white/5 transition-all"
+              >
+                Contact sales
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
       <section id="about" className="py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left - Content */}
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 mb-6">
+                <Heart className="w-4 h-4 text-violet-400" />
+                <span className="text-sm font-medium text-violet-300">Our mission</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                Empowering creators to build sustainable businesses
+              </h2>
+              <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                We believe every creator deserves the tools to turn their passion into a thriving career. Formative bridges the gap between talented creators and brands looking for authentic partnerships.
+              </p>
+              <div className="grid grid-cols-2 gap-6">
+                {[
+                  { value: '10K+', label: 'Active creators' },
+                  { value: '500+', label: 'Brand partners' },
+                  { value: '$2M+', label: 'Paid to creators' },
+                  { value: '98%', label: 'Satisfaction rate' },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
+                    <div className="text-sm text-zinc-500">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right - Visual */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-violet-600/10 to-transparent rounded-3xl blur-2xl" />
+              <div className="relative p-8 rounded-3xl bg-white/[0.02] border border-white/10">
+                <div className="space-y-6">
+                  {[
+                    { icon: Globe, title: 'Global Reach', desc: 'Connect with brands and creators worldwide' },
+                    { icon: TrendingUp, title: 'Data-Driven', desc: 'Make informed decisions with real-time analytics' },
+                    { icon: Shield, title: 'Secure & Trusted', desc: 'Protected payments and verified partnerships' },
+                  ].map((item) => (
+                    <div key={item.title} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                        <item.icon className="w-6 h-6 text-indigo-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white mb-1">{item.title}</h4>
+                        <p className="text-sm text-zinc-500">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-32 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="relative rounded-3xl overflow-hidden">
             {/* Background gradient */}
@@ -334,9 +506,9 @@ export function Landing() {
             <span className="font-semibold text-white">Formative</span>
           </div>
           <div className="flex items-center gap-8 text-sm text-zinc-500">
-            <a href="#" className="hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms</a>
-            <a href="#" className="hover:text-white transition-colors">Contact</a>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <a href="mailto:hello@formative.co" className="hover:text-white transition-colors">Contact</a>
           </div>
           <p className="text-sm text-zinc-600">© {new Date().getFullYear()} Formative</p>
         </div>
