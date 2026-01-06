@@ -8,7 +8,7 @@ const SHORTCUTS = {
   'meta+1': { action: 'navigate', path: '/dashboard', label: 'Dashboard' },
   'meta+2': { action: 'navigate', path: '/dashboard/opportunities', label: 'Opportunities' },
   'meta+3': { action: 'navigate', path: '/dashboard/messages', label: 'Messages' },
-  'meta+4': { action: 'navigate', path: '/dashboard/campaigns', label: 'Campaigns' },
+  'meta+4': { action: 'navigate', path: '/dashboard/workspace', label: 'Workspace' },
   'meta+5': { action: 'navigate', path: '/dashboard/notifications', label: 'Notifications' },
   'meta+6': { action: 'navigate', path: '/dashboard/profile', label: 'Profile' },
   'meta+7': { action: 'navigate', path: '/dashboard/settings', label: 'Settings' },

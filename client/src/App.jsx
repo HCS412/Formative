@@ -7,7 +7,7 @@ import { PermissionProvider } from '@/context/PermissionContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { useActivityTimeout } from '@/hooks/useActivityTimeout'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { SearchModal } from '@/components/SearchModal'
+import { CommandPalette } from '@/components/CommandPalette'
 import { Navbar } from '@/components/layout/Navbar'
 import { Landing, Login, Register, Onboarding, Dashboard, Messages, Opportunities, Profile, Settings, Campaigns, Notifications, MediaKit, Links, Teams, Shop, PublicShop, TermsOfService, PrivacyPolicy, Workspace, Studio } from '@/pages'
 import { PaymentsWrapper } from '@/pages/PaymentsWrapper'
@@ -30,15 +30,7 @@ function ActivityMonitor({ children }) {
   return children
 }
 
-function SearchHandler() {
-  const [searchOpen, setSearchOpen] = useState(false)
-  useEffect(() => {
-    const handleOpenSearch = () => setSearchOpen(true)
-    window.addEventListener('openSearch', handleOpenSearch)
-    return () => window.removeEventListener('openSearch', handleOpenSearch)
-  }, [])
-  return <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-}
+// CommandPalette handles its own open/close state via global events
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
@@ -110,7 +102,7 @@ function App() {
           <PermissionProvider>
             <ToastProvider>
               <ActivityMonitor>
-                <SearchHandler />
+                <CommandPalette />
                 <AppRoutes />
               </ActivityMonitor>
             </ToastProvider>
