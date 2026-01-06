@@ -6,9 +6,9 @@ export const Card = forwardRef(function Card(
   ref
 ) {
   const variants = {
-    default: 'bg-[var(--bg-secondary)] border-[var(--border-subtle)]',
-    elevated: 'bg-[var(--bg-elevated)] border-[var(--border-default)]',
-    surface: 'bg-[var(--bg-surface)] border-[var(--border-subtle)]',
+    default: 'bg-zinc-900/50 border-white/[0.06] backdrop-blur-sm',
+    elevated: 'bg-zinc-800/50 border-white/10 backdrop-blur-sm',
+    surface: 'bg-zinc-900/80 border-white/[0.06] backdrop-blur-sm',
     ghost: 'bg-transparent border-transparent',
   }
 
@@ -21,8 +21,8 @@ export const Card = forwardRef(function Card(
         variants[variant],
         interactive && [
           'cursor-pointer',
-          'hover:border-[var(--border-default)]',
-          'hover:bg-[var(--bg-elevated)]',
+          'hover:border-white/10',
+          'hover:bg-zinc-800/50',
         ],
         className
       )}
@@ -37,7 +37,7 @@ export function CardHeader({ children, className, actions, ...props }) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between p-5 border-b border-[var(--border-subtle)]',
+        'flex items-center justify-between p-5 border-b border-white/[0.06]',
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ export function CardTitle({ children, className, subtitle, ...props }) {
     <div className="space-y-0.5">
       <h3
         className={cn(
-          'text-sm font-semibold text-[var(--text-primary)]',
+          'text-sm font-semibold text-white',
           className
         )}
         {...props}
@@ -61,7 +61,7 @@ export function CardTitle({ children, className, subtitle, ...props }) {
         {children}
       </h3>
       {subtitle && (
-        <p className="text-xs text-[var(--text-muted)]">{subtitle}</p>
+        <p className="text-xs text-zinc-500">{subtitle}</p>
       )}
     </div>
   )
@@ -82,7 +82,7 @@ export function CardFooter({ children, className, ...props }) {
   return (
     <div
       className={cn(
-        'flex items-center justify-end gap-3 px-5 py-4 border-t border-[var(--border-subtle)]',
+        'flex items-center justify-end gap-3 px-5 py-4 border-t border-white/[0.06]',
         className
       )}
       {...props}
@@ -102,19 +102,19 @@ export function StatCard({
   ...props
 }) {
   const changeColors = {
-    positive: 'text-[var(--color-success)]',
-    negative: 'text-[var(--color-error)]',
-    neutral: 'text-[var(--text-muted)]',
+    positive: 'text-emerald-400',
+    negative: 'text-red-400',
+    neutral: 'text-zinc-500',
   }
 
   return (
     <Card className={cn('p-5', className)} {...props}>
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
             {label}
           </p>
-          <p className="text-2xl font-semibold text-[var(--text-primary)]">
+          <p className="text-2xl font-semibold text-white">
             {value}
           </p>
           {change && (
@@ -125,7 +125,7 @@ export function StatCard({
           )}
         </div>
         {icon && (
-          <div className="p-2.5 rounded-lg bg-[var(--accent-primary-muted)]">
+          <div className="p-2.5 rounded-lg bg-indigo-500/10">
             {icon}
           </div>
         )}

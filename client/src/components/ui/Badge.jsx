@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils'
 
 const variants = {
-  default: 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-subtle)]',
-  primary: 'bg-[var(--accent-primary-muted)] text-[var(--accent-primary)] border-[var(--accent-primary)]/20',
-  secondary: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  default: 'bg-zinc-800/50 text-zinc-400 border-white/10',
+  primary: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+  secondary: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   danger: 'bg-red-500/10 text-red-400 border-red-500/20',
@@ -13,7 +13,7 @@ const variants = {
   blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   pink: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
   // Solid variants
-  'solid-primary': 'bg-[var(--accent-primary)] text-[var(--bg-base)] border-transparent',
+  'solid-primary': 'bg-indigo-500 text-white border-transparent',
   'solid-success': 'bg-emerald-500 text-white border-transparent',
   'solid-warning': 'bg-amber-500 text-black border-transparent',
   'solid-danger': 'bg-red-500 text-white border-transparent',
@@ -56,8 +56,8 @@ export function Badge({
             variant === 'danger' && 'bg-red-400',
             variant === 'error' && 'bg-red-400',
             variant === 'info' && 'bg-sky-400',
-            variant === 'primary' && 'bg-[var(--accent-primary)]',
-            variant === 'default' && 'bg-[var(--text-muted)]',
+            variant === 'primary' && 'bg-indigo-400',
+            variant === 'default' && 'bg-zinc-500',
             !['success', 'warning', 'danger', 'error', 'info', 'primary', 'default'].includes(variant) &&
               'bg-current'
           )}
@@ -115,7 +115,7 @@ export function StatusBadge({ status, label, className }) {
           config.variant === 'success' && 'bg-emerald-400',
           config.variant === 'warning' && 'bg-amber-400',
           config.variant === 'danger' && 'bg-red-400',
-          config.variant === 'default' && 'bg-[var(--text-muted)]',
+          config.variant === 'default' && 'bg-zinc-500',
           config.animate && 'animate-pulse'
         )}
       />

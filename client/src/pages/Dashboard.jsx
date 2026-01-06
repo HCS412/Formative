@@ -182,10 +182,10 @@ export function Dashboard() {
     <DashboardLayout>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">
+        <h1 className="text-2xl font-semibold text-white mb-1">
           {getGreeting()}, {user?.name?.split(' ')[0]}
         </h1>
-        <p className="text-[var(--text-secondary)]">
+        <p className="text-zinc-400">
           {isFullyOnboarded
             ? "Here's what's happening with your account."
             : "Complete your profile to start collaborating."}
@@ -194,18 +194,18 @@ export function Dashboard() {
 
       {/* Onboarding Progress */}
       {!isFullyOnboarded && (
-        <Card className="mb-8 p-6">
+        <div className="mb-8 p-6 rounded-xl bg-zinc-900/50 border border-white/[0.06] backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Complete Your Profile</h3>
-              <p className="text-xs text-[var(--text-muted)]">Get discovered by brands</p>
+              <h3 className="text-sm font-semibold text-white">Complete Your Profile</h3>
+              <p className="text-xs text-zinc-500">Get discovered by brands</p>
             </div>
-            <span className="text-lg font-semibold text-[var(--accent-primary)]">{onboardingPercentage}%</span>
+            <span className="text-lg font-semibold text-indigo-400">{onboardingPercentage}%</span>
           </div>
 
-          <div className="h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden mb-5">
+          <div className="h-1 bg-zinc-800 rounded-full overflow-hidden mb-5">
             <div
-              className="h-full bg-[var(--accent-primary)] rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
               style={{ width: `${onboardingPercentage}%` }}
             />
           </div>
@@ -223,55 +223,47 @@ export function Dashboard() {
                 className={cn(
                   'flex items-center gap-2 p-3 rounded-lg transition-colors',
                   onboardingProgress[step.key]
-                    ? 'bg-emerald-500/10'
-                    : 'bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)]'
+                    ? 'bg-emerald-500/10 border border-emerald-500/20'
+                    : 'bg-zinc-800/50 hover:bg-zinc-800 border border-transparent'
                 )}
               >
                 {onboardingProgress[step.key] ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 ) : (
-                  <step.icon className="w-4 h-4 text-[var(--text-muted)]" />
+                  <step.icon className="w-4 h-4 text-zinc-500" />
                 )}
                 <span className={cn(
                   'text-xs font-medium',
-                  onboardingProgress[step.key] ? 'text-emerald-400' : 'text-[var(--text-secondary)]'
+                  onboardingProgress[step.key] ? 'text-emerald-400' : 'text-zinc-400'
                 )}>
                   {step.label}
                 </span>
               </Link>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Followers', value: formatNumber(stats.followers), icon: Users, color: 'violet' },
-          { label: 'Engagement', value: `${stats.engagement}%`, icon: TrendingUp, color: 'orange' },
-          { label: 'Campaigns', value: stats.activeCampaigns, icon: Target, color: 'emerald' },
-          { label: 'Earned', value: `$${formatNumber(stats.totalEarnings)}`, icon: DollarSign, color: 'sky' },
-        ].map((stat, i) => {
-          const colors = {
-            violet: 'bg-violet-500/10 text-violet-400',
-            orange: 'bg-orange-500/10 text-orange-400',
-            emerald: 'bg-emerald-500/10 text-emerald-400',
-            sky: 'bg-sky-500/10 text-sky-400',
-          }
-          return (
-            <Card key={i} className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={cn('p-2 rounded-lg', colors[stat.color])}>
-                  <stat.icon className="w-4 h-4" />
-                </div>
+          { label: 'Followers', value: formatNumber(stats.followers), icon: Users },
+          { label: 'Engagement', value: `${stats.engagement}%`, icon: TrendingUp },
+          { label: 'Campaigns', value: stats.activeCampaigns, icon: Target },
+          { label: 'Earned', value: `$${formatNumber(stats.totalEarnings)}`, icon: DollarSign },
+        ].map((stat, i) => (
+          <div key={i} className="p-5 rounded-xl bg-zinc-900/50 border border-white/[0.06] backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 rounded-lg bg-indigo-500/10">
+                <stat.icon className="w-4 h-4 text-indigo-400" />
               </div>
-              <p className="text-2xl font-semibold text-[var(--text-primary)] mb-0.5">
-                {loading ? '—' : stat.value}
-              </p>
-              <p className="text-xs text-[var(--text-muted)]">{stat.label}</p>
-            </Card>
-          )
-        })}
+            </div>
+            <p className="text-2xl font-semibold text-white mb-0.5">
+              {loading ? '—' : stat.value}
+            </p>
+            <p className="text-xs text-zinc-500">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Main Content */}

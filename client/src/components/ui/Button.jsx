@@ -3,35 +3,35 @@ import { cn } from '@/lib/utils'
 
 const variants = {
   primary: [
-    'bg-[var(--accent-primary)] text-white',
-    'hover:bg-[var(--accent-primary-hover)]',
+    'bg-white text-zinc-900',
+    'hover:bg-zinc-100',
     'active:scale-[0.98]',
   ].join(' '),
   secondary: [
-    'bg-[var(--bg-elevated)] text-[var(--text-primary)]',
-    'border border-[var(--border-default)]',
-    'hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)]',
+    'bg-zinc-800/50 text-white',
+    'border border-white/10',
+    'hover:bg-zinc-800 hover:border-white/20',
     'active:scale-[0.98]',
   ].join(' '),
   ghost: [
-    'bg-transparent text-[var(--text-secondary)]',
-    'hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]',
+    'bg-transparent text-zinc-400',
+    'hover:bg-white/[0.04] hover:text-white',
     'active:scale-[0.98]',
   ].join(' '),
   outline: [
-    'bg-transparent text-[var(--accent-primary)]',
-    'border border-[var(--accent-primary)]/50',
-    'hover:bg-[var(--accent-primary-muted)] hover:border-[var(--accent-primary)]',
+    'bg-transparent text-indigo-400',
+    'border border-indigo-500/50',
+    'hover:bg-indigo-500/10 hover:border-indigo-500',
     'active:scale-[0.98]',
   ].join(' '),
   danger: [
-    'bg-[var(--color-error)] text-white',
-    'hover:bg-[#dc2626]',
+    'bg-red-500 text-white',
+    'hover:bg-red-600',
     'active:scale-[0.98]',
   ].join(' '),
   success: [
-    'bg-[var(--color-success)] text-white',
-    'hover:bg-[#16a34a]',
+    'bg-emerald-500 text-white',
+    'hover:bg-emerald-600',
     'active:scale-[0.98]',
   ].join(' '),
 }
@@ -67,7 +67,7 @@ export const Button = forwardRef(function Button(
         'inline-flex items-center justify-center',
         'font-medium rounded-lg',
         'transition-all duration-150',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090b]',
         'select-none whitespace-nowrap',
         // Variant styles
         variants[variant],

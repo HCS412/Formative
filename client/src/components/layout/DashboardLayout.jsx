@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Search,
   Command,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { Avatar, Button } from '@/components/ui'
@@ -83,7 +84,7 @@ export function DashboardLayout({ children }) {
       <aside
         className={cn(
           'fixed top-0 left-0 z-50 h-full',
-          'bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]',
+          'bg-zinc-900/80 backdrop-blur-xl border-r border-white/[0.06]',
           'transform transition-all duration-300 ease-out',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
@@ -91,14 +92,14 @@ export function DashboardLayout({ children }) {
         )}
       >
         {/* Logo section */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-white/[0.06]">
           <Link to="/dashboard" className="flex items-center gap-3">
-            {/* Refined logo with violet accent */}
-            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--accent-primary)] to-violet-600 flex items-center justify-center shadow-[0_0_20px_rgba(167,139,250,0.3)]">
-              <div className="w-5 h-5 rounded-md bg-[var(--bg-primary)] rotate-45" />
+            {/* Refined logo with indigo/violet gradient - matching Landing page */}
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
             {!sidebarCollapsed && (
-              <span className="font-semibold text-[var(--text-primary)] tracking-tight">
+              <span className="font-semibold text-white tracking-tight">
                 Formative
               </span>
             )}
@@ -127,14 +128,15 @@ export function DashboardLayout({ children }) {
                   'transition-all duration-200',
                   isActive
                     ? [
-                        'bg-[var(--accent-primary-muted)]',
-                        'text-[var(--accent-primary)]',
-                        'shadow-[inset_0_0_0_1px_rgba(167,139,250,0.2)]',
+                        'bg-indigo-500/10',
+                        'text-indigo-400',
+                        'border border-indigo-500/20',
                       ]
                     : [
-                        'text-[var(--text-secondary)]',
-                        'hover:text-[var(--text-primary)]',
-                        'hover:bg-[var(--bg-elevated)]',
+                        'text-zinc-400',
+                        'hover:text-white',
+                        'hover:bg-white/[0.04]',
+                        'border border-transparent',
                       ]
                 )}
                 onClick={() => setSidebarOpen(false)}
@@ -143,8 +145,8 @@ export function DashboardLayout({ children }) {
                   className={cn(
                     'w-5 h-5 flex-shrink-0 transition-colors',
                     isActive
-                      ? 'text-[var(--accent-primary)]'
-                      : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
+                      ? 'text-indigo-400'
+                      : 'text-zinc-500 group-hover:text-zinc-300'
                   )}
                 />
                 {!sidebarCollapsed && (
@@ -156,22 +158,22 @@ export function DashboardLayout({ children }) {
         </nav>
 
         {/* Bottom section */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-[var(--border-subtle)]">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/[0.06]">
           {/* User info */}
           <div
             className={cn(
               'flex items-center gap-3 p-2 rounded-lg',
-              'hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer'
+              'hover:bg-white/[0.04] transition-colors cursor-pointer'
             )}
             onClick={() => navigate('/dashboard/profile')}
           >
             <Avatar name={user?.name} src={user?.avatar_url} size="sm" status="online" />
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--text-primary)] truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {user?.name}
                 </p>
-                <p className="text-xs text-[var(--text-muted)] truncate">
+                <p className="text-xs text-zinc-500 truncate">
                   {user?.email}
                 </p>
               </div>
@@ -191,8 +193,8 @@ export function DashboardLayout({ children }) {
         <header
           className={cn(
             'sticky top-0 z-30 h-16',
-            'bg-[var(--bg-base)]/80 backdrop-blur-xl',
-            'border-b border-[var(--border-subtle)]'
+            'bg-[#09090b]/80 backdrop-blur-xl',
+            'border-b border-white/[0.06]'
           )}
         >
           <div className="flex items-center justify-between h-full px-4 lg:px-6">
@@ -210,19 +212,20 @@ export function DashboardLayout({ children }) {
                 <div
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg',
-                    'bg-[var(--bg-secondary)] border border-[var(--border-subtle)]',
-                    'text-[var(--text-muted)]',
-                    'hover:border-[var(--border-default)] transition-colors',
+                    'bg-zinc-800/50 border border-white/10',
+                    'text-zinc-500',
+                    'hover:border-white/20 transition-colors',
                     'cursor-pointer w-64'
                   )}
+                  onClick={() => window.dispatchEvent(new CustomEvent('openSearch'))}
                 >
                   <Search className="w-4 h-4" />
                   <span className="text-sm">Search...</span>
                   <div className="ml-auto flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] text-[10px] font-medium">
+                    <kbd className="px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-400 text-[10px] font-medium">
                       <Command className="w-2.5 h-2.5 inline" />
                     </kbd>
-                    <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] text-[10px] font-medium">
+                    <kbd className="px-1.5 py-0.5 rounded bg-zinc-700/50 text-zinc-400 text-[10px] font-medium">
                       K
                     </kbd>
                   </div>
@@ -237,8 +240,8 @@ export function DashboardLayout({ children }) {
                 to="/dashboard/messages"
                 className={cn(
                   'relative p-2.5 rounded-lg',
-                  'text-[var(--text-muted)] hover:text-[var(--text-primary)]',
-                  'hover:bg-[var(--bg-elevated)] transition-colors'
+                  'text-zinc-400 hover:text-white',
+                  'hover:bg-white/[0.04] transition-colors'
                 )}
               >
                 <MessageSquare className="w-5 h-5" />
@@ -247,10 +250,10 @@ export function DashboardLayout({ children }) {
                     className={cn(
                       'absolute top-1 right-1',
                       'w-4 h-4 rounded-full',
-                      'bg-[var(--status-error)] text-white',
+                      'bg-indigo-500 text-white',
                       'text-[10px] font-bold',
                       'flex items-center justify-center',
-                      'ring-2 ring-[var(--bg-base)]'
+                      'ring-2 ring-[#09090b]'
                     )}
                   >
                     {unreadMessages > 9 ? '9+' : unreadMessages}
@@ -262,7 +265,7 @@ export function DashboardLayout({ children }) {
               <NotificationDropdown />
 
               {/* Divider */}
-              <div className="w-px h-6 bg-[var(--border-subtle)] mx-2" />
+              <div className="w-px h-6 bg-white/10 mx-2" />
 
               {/* User avatar dropdown */}
               <div className="relative" ref={avatarMenuRef}>
@@ -270,14 +273,14 @@ export function DashboardLayout({ children }) {
                   onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
                   className={cn(
                     'flex items-center gap-2 p-1.5 rounded-lg',
-                    'hover:bg-[var(--bg-elevated)] transition-colors',
-                    avatarMenuOpen && 'bg-[var(--bg-elevated)]'
+                    'hover:bg-white/[0.04] transition-colors',
+                    avatarMenuOpen && 'bg-white/[0.04]'
                   )}
                 >
                   <Avatar name={user?.name} src={user?.avatar_url} size="sm" />
                   <ChevronDown
                     className={cn(
-                      'w-4 h-4 text-[var(--text-muted)] transition-transform duration-200',
+                      'w-4 h-4 text-zinc-500 transition-transform duration-200',
                       avatarMenuOpen && 'rotate-180'
                     )}
                   />
@@ -288,18 +291,18 @@ export function DashboardLayout({ children }) {
                   <div
                     className={cn(
                       'absolute right-0 mt-2 w-56',
-                      'bg-[var(--bg-elevated)] border border-[var(--border-subtle)]',
-                      'rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.3)]',
+                      'bg-zinc-900/95 backdrop-blur-xl border border-white/10',
+                      'rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.5)]',
                       'overflow-hidden',
                       'animate-in fade-in slide-in-from-top-2 duration-200'
                     )}
                   >
                     {/* User info header */}
-                    <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-                      <p className="text-sm font-medium text-[var(--text-primary)] truncate">
+                    <div className="px-4 py-3 border-b border-white/[0.06]">
+                      <p className="text-sm font-medium text-white truncate">
                         {user?.name}
                       </p>
-                      <p className="text-xs text-[var(--text-muted)] truncate">
+                      <p className="text-xs text-zinc-500 truncate">
                         {user?.email}
                       </p>
                     </div>
@@ -311,8 +314,8 @@ export function DashboardLayout({ children }) {
                         onClick={() => setAvatarMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-3 px-4 py-2.5',
-                          'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
-                          'hover:bg-[var(--bg-surface)] transition-colors'
+                          'text-zinc-400 hover:text-white',
+                          'hover:bg-white/[0.04] transition-colors'
                         )}
                       >
                         <User className="w-4 h-4" />
@@ -323,8 +326,8 @@ export function DashboardLayout({ children }) {
                         onClick={() => setAvatarMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-3 px-4 py-2.5',
-                          'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
-                          'hover:bg-[var(--bg-surface)] transition-colors'
+                          'text-zinc-400 hover:text-white',
+                          'hover:bg-white/[0.04] transition-colors'
                         )}
                       >
                         <Settings className="w-4 h-4" />
@@ -333,7 +336,7 @@ export function DashboardLayout({ children }) {
                     </div>
 
                     {/* Logout */}
-                    <div className="border-t border-[var(--border-subtle)] py-1">
+                    <div className="border-t border-white/[0.06] py-1">
                       <button
                         onClick={() => {
                           setAvatarMenuOpen(false)
@@ -341,7 +344,7 @@ export function DashboardLayout({ children }) {
                         }}
                         className={cn(
                           'flex items-center gap-3 w-full px-4 py-2.5',
-                          'text-[var(--status-error)] hover:bg-red-500/10 transition-colors'
+                          'text-red-400 hover:bg-red-500/10 transition-colors'
                         )}
                       >
                         <LogOut className="w-4 h-4" />
